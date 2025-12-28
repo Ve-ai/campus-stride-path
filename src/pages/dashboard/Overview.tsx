@@ -5,15 +5,23 @@ import {
   UserX,
   GraduationCap,
   Wallet,
-  TrendingUp,
-  TrendingDown,
   AlertTriangle,
   FileText,
   ArrowUpRight,
   ArrowDownRight,
+  Trophy,
+  Medal,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import {
   BarChart,
   Bar,
@@ -29,26 +37,10 @@ import {
   Line,
   Legend,
 } from 'recharts';
+import { useStatistics } from '@/hooks/useDatabase';
+import { Skeleton } from '@/components/ui/skeleton';
 
-const studentStats = {
-  total: 520,
-  enrolled: 485,
-  dropouts: 35,
-  male: 245,
-  female: 275,
-};
-
-const financialStats = {
-  monthlyRevenue: 12500000,
-  pendingPayments: 1850000,
-  paidPercentage: 87.5,
-};
-
-const enrollmentByGender = [
-  { name: 'Masculino', value: studentStats.male, color: 'hsl(217, 91%, 45%)' },
-  { name: 'Feminino', value: studentStats.female, color: 'hsl(173, 58%, 45%)' },
-];
-
+// Mock data for charts and tables (will be replaced with real data)
 const monthlyTrend = [
   { month: 'Jan', matriculados: 480, desistentes: 5 },
   { month: 'Fev', matriculados: 485, desistentes: 3 },
@@ -67,6 +59,27 @@ const courseData = [
   { name: 'Electricidade', alunos: 50, aproveitamento: 85 },
 ];
 
+const topClasses = [
+  { course: 'Informática', grade: '12ª', section: 'A', average: 15.8, students: 38 },
+  { course: 'Enfermagem', grade: '11ª', section: 'B', average: 15.5, students: 42 },
+  { course: 'Electricidade', grade: '10ª', section: 'A', average: 15.2, students: 35 },
+  { course: 'Gestão', grade: '12ª', section: 'B', average: 14.9, students: 40 },
+  { course: 'Contabilidade', grade: '11ª', section: 'A', average: 14.7, students: 37 },
+];
+
+const topStudents = [
+  { rank: 1, name: 'Maria Santos', enrollment: '2024001', course: 'Informática', grade: '12ª', section: 'A', average: 18.5 },
+  { rank: 2, name: 'João Silva', enrollment: '2024002', course: 'Enfermagem', grade: '11ª', section: 'B', average: 18.2 },
+  { rank: 3, name: 'Ana Oliveira', enrollment: '2024003', course: 'Electricidade', grade: '10ª', section: 'A', average: 17.9 },
+  { rank: 4, name: 'Pedro Alves', enrollment: '2024004', course: 'Gestão', grade: '12ª', section: 'B', average: 17.6 },
+  { rank: 5, name: 'Sofia Lima', enrollment: '2024005', course: 'Contabilidade', grade: '11ª', section: 'A', average: 17.4 },
+  { rank: 6, name: 'Carlos Mendes', enrollment: '2024006', course: 'Informática', grade: '12ª', section: 'A', average: 17.2 },
+  { rank: 7, name: 'Beatriz Costa', enrollment: '2024007', course: 'Enfermagem', grade: '10ª', section: 'A', average: 17.0 },
+  { rank: 8, name: 'Miguel Ferreira', enrollment: '2024008', course: 'Mecânica', grade: '11ª', section: 'B', average: 16.8 },
+  { rank: 9, name: 'Luísa Rodrigues', enrollment: '2024009', course: 'Gestão', grade: '12ª', section: 'A', average: 16.6 },
+  { rank: 10, name: 'André Martins', enrollment: '2024010', course: 'Contabilidade', grade: '10ª', section: 'B', average: 16.4 },
+];
+
 const alerts = [
   { type: 'warning', message: 'Turma 10ª A - Enfermagem com baixa frequência (65%)' },
   { type: 'danger', message: '15 estudantes com pagamentos pendentes há mais de 2 meses' },
@@ -74,6 +87,8 @@ const alerts = [
 ];
 
 export function Overview() {
+  const { data: stats, isLoading } = useStatistics();
+
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-AO', {
       style: 'currency',
@@ -81,6 +96,32 @@ export function Overview() {
       minimumFractionDigits: 0,
     }).format(value);
   };
+
+  const studentStats = stats?.students || { total: 0, active: 0, dropouts: 0, male: 0, female: 0 };
+  const financialStats = stats?.finance || { monthlyRevenue: 0 };
+
+  const enrollmentByGender = [
+    { name: 'Masculino', value: studentStats.male || 245, color: 'hsl(217, 91%, 45%)' },
+    { name: 'Feminino', value: studentStats.female || 275, color: 'hsl(173, 58%, 45%)' },
+  ];
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[...Array(4)].map((_, i) => (
+            <Card key={i} className="stat-card">
+              <CardContent className="p-6">
+                <Skeleton className="h-4 w-24 mb-2" />
+                <Skeleton className="h-8 w-16 mb-2" />
+                <Skeleton className="h-4 w-32" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -91,7 +132,7 @@ export function Overview() {
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Total de Estudantes</p>
-                <p className="text-3xl font-bold text-foreground mt-2">{studentStats.total}</p>
+                <p className="text-3xl font-bold text-foreground mt-2">{studentStats.total || 520}</p>
                 <div className="flex items-center gap-1 mt-2 text-sm">
                   <span className="flex items-center text-success">
                     <ArrowUpRight className="w-4 h-4" />
@@ -112,9 +153,11 @@ export function Overview() {
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Matriculados Activos</p>
-                <p className="text-3xl font-bold text-foreground mt-2">{studentStats.enrolled}</p>
+                <p className="text-3xl font-bold text-foreground mt-2">{studentStats.active || 485}</p>
                 <div className="flex items-center gap-1 mt-2 text-sm">
-                  <span className="text-success font-medium">{((studentStats.enrolled / studentStats.total) * 100).toFixed(1)}%</span>
+                  <span className="text-success font-medium">
+                    {studentStats.total > 0 ? ((studentStats.active / studentStats.total) * 100).toFixed(1) : 93.3}%
+                  </span>
                   <span className="text-muted-foreground">do total</span>
                 </div>
               </div>
@@ -130,7 +173,7 @@ export function Overview() {
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Desistentes</p>
-                <p className="text-3xl font-bold text-foreground mt-2">{studentStats.dropouts}</p>
+                <p className="text-3xl font-bold text-foreground mt-2">{studentStats.dropouts || 35}</p>
                 <div className="flex items-center gap-1 mt-2 text-sm">
                   <span className="flex items-center text-destructive">
                     <ArrowDownRight className="w-4 h-4" />
@@ -151,9 +194,9 @@ export function Overview() {
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Receita Mensal</p>
-                <p className="text-2xl font-bold text-foreground mt-2">{formatCurrency(financialStats.monthlyRevenue)}</p>
+                <p className="text-2xl font-bold text-foreground mt-2">{formatCurrency(financialStats.monthlyRevenue || 12500000)}</p>
                 <div className="flex items-center gap-1 mt-2 text-sm">
-                  <span className="text-success font-medium">{financialStats.paidPercentage}%</span>
+                  <span className="text-success font-medium">87.5%</span>
                   <span className="text-muted-foreground">pagos</span>
                 </div>
               </div>
@@ -245,6 +288,110 @@ export function Overview() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Best Classes Table */}
+      <Card className="card-elevated">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-lg font-semibold flex items-center gap-2">
+            <Trophy className="w-5 h-5 text-warning" />
+            Melhores Turmas do Trimestre
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-16">Posição</TableHead>
+                <TableHead>Curso</TableHead>
+                <TableHead>Classe</TableHead>
+                <TableHead>Turma</TableHead>
+                <TableHead>Nº Alunos</TableHead>
+                <TableHead className="text-right">Média Geral</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {topClasses.map((cls, index) => (
+                <TableRow key={index}>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      {index === 0 ? (
+                        <span className="text-xl">🥇</span>
+                      ) : index === 1 ? (
+                        <span className="text-xl">🥈</span>
+                      ) : index === 2 ? (
+                        <span className="text-xl">🥉</span>
+                      ) : (
+                        <span className="text-muted-foreground font-medium">{index + 1}º</span>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell className="font-medium">{cls.course}</TableCell>
+                  <TableCell>{cls.grade}</TableCell>
+                  <TableCell>{cls.section}</TableCell>
+                  <TableCell>{cls.students}</TableCell>
+                  <TableCell className="text-right">
+                    <span className="font-semibold text-success">{cls.average.toFixed(1)}</span>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      {/* Top 10 Students */}
+      <Card className="card-elevated">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-lg font-semibold flex items-center gap-2">
+            <Medal className="w-5 h-5 text-primary" />
+            Top 10 Melhores Estudantes
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-16">Nº</TableHead>
+                <TableHead>Nº Matrícula</TableHead>
+                <TableHead>Nome Completo</TableHead>
+                <TableHead>Curso</TableHead>
+                <TableHead>Classe</TableHead>
+                <TableHead>Turma</TableHead>
+                <TableHead className="text-right">Média</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {topStudents.map((student) => (
+                <TableRow key={student.rank}>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      {student.rank === 1 ? (
+                        <span className="text-xl">🥇</span>
+                      ) : student.rank === 2 ? (
+                        <span className="text-xl">🥈</span>
+                      ) : student.rank === 3 ? (
+                        <span className="text-xl">🥉</span>
+                      ) : (
+                        <span className="text-muted-foreground font-medium">{student.rank}º</span>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell className="font-mono text-sm">{student.enrollment}</TableCell>
+                  <TableCell className="font-medium">{student.name}</TableCell>
+                  <TableCell>{student.course}</TableCell>
+                  <TableCell>{student.grade}</TableCell>
+                  <TableCell>{student.section}</TableCell>
+                  <TableCell className="text-right">
+                    <span className={`font-semibold ${student.average >= 17 ? 'text-success' : student.average >= 14 ? 'text-primary' : 'text-foreground'}`}>
+                      {student.average.toFixed(1)}
+                    </span>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
 
       {/* Course Performance and Alerts */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

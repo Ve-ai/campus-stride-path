@@ -9,7 +9,9 @@ import { ChangePasswordPage } from "@/components/auth/ChangePasswordPage";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Overview } from "@/pages/dashboard/Overview";
 import { Courses } from "@/pages/dashboard/Courses";
+import { CourseDetails } from "@/pages/dashboard/CourseDetails";
 import { Classes } from "@/pages/dashboard/Classes";
+import { ClassDetails } from "@/pages/dashboard/ClassDetails";
 import { ClassDirectors } from "@/pages/dashboard/ClassDirectors";
 import { Teachers } from "@/pages/dashboard/Teachers";
 import { Finance } from "@/pages/dashboard/Finance";
@@ -53,7 +55,9 @@ function AppRoutes() {
       >
         <Route index element={<Overview />} />
         <Route path="cursos" element={<Courses />} />
+        <Route path="cursos/:courseId" element={<CourseDetails />} />
         <Route path="turmas" element={<Classes />} />
+        <Route path="turmas/:classId" element={<ClassDetails />} />
         <Route path="diretores" element={<ClassDirectors />} />
         <Route path="professores" element={<Teachers />} />
         <Route path="financas" element={<Finance />} />

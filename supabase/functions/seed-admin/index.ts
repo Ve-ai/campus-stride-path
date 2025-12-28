@@ -82,17 +82,28 @@ Deno.serve(async (req) => {
       throw roleError
     }
 
-    // Update profile with username
+    // Create profile
     const { error: profileError } = await supabaseAdmin
       .from('profiles')
-      .update({ 
+      .insert({ 
+        user_id: newUser.user.id,
         username: superAdminUsername,
-        must_change_password: false 
+        full_name: superAdminName,
+        must_change_password: true,
+        password_history: []
       })
-      .eq('user_id', newUser.user.id)
 
     if (profileError) {
-      console.error('Profile update error:', profileError)
+      console.error('Profile creation error:', profileError)
+      // Try update if insert fails (profile might exist from trigger)
+      await supabaseAdmin
+        .from('profiles')
+        .update({ 
+          username: superAdminUsername,
+          full_name: superAdminName,
+          must_change_password: true
+        })
+        .eq('user_id', newUser.user.id)
     }
 
     return new Response(

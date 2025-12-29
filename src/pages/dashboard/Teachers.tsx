@@ -2,14 +2,11 @@ import React, { useState } from 'react';
 import {
   Search,
   Plus,
-  Users,
   GraduationCap,
   Clock,
   MoreHorizontal,
-  Mail,
-  Phone,
   Award,
-  Briefcase,
+  Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -45,91 +42,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-
-const teachersData = [
-  {
-    id: '1',
-    employeeNumber: '0002050',
-    name: 'Carlos Mendes',
-    course: 'Enfermagem',
-    disciplines: ['Matemática', 'Estatística'],
-    period: 'Manhã',
-    salary: 85000,
-    functions: ['Coordenador 10ª A', 'Comissão Disciplinar'],
-    workTime: '5 anos',
-    phone: '925 654 254',
-    email: 'carlos.mendes@escola.co.ao',
-    degree: 'Licenciatura em Matemática',
-  },
-  {
-    id: '2',
-    employeeNumber: '0002051',
-    name: 'Sofia Lima',
-    course: 'Informática',
-    disciplines: ['Programação', 'Base de Dados'],
-    period: 'Tarde',
-    salary: 90000,
-    functions: ['Coordenadora de Curso'],
-    workTime: '7 anos',
-    phone: '923 456 789',
-    email: 'sofia.lima@escola.co.ao',
-    degree: 'Mestrado em Engenharia Informática',
-  },
-  {
-    id: '3',
-    employeeNumber: '0002052',
-    name: 'Ana Oliveira',
-    course: 'Enfermagem',
-    disciplines: ['Biologia', 'Anatomia'],
-    period: 'Manhã',
-    salary: 80000,
-    functions: ['Directora de Turma 10ª B'],
-    workTime: '3 anos',
-    phone: '924 567 890',
-    email: 'ana.oliveira@escola.co.ao',
-    degree: 'Licenciatura em Biologia',
-  },
-  {
-    id: '4',
-    employeeNumber: '0002053',
-    name: 'Pedro Santos',
-    course: 'Contabilidade',
-    disciplines: ['Contabilidade Geral', 'Finanças'],
-    period: 'Manhã',
-    salary: 82000,
-    functions: ['Director de Turma 11ª A'],
-    workTime: '4 anos',
-    phone: '926 789 012',
-    email: 'pedro.santos@escola.co.ao',
-    degree: 'Licenciatura em Contabilidade',
-  },
-  {
-    id: '5',
-    employeeNumber: '0002054',
-    name: 'Maria Ferreira',
-    course: 'Mecânica',
-    disciplines: ['Física', 'Mecânica Aplicada'],
-    period: 'Tarde',
-    salary: 78000,
-    functions: [],
-    workTime: '2 anos',
-    phone: '927 890 123',
-    email: 'maria.ferreira@escola.co.ao',
-    degree: 'Licenciatura em Engenharia Mecânica',
-  },
-];
+import { useTeachers, useCourses } from '@/hooks/useDatabase';
+import { toast } from 'sonner';
 
 export function Teachers() {
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedTeacher, setSelectedTeacher] = useState<typeof teachersData[0] | null>(null);
+  const [selectedTeacher, setSelectedTeacher] = useState<any | null>(null);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
 
-  const filteredTeachers = teachersData.filter(
+  const { data: teachers, isLoading, error } = useTeachers();
+  const { data: courses } = useCourses();
+
+  const filteredTeachers = teachers?.filter(
     (teacher) =>
-      teacher.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      teacher.course.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      teacher.employeeNumber.includes(searchTerm)
-  );
+      teacher.profiles?.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      teacher.employee_number?.includes(searchTerm)
+  ) || [];
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-AO', {
@@ -138,6 +66,35 @@ export function Teachers() {
       minimumFractionDigits: 0,
     }).format(value);
   };
+
+  // Calculate period stats
+  const morningTeachers = filteredTeachers.filter(t => 
+    t.teacher_class_assignments?.some((a: any) => a.class?.period === 'Manhã')
+  ).length;
+  
+  const afternoonTeachers = filteredTeachers.filter(t => 
+    t.teacher_class_assignments?.some((a: any) => a.class?.period === 'Tarde')
+  ).length;
+
+  const coordinators = filteredTeachers.filter(t => 
+    t.functions?.some((f: string) => f.toLowerCase().includes('coordenador'))
+  ).length;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <p className="text-destructive">Erro ao carregar professores</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -206,10 +163,11 @@ export function Teachers() {
                         <SelectValue placeholder="Selecione o curso" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="enfermagem">Enfermagem</SelectItem>
-                        <SelectItem value="informatica">Informática</SelectItem>
-                        <SelectItem value="contabilidade">Contabilidade</SelectItem>
-                        <SelectItem value="mecanica">Mecânica</SelectItem>
+                        {courses?.map((course) => (
+                          <SelectItem key={course.id} value={course.id}>
+                            {course.name}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -238,8 +196,8 @@ export function Teachers() {
                         <SelectValue placeholder="Selecione" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="manha">Manhã</SelectItem>
-                        <SelectItem value="tarde">Tarde</SelectItem>
+                        <SelectItem value="Manhã">Manhã</SelectItem>
+                        <SelectItem value="Tarde">Tarde</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -287,7 +245,10 @@ export function Teachers() {
               <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
                 Cancelar
               </Button>
-              <Button className="btn-primary" onClick={() => setIsAddDialogOpen(false)}>
+              <Button className="btn-primary" onClick={() => {
+                toast.success('Funcionalidade em desenvolvimento');
+                setIsAddDialogOpen(false);
+              }}>
                 Adicionar Professor
               </Button>
             </div>
@@ -302,7 +263,7 @@ export function Teachers() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Total Professores</p>
-                <p className="text-2xl font-bold">{teachersData.length}</p>
+                <p className="text-2xl font-bold">{filteredTeachers.length}</p>
               </div>
               <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
                 <GraduationCap className="w-5 h-5 text-primary" />
@@ -315,7 +276,7 @@ export function Teachers() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Período Manhã</p>
-                <p className="text-2xl font-bold">{teachersData.filter((t) => t.period === 'Manhã').length}</p>
+                <p className="text-2xl font-bold">{morningTeachers}</p>
               </div>
               <div className="w-10 h-10 rounded-lg bg-warning/10 flex items-center justify-center">
                 <Clock className="w-5 h-5 text-warning" />
@@ -328,7 +289,7 @@ export function Teachers() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Período Tarde</p>
-                <p className="text-2xl font-bold">{teachersData.filter((t) => t.period === 'Tarde').length}</p>
+                <p className="text-2xl font-bold">{afternoonTeachers}</p>
               </div>
               <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center">
                 <Clock className="w-5 h-5 text-accent" />
@@ -341,9 +302,7 @@ export function Teachers() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Coordenadores</p>
-                <p className="text-2xl font-bold">
-                  {teachersData.filter((t) => t.functions.some((f) => f.includes('Coordenador'))).length}
-                </p>
+                <p className="text-2xl font-bold">{coordinators}</p>
               </div>
               <div className="w-10 h-10 rounded-lg bg-success/10 flex items-center justify-center">
                 <Award className="w-5 h-5 text-success" />
@@ -357,7 +316,7 @@ export function Teachers() {
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
         <Input
-          placeholder="Pesquisar por nome, curso ou número de funcionário..."
+          placeholder="Pesquisar por nome ou número de funcionário..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="pl-10 input-field"
@@ -376,69 +335,79 @@ export function Teachers() {
                 <TableHead>Nº</TableHead>
                 <TableHead>Nº Funcionário</TableHead>
                 <TableHead>Nome</TableHead>
-                <TableHead>Curso</TableHead>
+                <TableHead>Grau</TableHead>
                 <TableHead>Disciplina(s)</TableHead>
-                <TableHead>Período</TableHead>
                 <TableHead>Salário Bruto</TableHead>
                 <TableHead>Funções</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredTeachers.map((teacher, index) => (
-                <TableRow key={teacher.id} className="table-row-hover" onClick={() => setSelectedTeacher(teacher)}>
-                  <TableCell className="font-medium">{String(index + 1).padStart(2, '0')}</TableCell>
-                  <TableCell>{teacher.employeeNumber}</TableCell>
-                  <TableCell className="font-medium">{teacher.name}</TableCell>
-                  <TableCell>{teacher.course}</TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap gap-1">
-                      {teacher.disciplines.map((d) => (
-                        <Badge key={d} variant="outline" className="text-xs">
-                          {d}
-                        </Badge>
-                      ))}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant="outline"
-                      className={teacher.period === 'Manhã' ? 'bg-warning/10 text-warning border-warning/20' : 'bg-accent/10 text-accent border-accent/20'}
-                    >
-                      {teacher.period}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{formatCurrency(teacher.salary)}</TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap gap-1">
-                      {teacher.functions.length > 0 ? (
-                        teacher.functions.map((f) => (
-                          <Badge key={f} variant="secondary" className="text-xs">
-                            {f}
-                          </Badge>
-                        ))
-                      ) : (
-                        <span className="text-muted-foreground text-sm">-</span>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}>
-                          <MoreHorizontal className="w-4 h-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem>Ver Perfil</DropdownMenuItem>
-                        <DropdownMenuItem>Editar Dados</DropdownMenuItem>
-                        <DropdownMenuItem>Ver Turmas</DropdownMenuItem>
-                        <DropdownMenuItem>Avaliar Desempenho</DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+              {filteredTeachers.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                    Nenhum professor encontrado
                   </TableCell>
                 </TableRow>
-              ))}
+              ) : (
+                filteredTeachers.map((teacher, index) => (
+                  <TableRow key={teacher.id} className="table-row-hover" onClick={() => setSelectedTeacher(teacher)}>
+                    <TableCell className="font-medium">{String(index + 1).padStart(2, '0')}</TableCell>
+                    <TableCell>{teacher.employee_number}</TableCell>
+                    <TableCell className="font-medium">{teacher.profiles?.full_name || '-'}</TableCell>
+                    <TableCell>
+                      {teacher.degree && (
+                        <Badge variant="outline" className="text-xs">
+                          {teacher.degree}
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1">
+                        {teacher.teacher_class_assignments?.slice(0, 2).map((assignment: any, i: number) => (
+                          <Badge key={i} variant="outline" className="text-xs">
+                            {assignment.subject?.name}
+                          </Badge>
+                        ))}
+                        {(teacher.teacher_class_assignments?.length || 0) > 2 && (
+                          <Badge variant="secondary" className="text-xs">
+                            +{teacher.teacher_class_assignments.length - 2}
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>{formatCurrency(teacher.gross_salary || 0)}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1">
+                        {teacher.functions && teacher.functions.length > 0 ? (
+                          teacher.functions.slice(0, 2).map((f: string, i: number) => (
+                            <Badge key={i} variant="secondary" className="text-xs">
+                              {f}
+                            </Badge>
+                          ))
+                        ) : (
+                          <span className="text-muted-foreground text-sm">-</span>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}>
+                            <MoreHorizontal className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem>Ver Perfil</DropdownMenuItem>
+                          <DropdownMenuItem>Editar Dados</DropdownMenuItem>
+                          <DropdownMenuItem>Ver Turmas</DropdownMenuItem>
+                          <DropdownMenuItem>Avaliar Desempenho</DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </CardContent>
@@ -451,71 +420,63 @@ export function Teachers() {
             <DialogTitle>Perfil do Professor</DialogTitle>
           </DialogHeader>
           {selectedTeacher && (
-            <div className="space-y-6 py-4">
-              <div className="flex items-center gap-4">
-                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-                  <span className="text-2xl font-bold text-primary">
-                    {selectedTeacher.name.charAt(0)}
-                  </span>
+            <div className="space-y-6">
+              <div className="flex items-start gap-4">
+                <div className="w-20 h-20 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <GraduationCap className="w-10 h-10 text-primary" />
                 </div>
-                <div>
-                  <h3 className="text-xl font-semibold">{selectedTeacher.name}</h3>
-                  <p className="text-muted-foreground">Nº {selectedTeacher.employeeNumber}</p>
+                <div className="flex-1">
+                  <h3 className="text-xl font-semibold">{selectedTeacher.profiles?.full_name}</h3>
+                  <p className="text-muted-foreground">{selectedTeacher.employee_number}</p>
+                  <div className="flex gap-2 mt-2">
+                    {selectedTeacher.degree && (
+                      <Badge variant="outline">{selectedTeacher.degree}</Badge>
+                    )}
+                    {selectedTeacher.is_active ? (
+                      <Badge className="badge-success">Activo</Badge>
+                    ) : (
+                      <Badge variant="destructive">Inactivo</Badge>
+                    )}
+                  </div>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">Curso</p>
-                  <p className="font-medium">{selectedTeacher.course}</p>
+                  <p className="text-sm text-muted-foreground">Contacto</p>
+                  <p className="font-medium">{selectedTeacher.profiles?.phone || '-'}</p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">Período</p>
-                  <p className="font-medium">{selectedTeacher.period}</p>
+                  <p className="text-sm text-muted-foreground">BI</p>
+                  <p className="font-medium">{selectedTeacher.profiles?.bi_number || '-'}</p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">Formação</p>
-                  <p className="font-medium">{selectedTeacher.degree}</p>
+                  <p className="text-sm text-muted-foreground">Data de Contratação</p>
+                  <p className="font-medium">
+                    {selectedTeacher.hire_date 
+                      ? new Date(selectedTeacher.hire_date).toLocaleDateString('pt-AO')
+                      : '-'}
+                  </p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">Tempo de Trabalho</p>
-                  <p className="font-medium">{selectedTeacher.workTime}</p>
+                  <p className="text-sm text-muted-foreground">Salário Bruto</p>
+                  <p className="font-medium">{formatCurrency(selectedTeacher.gross_salary || 0)}</p>
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <p className="text-sm text-muted-foreground">Contactos</p>
-                <div className="flex gap-4">
-                  <div className="flex items-center gap-2">
-                    <Phone className="w-4 h-4 text-muted-foreground" />
-                    <span>{selectedTeacher.phone}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Mail className="w-4 h-4 text-muted-foreground" />
-                    <span>{selectedTeacher.email}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <p className="text-sm text-muted-foreground">Disciplinas</p>
-                <div className="flex flex-wrap gap-2">
-                  {selectedTeacher.disciplines.map((d) => (
-                    <Badge key={d} variant="secondary">
-                      {d}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-
-              {selectedTeacher.functions.length > 0 && (
+              {selectedTeacher.teacher_class_assignments && selectedTeacher.teacher_class_assignments.length > 0 && (
                 <div className="space-y-2">
-                  <p className="text-sm text-muted-foreground">Funções Adicionais</p>
-                  <div className="flex flex-wrap gap-2">
-                    {selectedTeacher.functions.map((f) => (
-                      <Badge key={f} className="bg-primary/10 text-primary border-primary/20">
-                        {f}
-                      </Badge>
+                  <p className="text-sm font-medium">Turmas e Disciplinas</p>
+                  <div className="space-y-2">
+                    {selectedTeacher.teacher_class_assignments.map((assignment: any, i: number) => (
+                      <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                        <div>
+                          <p className="font-medium">{assignment.subject?.name}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {assignment.class?.course?.name} - {assignment.class?.grade_level}ª {assignment.class?.section}
+                          </p>
+                        </div>
+                      </div>
                     ))}
                   </div>
                 </div>

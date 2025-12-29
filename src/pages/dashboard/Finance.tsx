@@ -1,16 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Search,
-  Filter,
   Wallet,
   TrendingUp,
   TrendingDown,
   AlertTriangle,
   Download,
-  Users,
   CheckCircle,
   XCircle,
   MoreHorizontal,
+  Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -50,96 +49,122 @@ import {
   Pie,
   Cell,
 } from 'recharts';
-
-const financialOverview = {
-  totalRevenue: 12500000,
-  pendingPayments: 1850000,
-  paidPercentage: 87.5,
-  totalStudents: 520,
-  paidStudents: 455,
-  pendingStudents: 65,
-};
-
-const monthlyData = [
-  { month: 'Jan', receita: 2100000, pendente: 280000 },
-  { month: 'Fev', receita: 2050000, pendente: 320000 },
-  { month: 'Mar', receita: 2200000, pendente: 250000 },
-  { month: 'Abr', receita: 2150000, pendente: 350000 },
-  { month: 'Mai', receita: 2000000, pendente: 400000 },
-  { month: 'Jun', receita: 2000000, pendente: 250000 },
-];
-
-const paymentsByClass = [
-  {
-    id: '1',
-    course: 'Enfermagem Geral',
-    class: '10ª',
-    section: 'A',
-    totalStudents: 40,
-    paidStudents: 35,
-    pendingStudents: 5,
-    percentage: 87.5,
-  },
-  {
-    id: '2',
-    course: 'Enfermagem Geral',
-    class: '10ª',
-    section: 'B',
-    totalStudents: 38,
-    paidStudents: 32,
-    pendingStudents: 6,
-    percentage: 84.2,
-  },
-  {
-    id: '3',
-    course: 'Informática',
-    class: '10ª',
-    section: 'A',
-    totalStudents: 35,
-    paidStudents: 33,
-    pendingStudents: 2,
-    percentage: 94.3,
-  },
-  {
-    id: '4',
-    course: 'Informática',
-    class: '11ª',
-    section: 'A',
-    totalStudents: 32,
-    paidStudents: 28,
-    pendingStudents: 4,
-    percentage: 87.5,
-  },
-  {
-    id: '5',
-    course: 'Contabilidade',
-    class: '10ª',
-    section: 'A',
-    totalStudents: 30,
-    paidStudents: 27,
-    pendingStudents: 3,
-    percentage: 90.0,
-  },
-  {
-    id: '6',
-    course: 'Mecânica',
-    class: '10ª',
-    section: 'A',
-    totalStudents: 25,
-    paidStudents: 20,
-    pendingStudents: 5,
-    percentage: 80.0,
-  },
-];
-
-const paymentDistribution = [
-  { name: 'Pagos', value: financialOverview.paidStudents, color: 'hsl(142, 76%, 36%)' },
-  { name: 'Pendentes', value: financialOverview.pendingStudents, color: 'hsl(0, 84%, 60%)' },
-];
+import { usePayments, useClasses, useStudents, useCourses, useStatistics } from '@/hooks/useDatabase';
+import { toast } from 'sonner';
 
 export function Finance() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCourse, setSelectedCourse] = useState('Todos');
+
+  const { data: payments, isLoading: loadingPayments } = usePayments();
+  const { data: classes, isLoading: loadingClasses } = useClasses();
+  const { data: students, isLoading: loadingStudents } = useStudents();
+  const { data: courses } = useCourses();
+  const { data: statistics } = useStatistics();
+
+  const isLoading = loadingPayments || loadingClasses || loadingStudents;
+
+  // Calculate financial stats
+  const financialStats = useMemo(() => {
+    if (!payments || !students) {
+      return {
+        totalRevenue: 0,
+        pendingPayments: 0,
+        paidPercentage: 0,
+        totalStudents: 0,
+        paidStudents: 0,
+        pendingStudents: 0,
+      };
+    }
+
+    const currentMonth = new Date().getMonth() + 1;
+    const currentYear = new Date().getFullYear();
+
+    // Students who paid this month
+    const paidStudentIds = new Set(
+      payments
+        .filter(p => p.month_reference === currentMonth && p.year_reference === currentYear)
+        .map(p => p.student_id)
+    );
+
+    const activeStudents = students.filter(s => s.status === 'active');
+    const paidStudents = activeStudents.filter(s => paidStudentIds.has(s.id)).length;
+    const pendingStudents = activeStudents.length - paidStudents;
+
+    const totalRevenue = payments
+      .filter(p => p.year_reference === currentYear)
+      .reduce((sum, p) => sum + Number(p.amount), 0);
+
+    const monthlyRevenue = payments
+      .filter(p => p.month_reference === currentMonth && p.year_reference === currentYear)
+      .reduce((sum, p) => sum + Number(p.amount), 0);
+
+    // Estimate pending (assuming 5000 AOA per student)
+    const avgMonthlyFee = 5000;
+    const pendingPayments = pendingStudents * avgMonthlyFee;
+
+    return {
+      totalRevenue: monthlyRevenue,
+      pendingPayments,
+      paidPercentage: activeStudents.length > 0 ? (paidStudents / activeStudents.length) * 100 : 0,
+      totalStudents: activeStudents.length,
+      paidStudents,
+      pendingStudents,
+    };
+  }, [payments, students]);
+
+  // Calculate payments by class
+  const paymentsByClass = useMemo(() => {
+    if (!classes || !students || !payments) return [];
+
+    const currentMonth = new Date().getMonth() + 1;
+    const currentYear = new Date().getFullYear();
+
+    const paidStudentIds = new Set(
+      payments
+        .filter(p => p.month_reference === currentMonth && p.year_reference === currentYear)
+        .map(p => p.student_id)
+    );
+
+    return classes.map(classItem => {
+      const classStudents = students.filter(s => s.class_id === classItem.id && s.status === 'active');
+      const paidStudents = classStudents.filter(s => paidStudentIds.has(s.id)).length;
+      const pendingStudents = classStudents.length - paidStudents;
+      const percentage = classStudents.length > 0 ? (paidStudents / classStudents.length) * 100 : 0;
+
+      return {
+        id: classItem.id,
+        course: classItem.course?.name || '-',
+        class: `${classItem.grade_level}ª`,
+        section: classItem.section,
+        totalStudents: classStudents.length,
+        paidStudents,
+        pendingStudents,
+        percentage: Math.round(percentage * 10) / 10,
+      };
+    }).filter(c => c.totalStudents > 0);
+  }, [classes, students, payments]);
+
+  // Monthly data for chart
+  const monthlyData = useMemo(() => {
+    if (!payments) return [];
+
+    const currentYear = new Date().getFullYear();
+    const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+
+    return months.slice(0, new Date().getMonth() + 1).map((month, index) => {
+      const monthPayments = payments.filter(
+        p => p.month_reference === index + 1 && p.year_reference === currentYear
+      );
+      const receita = monthPayments.reduce((sum, p) => sum + Number(p.amount), 0);
+
+      return {
+        month,
+        receita,
+        pendente: Math.max(0, (financialStats.totalStudents * 5000) - receita),
+      };
+    });
+  }, [payments, financialStats.totalStudents]);
 
   const filteredPayments = paymentsByClass.filter((item) => {
     const matchesSearch = item.course.toLowerCase().includes(searchTerm.toLowerCase());
@@ -155,6 +180,19 @@ export function Finance() {
     }).format(value);
   };
 
+  const paymentDistribution = [
+    { name: 'Pagos', value: financialStats.paidStudents, color: 'hsl(142, 76%, 36%)' },
+    { name: 'Pendentes', value: financialStats.pendingStudents, color: 'hsl(0, 84%, 60%)' },
+  ];
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
@@ -164,11 +202,11 @@ export function Finance() {
           <p className="text-muted-foreground">Gestão de pagamentos e mensalidades</p>
         </div>
         <div className="flex gap-3">
-          <Button variant="outline">
+          <Button variant="outline" onClick={() => toast.info('Exportação em desenvolvimento')}>
             <Download className="w-4 h-4 mr-2" />
             Exportar Relatório
           </Button>
-          <Button className="btn-primary">
+          <Button className="btn-primary" onClick={() => toast.info('Registo de pagamento em desenvolvimento')}>
             <Wallet className="w-4 h-4 mr-2" />
             Registar Pagamento
           </Button>
@@ -183,14 +221,14 @@ export function Finance() {
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Receita Mensal</p>
                 <p className="text-2xl font-bold text-foreground mt-2">
-                  {formatCurrency(financialOverview.totalRevenue)}
+                  {formatCurrency(financialStats.totalRevenue)}
                 </p>
                 <div className="flex items-center gap-1 mt-2 text-sm">
                   <span className="flex items-center text-success">
                     <TrendingUp className="w-4 h-4 mr-1" />
-                    8.2%
+                    {financialStats.paidPercentage.toFixed(1)}%
                   </span>
-                  <span className="text-muted-foreground">vs mês anterior</span>
+                  <span className="text-muted-foreground">estudantes pagos</span>
                 </div>
               </div>
               <div className="w-12 h-12 rounded-xl bg-success/10 flex items-center justify-center">
@@ -206,14 +244,14 @@ export function Finance() {
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Pagamentos Pendentes</p>
                 <p className="text-2xl font-bold text-foreground mt-2">
-                  {formatCurrency(financialOverview.pendingPayments)}
+                  {formatCurrency(financialStats.pendingPayments)}
                 </p>
                 <div className="flex items-center gap-1 mt-2 text-sm">
                   <span className="flex items-center text-destructive">
                     <TrendingDown className="w-4 h-4 mr-1" />
-                    3.5%
+                    {financialStats.pendingStudents}
                   </span>
-                  <span className="text-muted-foreground">vs mês anterior</span>
+                  <span className="text-muted-foreground">estudantes pendentes</span>
                 </div>
               </div>
               <div className="w-12 h-12 rounded-xl bg-destructive/10 flex items-center justify-center">
@@ -228,9 +266,9 @@ export function Finance() {
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Estudantes Pagos</p>
-                <p className="text-2xl font-bold text-foreground mt-2">{financialOverview.paidStudents}</p>
-                <Progress value={financialOverview.paidPercentage} className="mt-3 h-2" />
-                <p className="text-sm text-muted-foreground mt-1">{financialOverview.paidPercentage}% do total</p>
+                <p className="text-2xl font-bold text-foreground mt-2">{financialStats.paidStudents}</p>
+                <Progress value={financialStats.paidPercentage} className="mt-3 h-2" />
+                <p className="text-sm text-muted-foreground mt-1">{financialStats.paidPercentage.toFixed(1)}% do total</p>
               </div>
               <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
                 <CheckCircle className="w-6 h-6 text-primary" />
@@ -244,9 +282,9 @@ export function Finance() {
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Estudantes Pendentes</p>
-                <p className="text-2xl font-bold text-foreground mt-2">{financialOverview.pendingStudents}</p>
+                <p className="text-2xl font-bold text-foreground mt-2">{financialStats.pendingStudents}</p>
                 <div className="flex items-center gap-1 mt-2 text-sm">
-                  <span className="text-warning font-medium">{65} estudantes</span>
+                  <span className="text-warning font-medium">{financialStats.pendingStudents} estudantes</span>
                   <span className="text-muted-foreground">requerem atenção</span>
                 </div>
               </div>
@@ -280,7 +318,6 @@ export function Finance() {
                     formatter={(value: number) => formatCurrency(value)}
                   />
                   <Bar dataKey="receita" name="Receita" fill="hsl(142, 76%, 36%)" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="pendente" name="Pendente" fill="hsl(0, 84%, 60%)" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -340,10 +377,11 @@ export function Finance() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="Todos">Todos os Cursos</SelectItem>
-            <SelectItem value="Enfermagem Geral">Enfermagem Geral</SelectItem>
-            <SelectItem value="Informática">Informática</SelectItem>
-            <SelectItem value="Contabilidade">Contabilidade</SelectItem>
-            <SelectItem value="Mecânica">Mecânica</SelectItem>
+            {courses?.map((course) => (
+              <SelectItem key={course.id} value={course.name}>
+                {course.name}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
@@ -368,48 +406,56 @@ export function Finance() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredPayments.map((item) => (
-                <TableRow key={item.id} className="table-row-hover">
-                  <TableCell className="font-medium">{item.course}</TableCell>
-                  <TableCell>{item.class}</TableCell>
-                  <TableCell>{item.section}</TableCell>
-                  <TableCell className="text-center">{item.totalStudents}</TableCell>
-                  <TableCell className="text-center">
-                    <span className="text-success font-medium">{item.paidStudents}</span>
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <span className="text-destructive font-medium">{item.pendingStudents}</span>
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <Badge
-                      variant="outline"
-                      className={
-                        item.percentage >= 90
-                          ? 'badge-success'
-                          : item.percentage >= 80
-                          ? 'badge-warning'
-                          : 'badge-danger'
-                      }
-                    >
-                      {item.percentage}%
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="w-4 h-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem>Ver Estudantes</DropdownMenuItem>
-                        <DropdownMenuItem>Registar Pagamento</DropdownMenuItem>
-                        <DropdownMenuItem>Exportar PDF</DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+              {filteredPayments.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                    Nenhum dado encontrado
                   </TableCell>
                 </TableRow>
-              ))}
+              ) : (
+                filteredPayments.map((item) => (
+                  <TableRow key={item.id} className="table-row-hover">
+                    <TableCell className="font-medium">{item.course}</TableCell>
+                    <TableCell>{item.class}</TableCell>
+                    <TableCell>{item.section}</TableCell>
+                    <TableCell className="text-center">{item.totalStudents}</TableCell>
+                    <TableCell className="text-center">
+                      <span className="text-success font-medium">{item.paidStudents}</span>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <span className="text-destructive font-medium">{item.pendingStudents}</span>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Badge
+                        variant="outline"
+                        className={
+                          item.percentage >= 90
+                            ? 'badge-success'
+                            : item.percentage >= 80
+                            ? 'badge-warning'
+                            : 'badge-danger'
+                        }
+                      >
+                        {item.percentage}%
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreHorizontal className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem>Ver Estudantes</DropdownMenuItem>
+                          <DropdownMenuItem>Registar Pagamento</DropdownMenuItem>
+                          <DropdownMenuItem>Exportar PDF</DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </CardContent>

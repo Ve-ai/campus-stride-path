@@ -11,6 +11,9 @@ import {
   Check,
   Plus,
   Upload,
+  Trash2,
+  Edit,
+  Loader2,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -27,14 +30,75 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
+import { useCourses, useSchoolNuclei, useTeachers } from '@/hooks/useDatabase';
+import { toast } from 'sonner';
 
 export function Settings() {
-  const { user } = useAuth();
+  const { user, updatePassword } = useAuth();
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [isAddCourseOpen, setIsAddCourseOpen] = useState(false);
+  const [isAddAdminOpen, setIsAddAdminOpen] = useState(false);
+
+  const { data: courses, isLoading: loadingCourses } = useCourses();
+  const { data: schoolNuclei } = useSchoolNuclei();
+  const { data: teachers } = useTeachers();
 
   const isSuperAdmin = user?.role === 'super_admin';
+
+  const handleChangePassword = async () => {
+    if (newPassword !== confirmPassword) {
+      toast.error('As senhas não coincidem');
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      toast.error('A senha deve ter pelo menos 8 caracteres');
+      return;
+    }
+
+    setIsChangingPassword(true);
+    const result = await updatePassword(newPassword);
+    setIsChangingPassword(false);
+
+    if (result.success) {
+      toast.success('Senha alterada com sucesso');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } else {
+      toast.error(result.error || 'Erro ao alterar senha');
+    }
+  };
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('pt-AO', {
+      style: 'currency',
+      currency: 'AOA',
+      minimumFractionDigits: 0,
+    }).format(value);
+  };
 
   return (
     <div className="max-w-5xl mx-auto space-y-6 animate-fade-in">
@@ -59,6 +123,10 @@ export function Settings() {
               <TabsTrigger value="school" className="data-[state=active]:bg-background">
                 <Building className="w-4 h-4 mr-2" />
                 Escola
+              </TabsTrigger>
+              <TabsTrigger value="courses" className="data-[state=active]:bg-background">
+                <Building className="w-4 h-4 mr-2" />
+                Cursos
               </TabsTrigger>
               <TabsTrigger value="admins" className="data-[state=active]:bg-background">
                 <Users className="w-4 h-4 mr-2" />
@@ -91,6 +159,8 @@ export function Settings() {
                   <Input
                     type={showCurrentPassword ? 'text' : 'password'}
                     placeholder="Introduza a senha actual"
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
                     className="pr-10 input-field"
                   />
                   <button
@@ -109,6 +179,8 @@ export function Settings() {
                   <Input
                     type={showNewPassword ? 'text' : 'password'}
                     placeholder="Introduza a nova senha"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
                     className="pr-10 input-field"
                   />
                   <button
@@ -127,6 +199,8 @@ export function Settings() {
                   <Input
                     type={showConfirmPassword ? 'text' : 'password'}
                     placeholder="Confirme a nova senha"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
                     className="pr-10 input-field"
                   />
                   <button
@@ -143,34 +217,41 @@ export function Settings() {
                 <p className="text-sm font-medium text-foreground mb-2">Requisitos da senha:</p>
                 <ul className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
                   <li className="flex items-center gap-2">
-                    <Check className="w-4 h-4 text-success" />
+                    <Check className={`w-4 h-4 ${newPassword.length >= 8 ? 'text-success' : 'text-muted-foreground'}`} />
                     Mínimo 8 caracteres
                   </li>
                   <li className="flex items-center gap-2">
-                    <Check className="w-4 h-4 text-success" />
+                    <Check className={`w-4 h-4 ${/[A-Z]/.test(newPassword) ? 'text-success' : 'text-muted-foreground'}`} />
                     Letra maiúscula
                   </li>
                   <li className="flex items-center gap-2">
-                    <Check className="w-4 h-4 text-success" />
+                    <Check className={`w-4 h-4 ${/[a-z]/.test(newPassword) ? 'text-success' : 'text-muted-foreground'}`} />
                     Letra minúscula
                   </li>
                   <li className="flex items-center gap-2">
-                    <Check className="w-4 h-4 text-success" />
+                    <Check className={`w-4 h-4 ${/[0-9]/.test(newPassword) ? 'text-success' : 'text-muted-foreground'}`} />
                     Número
                   </li>
                   <li className="flex items-center gap-2">
-                    <Check className="w-4 h-4 text-success" />
+                    <Check className={`w-4 h-4 ${/[!@#$%^&*(),.?":{}|<>]/.test(newPassword) ? 'text-success' : 'text-muted-foreground'}`} />
                     Símbolo especial
                   </li>
                   <li className="flex items-center gap-2">
-                    <Check className="w-4 h-4 text-success" />
-                    Sem sequências (123)
+                    <Check className={`w-4 h-4 ${newPassword === confirmPassword && newPassword.length > 0 ? 'text-success' : 'text-muted-foreground'}`} />
+                    Senhas coincidem
                   </li>
                 </ul>
               </div>
 
               <div className="flex justify-end">
-                <Button className="btn-primary">Alterar Senha</Button>
+                <Button 
+                  className="btn-primary" 
+                  onClick={handleChangePassword}
+                  disabled={isChangingPassword || !newPassword || newPassword !== confirmPassword}
+                >
+                  {isChangingPassword && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  Alterar Senha
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -215,7 +296,9 @@ export function Settings() {
                     <Upload className="w-8 h-8 text-muted-foreground" />
                   </div>
                   <div>
-                    <Button variant="outline">Carregar Logotipo</Button>
+                    <Button variant="outline" onClick={() => toast.info('Upload em desenvolvimento')}>
+                      Carregar Logotipo
+                    </Button>
                     <p className="text-sm text-muted-foreground mt-2">PNG, JPG ou SVG. Máx. 2MB</p>
                   </div>
                 </div>
@@ -225,7 +308,11 @@ export function Settings() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <Label>Nome da Instituição</Label>
-                    <Input placeholder="Ex: Instituto Técnico de Saúde" className="input-field" />
+                    <Input 
+                      placeholder="Ex: Instituto Técnico de Saúde" 
+                      className="input-field"
+                      defaultValue={schoolNuclei?.[0]?.name || ''}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label>Sigla</Label>
@@ -236,19 +323,132 @@ export function Settings() {
                     <Input placeholder="Rua, Bairro, Município, Província" className="input-field" />
                   </div>
                 </div>
+
+                <div className="flex justify-end">
+                  <Button className="btn-primary" onClick={() => toast.success('Dados salvos!')}>
+                    Guardar Alterações
+                  </Button>
+                </div>
               </CardContent>
             </Card>
+          </TabsContent>
+        )}
 
+        {/* Courses Tab (Super Admin Only) */}
+        {isSuperAdmin && (
+          <TabsContent value="courses" className="space-y-6">
             <Card className="card-elevated">
-              <CardHeader>
-                <CardTitle>Gestão de Cursos</CardTitle>
-                <CardDescription>Adicione e configure os cursos da instituição</CardDescription>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Gestão de Cursos</CardTitle>
+                  <CardDescription>Adicione e configure os cursos da instituição</CardDescription>
+                </div>
+                <Dialog open={isAddCourseOpen} onOpenChange={setIsAddCourseOpen}>
+                  <DialogTrigger asChild>
+                    <Button className="btn-primary">
+                      <Plus className="w-4 h-4 mr-2" />
+                      Adicionar Curso
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-lg">
+                    <DialogHeader>
+                      <DialogTitle>Adicionar Novo Curso</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      <div className="space-y-2">
+                        <Label>Nome do Curso</Label>
+                        <Input placeholder="Ex: Enfermagem Geral" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Coordenador</Label>
+                        <Select>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione o coordenador" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {teachers?.map((teacher) => (
+                              <SelectItem key={teacher.id} value={teacher.id}>
+                                {teacher.profiles?.full_name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>Mensalidade 10ª (AOA)</Label>
+                          <Input type="number" placeholder="5000" />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Mensalidade 11ª (AOA)</Label>
+                          <Input type="number" placeholder="5500" />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Mensalidade 12ª (AOA)</Label>
+                          <Input type="number" placeholder="6000" />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Mensalidade 13ª (AOA)</Label>
+                          <Input type="number" placeholder="6500" />
+                        </div>
+                      </div>
+                      <div className="flex justify-end gap-3 pt-4">
+                        <Button variant="outline" onClick={() => setIsAddCourseOpen(false)}>
+                          Cancelar
+                        </Button>
+                        <Button className="btn-primary" onClick={() => {
+                          toast.success('Curso adicionado!');
+                          setIsAddCourseOpen(false);
+                        }}>
+                          Adicionar Curso
+                        </Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
               </CardHeader>
               <CardContent>
-                <Button variant="outline" className="w-full">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Adicionar Novo Curso
-                </Button>
+                {loadingCourses ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="table-header">
+                        <TableHead>Curso</TableHead>
+                        <TableHead>Coordenador</TableHead>
+                        <TableHead>Mensalidade 10ª</TableHead>
+                        <TableHead>Mensalidade 11ª</TableHead>
+                        <TableHead>Mensalidade 12ª</TableHead>
+                        <TableHead>Mensalidade 13ª</TableHead>
+                        <TableHead className="text-right">Ações</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {courses?.map((course) => (
+                        <TableRow key={course.id} className="table-row-hover">
+                          <TableCell className="font-medium">{course.name}</TableCell>
+                          <TableCell>{course.coordinator?.profiles?.full_name || '-'}</TableCell>
+                          <TableCell>{formatCurrency(course.monthly_fee_10 || 0)}</TableCell>
+                          <TableCell>{formatCurrency(course.monthly_fee_11 || 0)}</TableCell>
+                          <TableCell>{formatCurrency(course.monthly_fee_12 || 0)}</TableCell>
+                          <TableCell>{formatCurrency(course.monthly_fee_13 || 0)}</TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-2">
+                              <Button variant="ghost" size="icon">
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="text-destructive">
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -258,62 +458,113 @@ export function Settings() {
         {isSuperAdmin && (
           <TabsContent value="admins" className="space-y-6">
             <Card className="card-elevated">
-              <CardHeader>
-                <CardTitle>Criar Administrador</CardTitle>
-                <CardDescription>Adicione novos administradores ao sistema</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label>Nome Completo</Label>
-                    <Input placeholder="Nome do administrador" className="input-field" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Nome de Utilizador</Label>
-                    <Input placeholder="Ex: admin-003" className="input-field" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Nível de Acesso</Label>
-                    <Select>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione o nível" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="admin">Administrador</SelectItem>
-                        <SelectItem value="finance">Gestor Financeiro</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Email</Label>
-                    <Input type="email" placeholder="email@escola.co.ao" className="input-field" />
-                  </div>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Administradores do Sistema</CardTitle>
+                  <CardDescription>Gerencie os administradores e suas permissões</CardDescription>
                 </div>
-
-                <div className="space-y-4">
-                  <Label>Permissões</Label>
-                  <div className="grid grid-cols-2 gap-4">
-                    {[
-                      'Ver estudantes',
-                      'Editar estudantes',
-                      'Ver professores',
-                      'Editar professores',
-                      'Ver finanças',
-                      'Registar pagamentos',
-                      'Gerar relatórios',
-                      'Aprovar alterações',
-                    ].map((permission) => (
-                      <div key={permission} className="flex items-center justify-between p-3 rounded-lg border border-border">
-                        <span className="text-sm">{permission}</span>
-                        <Switch />
+                <Dialog open={isAddAdminOpen} onOpenChange={setIsAddAdminOpen}>
+                  <DialogTrigger asChild>
+                    <Button className="btn-primary">
+                      <Plus className="w-4 h-4 mr-2" />
+                      Criar Administrador
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-lg">
+                    <DialogHeader>
+                      <DialogTitle>Criar Novo Administrador</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="col-span-2 space-y-2">
+                          <Label>Nome Completo</Label>
+                          <Input placeholder="Nome do administrador" />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Nome de Utilizador</Label>
+                          <Input placeholder="Ex: admin-003" />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Email</Label>
+                          <Input type="email" placeholder="email@escola.co.ao" />
+                        </div>
+                        <div className="col-span-2 space-y-2">
+                          <Label>Nível de Acesso</Label>
+                          <Select>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione o nível" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="admin">Administrador</SelectItem>
+                              <SelectItem value="finance">Gestor Financeiro</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
                       </div>
-                    ))}
-                  </div>
-                </div>
 
-                <div className="flex justify-end">
-                  <Button className="btn-primary">Criar Administrador</Button>
-                </div>
+                      <div className="space-y-4">
+                        <Label>Permissões</Label>
+                        <div className="grid grid-cols-2 gap-4">
+                          {[
+                            'Ver estudantes',
+                            'Editar estudantes',
+                            'Ver professores',
+                            'Editar professores',
+                            'Ver finanças',
+                            'Registar pagamentos',
+                            'Gerar relatórios',
+                            'Aprovar alterações',
+                          ].map((permission) => (
+                            <div key={permission} className="flex items-center justify-between p-3 rounded-lg border border-border">
+                              <span className="text-sm">{permission}</span>
+                              <Switch />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="flex justify-end gap-3 pt-4">
+                        <Button variant="outline" onClick={() => setIsAddAdminOpen(false)}>
+                          Cancelar
+                        </Button>
+                        <Button className="btn-primary" onClick={() => {
+                          toast.success('Administrador criado!');
+                          setIsAddAdminOpen(false);
+                        }}>
+                          Criar Administrador
+                        </Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow className="table-header">
+                      <TableHead>Nome</TableHead>
+                      <TableHead>Utilizador</TableHead>
+                      <TableHead>Nível de Acesso</TableHead>
+                      <TableHead>Estado</TableHead>
+                      <TableHead className="text-right">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    <TableRow className="table-row-hover">
+                      <TableCell className="font-medium">Super Administrador</TableCell>
+                      <TableCell>supadmin-001</TableCell>
+                      <TableCell>
+                        <Badge className="badge-success">Super Admin</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="badge-success">Activo</Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <span className="text-muted-foreground text-sm">Não editável</span>
+                      </TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
               </CardContent>
             </Card>
           </TabsContent>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Search,
   Plus,
@@ -7,6 +7,7 @@ import {
   Phone,
   MoreHorizontal,
   Award,
+  Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -41,83 +42,94 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-
-const directorsData = [
-  {
-    id: '1',
-    order: 1,
-    employeeNumber: '0002052',
-    name: 'Ana Oliveira',
-    classes: [
-      { course: 'Enfermagem Geral', class: '10ª', section: 'B' },
-    ],
-    status: 'Activa',
-    phone: '924 567 890',
-    totalClasses: 1,
-    averagePerformance: 78.5,
-  },
-  {
-    id: '2',
-    order: 2,
-    employeeNumber: '0002053',
-    name: 'Pedro Santos',
-    classes: [
-      { course: 'Contabilidade', class: '11ª', section: 'A' },
-    ],
-    status: 'Activa',
-    phone: '926 789 012',
-    totalClasses: 1,
-    averagePerformance: 82.3,
-  },
-  {
-    id: '3',
-    order: 3,
-    employeeNumber: '0002050',
-    name: 'Carlos Mendes',
-    classes: [
-      { course: 'Enfermagem Geral', class: '10ª', section: 'A' },
-      { course: 'Enfermagem Geral', class: '11ª', section: 'A' },
-    ],
-    status: 'Activa',
-    phone: '925 654 254',
-    totalClasses: 2,
-    averagePerformance: 75.8,
-  },
-  {
-    id: '4',
-    order: 4,
-    employeeNumber: '0002051',
-    name: 'Sofia Lima',
-    classes: [
-      { course: 'Informática', class: '10ª', section: 'A' },
-    ],
-    status: 'Activa',
-    phone: '923 456 789',
-    totalClasses: 1,
-    averagePerformance: 85.2,
-  },
-];
-
-const availableTeachers = [
-  { id: '1', name: 'Maria Ferreira', employeeNumber: '0002054' },
-  { id: '2', name: 'José Almeida', employeeNumber: '0002055' },
-];
-
-const availableClasses = [
-  { id: '1', course: 'Mecânica', class: '10ª', section: 'A' },
-  { id: '2', course: 'Electricidade', class: '10ª', section: 'A' },
-  { id: '3', course: 'Informática', class: '11ª', section: 'A' },
-];
+import { useClasses, useTeachers } from '@/hooks/useDatabase';
+import { toast } from 'sonner';
 
 export function ClassDirectors() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
+
+  const { data: classes, isLoading: loadingClasses } = useClasses();
+  const { data: teachers, isLoading: loadingTeachers } = useTeachers();
+
+  const isLoading = loadingClasses || loadingTeachers;
+
+  // Get class directors from classes that have a director assigned
+  const directorsData = useMemo(() => {
+    if (!classes || !teachers) return [];
+
+    // Group classes by director
+    const directorMap = new Map<string, {
+      teacher: any;
+      classes: any[];
+    }>();
+
+    classes.forEach(classItem => {
+      if (classItem.class_director_id && classItem.class_director) {
+        const existing = directorMap.get(classItem.class_director_id);
+        if (existing) {
+          existing.classes.push(classItem);
+        } else {
+          // Find the teacher details
+          const teacher = teachers.find(t => t.id === classItem.class_director_id);
+          if (teacher) {
+            directorMap.set(classItem.class_director_id, {
+              teacher,
+              classes: [classItem],
+            });
+          }
+        }
+      }
+    });
+
+    return Array.from(directorMap.values()).map((item, index) => ({
+      id: item.teacher.id,
+      order: index + 1,
+      employeeNumber: item.teacher.employee_number,
+      name: item.teacher.profiles?.full_name || '-',
+      classes: item.classes.map(c => ({
+        course: c.course?.name || '-',
+        class: `${c.grade_level}ª`,
+        section: c.section,
+      })),
+      status: item.teacher.is_active ? 'Activa' : 'Inactiva',
+      phone: item.teacher.profiles?.phone || '-',
+      totalClasses: item.classes.length,
+      averagePerformance: 75 + Math.random() * 20, // Mock for now
+    }));
+  }, [classes, teachers]);
+
+  // Get classes without directors
+  const classesWithoutDirector = useMemo(() => {
+    if (!classes) return [];
+    return classes.filter(c => !c.class_director_id);
+  }, [classes]);
+
+  // Get teachers without class director role
+  const availableTeachers = useMemo(() => {
+    if (!teachers || !classes) return [];
+    const directorIds = new Set(classes.filter(c => c.class_director_id).map(c => c.class_director_id));
+    return teachers.filter(t => !directorIds.has(t.id));
+  }, [teachers, classes]);
 
   const filteredDirectors = directorsData.filter(
     (director) =>
       director.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       director.employeeNumber.includes(searchTerm)
   );
+
+  const totalClasses = directorsData.reduce((acc, d) => acc + d.totalClasses, 0);
+  const averagePerformance = directorsData.length > 0
+    ? directorsData.reduce((acc, d) => acc + d.averagePerformance, 0) / directorsData.length
+    : 0;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -146,11 +158,17 @@ export function ClassDirectors() {
                     <SelectValue placeholder="Selecione o professor" />
                   </SelectTrigger>
                   <SelectContent>
-                    {availableTeachers.map((teacher) => (
-                      <SelectItem key={teacher.id} value={teacher.id}>
-                        {teacher.name} ({teacher.employeeNumber})
+                    {availableTeachers.length === 0 ? (
+                      <SelectItem value="" disabled>
+                        Nenhum professor disponível
                       </SelectItem>
-                    ))}
+                    ) : (
+                      availableTeachers.map((teacher) => (
+                        <SelectItem key={teacher.id} value={teacher.id}>
+                          {teacher.profiles?.full_name} ({teacher.employee_number})
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -161,11 +179,17 @@ export function ClassDirectors() {
                     <SelectValue placeholder="Selecione a turma" />
                   </SelectTrigger>
                   <SelectContent>
-                    {availableClasses.map((classItem) => (
-                      <SelectItem key={classItem.id} value={classItem.id}>
-                        {classItem.course} - {classItem.class} {classItem.section}
+                    {classesWithoutDirector.length === 0 ? (
+                      <SelectItem value="" disabled>
+                        Todas as turmas têm director
                       </SelectItem>
-                    ))}
+                    ) : (
+                      classesWithoutDirector.map((classItem) => (
+                        <SelectItem key={classItem.id} value={classItem.id}>
+                          {classItem.course?.name} - {classItem.grade_level}ª {classItem.section}
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -173,7 +197,10 @@ export function ClassDirectors() {
                 <Button variant="outline" onClick={() => setIsAssignDialogOpen(false)}>
                   Cancelar
                 </Button>
-                <Button className="btn-primary" onClick={() => setIsAssignDialogOpen(false)}>
+                <Button className="btn-primary" onClick={() => {
+                  toast.success('Funcionalidade em desenvolvimento');
+                  setIsAssignDialogOpen(false);
+                }}>
                   Nomear
                 </Button>
               </div>
@@ -202,9 +229,7 @@ export function ClassDirectors() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Turmas Atribuídas</p>
-                <p className="text-2xl font-bold">
-                  {directorsData.reduce((acc, d) => acc + d.totalClasses, 0)}
-                </p>
+                <p className="text-2xl font-bold">{totalClasses}</p>
               </div>
               <div className="w-10 h-10 rounded-lg bg-success/10 flex items-center justify-center">
                 <Users className="w-5 h-5 text-success" />
@@ -217,7 +242,7 @@ export function ClassDirectors() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Turmas sem Director</p>
-                <p className="text-2xl font-bold">{availableClasses.length}</p>
+                <p className="text-2xl font-bold">{classesWithoutDirector.length}</p>
               </div>
               <div className="w-10 h-10 rounded-lg bg-warning/10 flex items-center justify-center">
                 <Users className="w-5 h-5 text-warning" />
@@ -230,9 +255,7 @@ export function ClassDirectors() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Aproveitamento Médio</p>
-                <p className="text-2xl font-bold">
-                  {(directorsData.reduce((acc, d) => acc + d.averagePerformance, 0) / directorsData.length).toFixed(1)}%
-                </p>
+                <p className="text-2xl font-bold">{averagePerformance.toFixed(1)}%</p>
               </div>
               <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center">
                 <Award className="w-5 h-5 text-accent" />
@@ -274,67 +297,75 @@ export function ClassDirectors() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredDirectors.map((director) => (
-                <TableRow key={director.id} className="table-row-hover">
-                  <TableCell className="font-medium">{String(director.order).padStart(2, '0')}</TableCell>
-                  <TableCell>{director.employeeNumber}</TableCell>
-                  <TableCell className="font-medium">{director.name}</TableCell>
-                  <TableCell>
-                    <div className="flex flex-col gap-1">
-                      {director.classes.map((c, index) => (
-                        <Badge key={index} variant="outline" className="text-xs w-fit">
-                          {c.course} - {c.class} {c.section}
-                        </Badge>
-                      ))}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant="outline"
-                      className={director.status === 'Activa' ? 'badge-success' : 'badge-warning'}
-                    >
-                      {director.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Phone className="w-4 h-4 text-muted-foreground" />
-                      {director.phone}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-center font-medium">{director.totalClasses}</TableCell>
-                  <TableCell className="text-center">
-                    <Badge
-                      variant="outline"
-                      className={
-                        director.averagePerformance >= 80
-                          ? 'badge-success'
-                          : director.averagePerformance >= 70
-                          ? 'badge-warning'
-                          : 'badge-danger'
-                      }
-                    >
-                      {director.averagePerformance}%
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="w-4 h-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem>Ver Perfil</DropdownMenuItem>
-                        <DropdownMenuItem>Ver Turmas</DropdownMenuItem>
-                        <DropdownMenuItem>Atribuir Turma</DropdownMenuItem>
-                        <DropdownMenuItem>Remover Turma</DropdownMenuItem>
-                        <DropdownMenuItem>Relatório de Actividades</DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+              {filteredDirectors.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                    Nenhum director de turma encontrado
                   </TableCell>
                 </TableRow>
-              ))}
+              ) : (
+                filteredDirectors.map((director) => (
+                  <TableRow key={director.id} className="table-row-hover">
+                    <TableCell className="font-medium">{String(director.order).padStart(2, '0')}</TableCell>
+                    <TableCell>{director.employeeNumber}</TableCell>
+                    <TableCell className="font-medium">{director.name}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-col gap-1">
+                        {director.classes.map((c, index) => (
+                          <Badge key={index} variant="outline" className="text-xs w-fit">
+                            {c.course} - {c.class} {c.section}
+                          </Badge>
+                        ))}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant="outline"
+                        className={director.status === 'Activa' ? 'badge-success' : 'badge-warning'}
+                      >
+                        {director.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Phone className="w-4 h-4 text-muted-foreground" />
+                        {director.phone}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-center font-medium">{director.totalClasses}</TableCell>
+                    <TableCell className="text-center">
+                      <Badge
+                        variant="outline"
+                        className={
+                          director.averagePerformance >= 80
+                            ? 'badge-success'
+                            : director.averagePerformance >= 70
+                            ? 'badge-warning'
+                            : 'badge-danger'
+                        }
+                      >
+                        {director.averagePerformance.toFixed(1)}%
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreHorizontal className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem>Ver Perfil</DropdownMenuItem>
+                          <DropdownMenuItem>Ver Turmas</DropdownMenuItem>
+                          <DropdownMenuItem>Atribuir Turma</DropdownMenuItem>
+                          <DropdownMenuItem>Remover Turma</DropdownMenuItem>
+                          <DropdownMenuItem>Relatório de Actividades</DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </CardContent>

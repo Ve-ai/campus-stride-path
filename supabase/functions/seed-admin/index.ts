@@ -11,15 +11,21 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders })
   }
 
-  // Allow this specific function to be called without auth for initial setup
-  // In production, you would want to add additional security measures
-
   try {
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
       { auth: { autoRefreshToken: false, persistSession: false } }
     )
+
+    // Parse request body
+    let resetPassword = false
+    try {
+      const body = await req.json()
+      resetPassword = body?.resetPassword === true
+    } catch {
+      // No body or invalid JSON, proceed with default
+    }
 
     // Default super admin credentials
     const superAdminEmail = 'supadmin@escola.co.ao'
@@ -32,30 +38,76 @@ Deno.serve(async (req) => {
     const existingUser = existingUsers?.users?.find(u => u.email === superAdminEmail)
 
     if (existingUser) {
+      console.log('Super admin found, checking role and profile...')
+      
+      // Update password if requested
+      if (resetPassword) {
+        console.log('Resetting password...')
+        const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+          existingUser.id,
+          { password: superAdminPassword }
+        )
+        
+        if (updateError) {
+          console.error('Password reset error:', updateError)
+        }
+      }
+
       // Ensure role exists
       const { data: existingRole } = await supabaseAdmin
         .from('user_roles')
         .select('*')
         .eq('user_id', existingUser.id)
         .eq('role', 'super_admin')
-        .single()
+        .maybeSingle()
 
       if (!existingRole) {
+        console.log('Adding super_admin role...')
         await supabaseAdmin.from('user_roles').insert({
           user_id: existingUser.id,
           role: 'super_admin'
         })
       }
 
+      // Ensure profile exists and is updated
+      const { data: existingProfile } = await supabaseAdmin
+        .from('profiles')
+        .select('*')
+        .eq('user_id', existingUser.id)
+        .maybeSingle()
+
+      if (!existingProfile) {
+        console.log('Creating profile...')
+        await supabaseAdmin.from('profiles').insert({
+          user_id: existingUser.id,
+          username: superAdminUsername,
+          full_name: superAdminName,
+          must_change_password: true,
+          password_history: []
+        })
+      } else {
+        console.log('Updating profile...')
+        await supabaseAdmin.from('profiles')
+          .update({
+            username: superAdminUsername,
+            full_name: superAdminName,
+            must_change_password: true
+          })
+          .eq('user_id', existingUser.id)
+      }
+
       return new Response(
         JSON.stringify({ 
-          message: 'Super admin already exists', 
+          message: resetPassword ? 'Super admin password reset successfully' : 'Super admin already exists', 
           email: superAdminEmail,
-          username: superAdminUsername
+          username: superAdminUsername,
+          password: resetPassword ? superAdminPassword : undefined
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
+
+    console.log('Creating new super admin user...')
 
     // Create the super admin user
     const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
@@ -69,8 +121,11 @@ Deno.serve(async (req) => {
     })
 
     if (createError) {
+      console.error('User creation error:', createError)
       throw createError
     }
+
+    console.log('User created:', newUser.user.id)
 
     // Assign super_admin role
     const { error: roleError } = await supabaseAdmin.from('user_roles').insert({
@@ -79,8 +134,11 @@ Deno.serve(async (req) => {
     })
 
     if (roleError) {
+      console.error('Role assignment error:', roleError)
       throw roleError
     }
+
+    console.log('Role assigned')
 
     // Create profile
     const { error: profileError } = await supabaseAdmin
@@ -105,6 +163,8 @@ Deno.serve(async (req) => {
         })
         .eq('user_id', newUser.user.id)
     }
+
+    console.log('Profile created')
 
     return new Response(
       JSON.stringify({ 

@@ -1,7 +1,1 @@
-project_id = "kwvsmvypmlqugpwkmyll"
-
-[functions.seed-admin]
-verify_jwt = false
-
-[functions.seed-data]
-verify_jwt = false
+project_id = "xnfqolndyqbmtclmvcok"

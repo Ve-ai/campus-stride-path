@@ -371,6 +371,22 @@ ALTER TABLE ONLY public.classes
 
 
 --
+-- Name: classes classes_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.classes
+    ADD CONSTRAINT classes_unique UNIQUE (course_id, grade_level, section, period, academic_year);
+
+
+--
+-- Name: courses courses_name_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.courses
+    ADD CONSTRAINT courses_name_unique UNIQUE (name);
+
+
+--
 -- Name: courses courses_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -451,6 +467,14 @@ ALTER TABLE ONLY public.profiles
 
 
 --
+-- Name: school_nuclei school_nuclei_name_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.school_nuclei
+    ADD CONSTRAINT school_nuclei_name_unique UNIQUE (name);
+
+
+--
 -- Name: school_nuclei school_nuclei_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -480,6 +504,14 @@ ALTER TABLE ONLY public.students
 
 ALTER TABLE ONLY public.students
     ADD CONSTRAINT students_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: subjects subjects_course_name_grade_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.subjects
+    ADD CONSTRAINT subjects_course_name_grade_unique UNIQUE (course_id, name, grade_level);
 
 
 --

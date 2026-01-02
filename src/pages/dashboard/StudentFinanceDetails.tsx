@@ -326,6 +326,66 @@ export function StudentFinanceDetails() {
         </CardContent>
       </Card>
 
+      {/* Personal and Academic Info */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card className="card-elevated">
+          <CardHeader>
+            <CardTitle className="text-base font-semibold">Dados pessoais</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">BI</span>
+              <span className="font-medium">{student.bi_number || 'Não informado'}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Data de nascimento</span>
+              <span className="font-medium">
+                {student.birth_date
+                  ? new Date(student.birth_date).toLocaleDateString('pt-AO')
+                  : 'Não informado'}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Naturalidade</span>
+              <span className="font-medium">{student.birthplace || 'Não informado'}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Província</span>
+              <span className="font-medium">{student.province || 'Não informado'}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Filiação</span>
+              <span className="font-medium">{student.parent_names || 'Não informado'}</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="card-elevated">
+          <CardHeader>
+            <CardTitle className="text-base font-semibold">Dados académicos</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Ano de matrícula</span>
+              <span className="font-medium">{student.enrollment_year}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Turma</span>
+              <span className="font-medium">
+                {studentClass
+                  ? `${studentClass.grade_level}ª ${studentClass.section}`
+                  : 'Não atribuído'}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Estado</span>
+              <span className="font-medium capitalize">{student.status || 'Ativo'}</span>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+
       {/* Payment Calendar */}
       <Card className="card-elevated">
         <CardHeader>

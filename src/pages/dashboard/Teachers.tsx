@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Search,
   Plus,
@@ -42,16 +43,94 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useTeachers, useCourses } from '@/hooks/useDatabase';
+import { useTeachers, useCourses, useCreateTeacher } from '@/hooks/useDatabase';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 export function Teachers() {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTeacher, setSelectedTeacher] = useState<any | null>(null);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [newTeacher, setNewTeacher] = useState({
+    full_name: '',
+    phone: '',
+    bi_number: '',
+    birth_date: '',
+    birth_place: '',
+    employee_number: '',
+    degree: '',
+    degree_area: '',
+    hire_date: '',
+    gross_salary: '',
+    functions: '',
+  });
 
   const { data: teachers, isLoading, error } = useTeachers();
   const { data: courses } = useCourses();
+  const queryClient = useQueryClient();
+
+  // Create teacher mutation with profile creation
+  const createTeacherMutation = useMutation({
+    mutationFn: async (teacherData: typeof newTeacher) => {
+      // First, create the profile
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .insert({
+          user_id: crypto.randomUUID(), // Generate a placeholder user_id
+          full_name: teacherData.full_name,
+          phone: teacherData.phone,
+          bi_number: teacherData.bi_number,
+          birth_date: teacherData.birth_date || null,
+          birth_place: teacherData.birth_place,
+        })
+        .select()
+        .single();
+
+      if (profileError) throw profileError;
+
+      // Then create the teacher
+      const { data: teacher, error: teacherError } = await supabase
+        .from('teachers')
+        .insert({
+          profile_id: profileData.id,
+          employee_number: teacherData.employee_number,
+          degree: teacherData.degree || null,
+          degree_area: teacherData.degree_area || null,
+          hire_date: teacherData.hire_date || null,
+          gross_salary: teacherData.gross_salary ? parseFloat(teacherData.gross_salary) : 0,
+          functions: teacherData.functions ? teacherData.functions.split(',').map(f => f.trim()) : [],
+        })
+        .select()
+        .single();
+
+      if (teacherError) throw teacherError;
+      return teacher;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['teachers'] });
+      queryClient.invalidateQueries({ queryKey: ['statistics'] });
+      toast.success('Professor adicionado com sucesso!');
+      setIsAddDialogOpen(false);
+      setNewTeacher({
+        full_name: '',
+        phone: '',
+        bi_number: '',
+        birth_date: '',
+        birth_place: '',
+        employee_number: '',
+        degree: '',
+        degree_area: '',
+        hire_date: '',
+        gross_salary: '',
+        functions: '',
+      });
+    },
+    onError: (error: any) => {
+      toast.error('Erro ao adicionar professor: ' + error.message);
+    },
+  });
 
   const filteredTeachers = teachers?.filter(
     (teacher) =>
@@ -80,6 +159,12 @@ export function Teachers() {
     t.functions?.some((f: string) => f.toLowerCase().includes('coordenador'))
   ).length;
 
+  const generateEmployeeNumber = () => {
+    const year = new Date().getFullYear();
+    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+    return `PROF-${year}-${random}`;
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -106,7 +191,9 @@ export function Teachers() {
         </div>
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="btn-primary">
+            <Button className="btn-primary" onClick={() => {
+              setNewTeacher({ ...newTeacher, employee_number: generateEmployeeNumber() });
+            }}>
               <Plus className="w-4 h-4 mr-2" />
               Adicionar Professor
             </Button>
@@ -125,85 +212,73 @@ export function Teachers() {
               <TabsContent value="pessoais" className="space-y-4 py-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="col-span-2 space-y-2">
-                    <Label>Nome Completo</Label>
-                    <Input placeholder="Nome completo do professor" />
+                    <Label>Nome Completo *</Label>
+                    <Input 
+                      placeholder="Nome completo do professor" 
+                      value={newTeacher.full_name}
+                      onChange={(e) => setNewTeacher({ ...newTeacher, full_name: e.target.value })}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label>Data de Nascimento</Label>
-                    <Input type="date" />
+                    <Input 
+                      type="date" 
+                      value={newTeacher.birth_date}
+                      onChange={(e) => setNewTeacher({ ...newTeacher, birth_date: e.target.value })}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label>Local de Nascimento</Label>
-                    <Input placeholder="Ex: Luanda" />
+                    <Input 
+                      placeholder="Ex: Luanda" 
+                      value={newTeacher.birth_place}
+                      onChange={(e) => setNewTeacher({ ...newTeacher, birth_place: e.target.value })}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label>Número do BI</Label>
-                    <Input placeholder="Ex: 000123456LA789" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Data de Emissão do BI</Label>
-                    <Input type="date" />
+                    <Input 
+                      placeholder="Ex: 000123456LA789" 
+                      value={newTeacher.bi_number}
+                      onChange={(e) => setNewTeacher({ ...newTeacher, bi_number: e.target.value })}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label>Contacto</Label>
-                    <Input placeholder="Ex: 925 654 254" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Email</Label>
-                    <Input type="email" placeholder="Ex: professor@escola.co.ao" />
+                    <Input 
+                      placeholder="Ex: 925 654 254" 
+                      value={newTeacher.phone}
+                      onChange={(e) => setNewTeacher({ ...newTeacher, phone: e.target.value })}
+                    />
                   </div>
                 </div>
               </TabsContent>
               <TabsContent value="profissionais" className="space-y-4 py-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>Curso a Ministrar</Label>
-                    <Select>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione o curso" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {courses?.map((course) => (
-                          <SelectItem key={course.id} value={course.id}>
-                            {course.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Label>Nº de Funcionário *</Label>
+                    <Input 
+                      placeholder="Ex: PROF-2025-001" 
+                      value={newTeacher.employee_number}
+                      onChange={(e) => setNewTeacher({ ...newTeacher, employee_number: e.target.value })}
+                    />
                   </div>
                   <div className="space-y-2">
-                    <Label>Classe</Label>
-                    <Select>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="10">10ª</SelectItem>
-                        <SelectItem value="11">11ª</SelectItem>
-                        <SelectItem value="12">12ª</SelectItem>
-                        <SelectItem value="13">13ª</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Label>Data de Contratação</Label>
+                    <Input 
+                      type="date" 
+                      value={newTeacher.hire_date}
+                      onChange={(e) => setNewTeacher({ ...newTeacher, hire_date: e.target.value })}
+                    />
                   </div>
                   <div className="col-span-2 space-y-2">
-                    <Label>Disciplinas</Label>
-                    <Input placeholder="Ex: Matemática, Estatística" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Período</Label>
-                    <Select>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Manhã">Manhã</SelectItem>
-                        <SelectItem value="Tarde">Tarde</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
                     <Label>Funções Adicionais</Label>
-                    <Input placeholder="Ex: Coordenador de Turma" />
+                    <Input 
+                      placeholder="Ex: Coordenador de Turma, Orientador" 
+                      value={newTeacher.functions}
+                      onChange={(e) => setNewTeacher({ ...newTeacher, functions: e.target.value })}
+                    />
+                    <p className="text-xs text-muted-foreground">Separe múltiplas funções por vírgula</p>
                   </div>
                 </div>
               </TabsContent>
@@ -211,24 +286,28 @@ export function Teachers() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Grau Académico</Label>
-                    <Select>
+                    <Select 
+                      value={newTeacher.degree}
+                      onValueChange={(v) => setNewTeacher({ ...newTeacher, degree: v })}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="licenciatura">Licenciatura</SelectItem>
-                        <SelectItem value="mestrado">Mestrado</SelectItem>
-                        <SelectItem value="doutoramento">Doutoramento</SelectItem>
+                        <SelectItem value="Licenciatura">Licenciatura</SelectItem>
+                        <SelectItem value="Mestrado">Mestrado</SelectItem>
+                        <SelectItem value="Doutoramento">Doutoramento</SelectItem>
+                        <SelectItem value="Técnico">Técnico</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-2">
                     <Label>Área de Formação</Label>
-                    <Input placeholder="Ex: Engenharia Informática" />
-                  </div>
-                  <div className="col-span-2 space-y-2">
-                    <Label>Instituição de Formação</Label>
-                    <Input placeholder="Ex: Universidade Agostinho Neto" />
+                    <Input 
+                      placeholder="Ex: Engenharia Informática" 
+                      value={newTeacher.degree_area}
+                      onChange={(e) => setNewTeacher({ ...newTeacher, degree_area: e.target.value })}
+                    />
                   </div>
                 </div>
               </TabsContent>
@@ -236,7 +315,12 @@ export function Teachers() {
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <Label>Salário Bruto (AOA)</Label>
-                    <Input type="number" placeholder="Ex: 85000" />
+                    <Input 
+                      type="number" 
+                      placeholder="Ex: 85000" 
+                      value={newTeacher.gross_salary}
+                      onChange={(e) => setNewTeacher({ ...newTeacher, gross_salary: e.target.value })}
+                    />
                   </div>
                 </div>
               </TabsContent>
@@ -245,11 +329,19 @@ export function Teachers() {
               <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
                 Cancelar
               </Button>
-              <Button className="btn-primary" onClick={() => {
-                toast.success('Funcionalidade em desenvolvimento');
-                setIsAddDialogOpen(false);
-              }}>
-                Adicionar Professor
+              <Button 
+                className="btn-primary" 
+                onClick={() => createTeacherMutation.mutate(newTeacher)}
+                disabled={createTeacherMutation.isPending || !newTeacher.full_name || !newTeacher.employee_number}
+              >
+                {createTeacherMutation.isPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Adicionando...
+                  </>
+                ) : (
+                  'Adicionar Professor'
+                )}
               </Button>
             </div>
           </DialogContent>
@@ -351,7 +443,7 @@ export function Teachers() {
                 </TableRow>
               ) : (
                 filteredTeachers.map((teacher, index) => (
-                  <TableRow key={teacher.id} className="table-row-hover" onClick={() => setSelectedTeacher(teacher)}>
+                  <TableRow key={teacher.id} className="table-row-hover cursor-pointer" onClick={() => setSelectedTeacher(teacher)}>
                     <TableCell className="font-medium">{String(index + 1).padStart(2, '0')}</TableCell>
                     <TableCell>{teacher.employee_number}</TableCell>
                     <TableCell className="font-medium">{teacher.profiles?.full_name || '-'}</TableCell>
@@ -398,7 +490,10 @@ export function Teachers() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem>Ver Perfil</DropdownMenuItem>
+                          <DropdownMenuItem onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedTeacher(teacher);
+                          }}>Ver Perfil</DropdownMenuItem>
                           <DropdownMenuItem>Editar Dados</DropdownMenuItem>
                           <DropdownMenuItem>Ver Turmas</DropdownMenuItem>
                           <DropdownMenuItem>Avaliar Desempenho</DropdownMenuItem>
@@ -428,54 +523,46 @@ export function Teachers() {
                 <div className="flex-1">
                   <h3 className="text-xl font-semibold">{selectedTeacher.profiles?.full_name}</h3>
                   <p className="text-muted-foreground">{selectedTeacher.employee_number}</p>
-                  <div className="flex gap-2 mt-2">
+                  <div className="flex flex-wrap gap-2 mt-2">
                     {selectedTeacher.degree && (
                       <Badge variant="outline">{selectedTeacher.degree}</Badge>
                     )}
-                    {selectedTeacher.is_active ? (
-                      <Badge className="badge-success">Activo</Badge>
-                    ) : (
-                      <Badge variant="destructive">Inactivo</Badge>
-                    )}
+                    {selectedTeacher.functions?.map((f: string, i: number) => (
+                      <Badge key={i} variant="secondary">{f}</Badge>
+                    ))}
                   </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">Contacto</p>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-muted-foreground">Área de Formação</p>
+                  <p className="font-medium">{selectedTeacher.degree_area || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Salário Bruto</p>
+                  <p className="font-medium">{formatCurrency(selectedTeacher.gross_salary || 0)}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Contacto</p>
                   <p className="font-medium">{selectedTeacher.profiles?.phone || '-'}</p>
                 </div>
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">BI</p>
+                <div>
+                  <p className="text-muted-foreground">BI</p>
                   <p className="font-medium">{selectedTeacher.profiles?.bi_number || '-'}</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">Data de Contratação</p>
-                  <p className="font-medium">
-                    {selectedTeacher.hire_date 
-                      ? new Date(selectedTeacher.hire_date).toLocaleDateString('pt-AO')
-                      : '-'}
-                  </p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">Salário Bruto</p>
-                  <p className="font-medium">{formatCurrency(selectedTeacher.gross_salary || 0)}</p>
                 </div>
               </div>
 
-              {selectedTeacher.teacher_class_assignments && selectedTeacher.teacher_class_assignments.length > 0 && (
-                <div className="space-y-2">
-                  <p className="text-sm font-medium">Turmas e Disciplinas</p>
+              {selectedTeacher.teacher_class_assignments?.length > 0 && (
+                <div>
+                  <h4 className="font-medium mb-2">Turmas Atribuídas</h4>
                   <div className="space-y-2">
                     {selectedTeacher.teacher_class_assignments.map((assignment: any, i: number) => (
-                      <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                        <div>
-                          <p className="font-medium">{assignment.subject?.name}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {assignment.class?.course?.name} - {assignment.class?.grade_level}ª {assignment.class?.section}
-                          </p>
-                        </div>
+                      <div key={i} className="flex items-center justify-between p-2 bg-muted rounded-lg">
+                        <span>{assignment.subject?.name}</span>
+                        <Badge variant="outline">
+                          {assignment.class?.course?.name} - {assignment.class?.grade_level}ª {assignment.class?.section}
+                        </Badge>
                       </div>
                     ))}
                   </div>

@@ -28,13 +28,24 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useCourses, useClasses, useTeachers, useSubjects } from '@/hooks/useDatabase';
+import { toast } from 'sonner';
+import { CourseEditForm } from './CourseEditForm';
 
 export function CourseDetails() {
   const { courseId } = useParams();
   const navigate = useNavigate();
   const [selectedClass, setSelectedClass] = useState<string>('all');
-  
+  const [isEditOpen, setIsEditOpen] = useState(false);
   const { data: courses } = useCourses();
   const { data: classes } = useClasses();
   const { data: teachers } = useTeachers();
@@ -75,14 +86,31 @@ export function CourseDetails() {
             Coordenador: {coordinator?.profiles?.full_name || 'Não atribuído'}
           </p>
         </div>
-        <Button variant="outline" className="flex items-center gap-2">
-          <Download className="w-4 h-4" />
-          Exportar Relatório
-        </Button>
+        <div className="flex items-center gap-2">
+          <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline">Editar curso</Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Editar curso</DialogTitle>
+              </DialogHeader>
+              <CourseEditForm
+                course={course}
+                onClose={() => setIsEditOpen(false)}
+                onUpdated={() => toast.success('Curso atualizado com sucesso')}        
+              />
+            </DialogContent>
+          </Dialog>
+          <Button variant="outline" className="flex items-center gap-2">
+            <Download className="w-4 h-4" />
+            Exportar Relatório
+          </Button>
+        </div>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="stat-card">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
@@ -128,13 +156,43 @@ export function CourseDetails() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Taxa Credencial</p>
+                <p className="text-sm text-muted-foreground">Mensalidade 11ª</p>
                 <p className="text-2xl font-bold">
-                  {course.credential_fee?.toLocaleString('pt-AO')} Kz
+                  {course.monthly_fee_11?.toLocaleString('pt-AO')} Kz
                 </p>
               </div>
-              <div className="w-10 h-10 rounded-lg bg-warning/10 flex items-center justify-center">
-                <TrendingDown className="w-5 h-5 text-warning" />
+              <div className="w-10 h-10 rounded-lg bg-success/10 flex items-center justify-center">
+                <TrendingUp className="w-5 h-5 text-success" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="stat-card">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Mensalidade 12ª</p>
+                <p className="text-2xl font-bold">
+                  {course.monthly_fee_12?.toLocaleString('pt-AO')} Kz
+                </p>
+              </div>
+              <div className="w-10 h-10 rounded-lg bg-success/10 flex items-center justify-center">
+                <TrendingUp className="w-5 h-5 text-success" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="stat-card">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Mensalidade 13ª</p>
+                <p className="text-2xl font-bold">
+                  {course.monthly_fee_13?.toLocaleString('pt-AO')} Kz
+                </p>
+              </div>
+              <div className="w-10 h-10 rounded-lg bg-success/10 flex items-center justify-center">
+                <TrendingUp className="w-5 h-5 text-success" />
               </div>
             </div>
           </CardContent>

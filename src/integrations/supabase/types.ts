@@ -604,6 +604,7 @@ export type Database = {
           degree: string | null
           degree_area: string | null
           employee_number: string
+          full_name: string
           functions: string[] | null
           gross_salary: number | null
           hire_date: string | null
@@ -618,6 +619,7 @@ export type Database = {
           degree?: string | null
           degree_area?: string | null
           employee_number: string
+          full_name?: string
           functions?: string[] | null
           gross_salary?: number | null
           hire_date?: string | null
@@ -632,6 +634,7 @@ export type Database = {
           degree?: string | null
           degree_area?: string | null
           employee_number?: string
+          full_name?: string
           functions?: string[] | null
           gross_salary?: number | null
           hire_date?: string | null

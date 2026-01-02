@@ -416,6 +416,7 @@ export function useCreateTeacher() {
   return useMutation({
     mutationFn: async (teacher: {
       employee_number: string;
+      full_name?: string;
       profile_id?: string;
       degree?: string;
       degree_area?: string;

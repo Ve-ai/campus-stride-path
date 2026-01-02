@@ -80,7 +80,9 @@ export function Teachers() {
     teachers
       ?.filter((teacher) => {
         const matchesSearch =
-          teacher.profiles?.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (teacher.full_name || teacher.profiles?.full_name || '')
+            .toLowerCase()
+            .includes(searchTerm.toLowerCase()) ||
           teacher.employee_number?.includes(searchTerm);
 
         const matchesDiscipline =
@@ -355,6 +357,7 @@ export function Teachers() {
                       createTeacherMutation.mutate(
                         {
                           employee_number: newTeacher.employee_number,
+                          full_name: newTeacher.full_name,
                           degree: newTeacher.degree || undefined,
                           degree_area: newTeacher.degree_area || undefined,
                           hire_date: newTeacher.hire_date || undefined,
@@ -574,7 +577,7 @@ export function Teachers() {
                   <TableRow key={teacher.id} className="table-row-hover cursor-pointer" onClick={() => setSelectedTeacher(teacher)}>
                     <TableCell className="font-medium">{String(index + 1).padStart(2, '0')}</TableCell>
                     <TableCell>{teacher.employee_number}</TableCell>
-                    <TableCell className="font-medium">{teacher.profiles?.full_name || '-'}</TableCell>
+                    <TableCell className="font-medium">{teacher.full_name || teacher.profiles?.full_name || '-'}</TableCell>
                     <TableCell>
                       {teacher.degree && (
                         <Badge variant="outline" className="text-xs">
@@ -649,7 +652,7 @@ export function Teachers() {
                   <GraduationCap className="w-10 h-10 text-primary" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-xl font-semibold">{selectedTeacher.profiles?.full_name}</h3>
+                  <h3 className="text-xl font-semibold">{selectedTeacher.full_name || selectedTeacher.profiles?.full_name}</h3>
                   <p className="text-muted-foreground">{selectedTeacher.employee_number}</p>
                   <div className="flex flex-wrap gap-2 mt-2">
                     {selectedTeacher.degree && (

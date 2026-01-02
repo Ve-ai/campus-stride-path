@@ -111,7 +111,8 @@ export function useTeachers() {
           teacher_class_assignments (
             id,
             schedule,
-            class:classes (id, section, grade_level, course:courses (name)),
+            periods,
+            class:classes (id, section, grade_level, period, course:courses (name)),
             subject:subjects (id, name)
           )
         `)
@@ -505,57 +506,29 @@ export function useUpdateTeacherAssignmentSchedule() {
   });
 }
 
-
-// Update Course
-export function useUpdateCourse() {
+// Create teacher assignments
+export function useCreateTeacherAssignments() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: async ({ id, ...updates }: {
-      id: string;
-      name?: string;
-      coordinator_id?: string;
-      monthly_fee_10?: number;
-      monthly_fee_11?: number;
-      monthly_fee_12?: number;
-      monthly_fee_13?: number;
-      credential_fee?: number;
-      tutor_fee?: number;
-      internship_fee?: number;
-      defense_entry_fee?: number;
-    }) => {
+    mutationFn: async (assignments: {
+      teacher_id: string;
+      class_id: string;
+      subject_id: string;
+      periods: string[];
+    }[]) => {
+      if (!assignments.length) return [];
       const { data, error } = await supabase
-        .from('courses')
-        .update(updates)
-        .eq('id', id)
-        .select()
-        .single();
-      
+        .from('teacher_class_assignments')
+        .insert(assignments)
+        .select();
+
       if (error) throw error;
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['courses'] });
+      queryClient.invalidateQueries({ queryKey: ['teachers'] });
     },
   });
 }
 
-// Delete Course
-export function useDeleteCourse() {
-  const queryClient = useQueryClient();
-  
-  return useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('courses')
-        .delete()
-        .eq('id', id);
-      
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['courses'] });
-      queryClient.invalidateQueries({ queryKey: ['statistics'] });
-    },
-  });
-}

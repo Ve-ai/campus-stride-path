@@ -7,6 +7,7 @@ import {
   GraduationCap,
   AlertTriangle,
   Loader2,
+  CalendarIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -37,6 +38,9 @@ import {
 } from '@/components/ui/select';
 import { useClasses, useCreateStudent, useStudents } from '@/hooks/useDatabase';
 import { toast } from 'sonner';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { cn } from '@/lib/utils';
 
 export function Students() {
   const navigate = useNavigate();
@@ -46,7 +50,9 @@ export function Students() {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedClassId, setSelectedClassId] = useState<'Todos' | string>('Todos');
-  const [selectedStatus, setSelectedStatus] = useState<'Todos' | 'active' | 'dropout'>('Todos');
+  const [selectedStatus, setSelectedStatus] = useState<'Todos' | 'active' | 'dropout'>(
+    'Todos',
+  );
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [newStudent, setNewStudent] = useState({
     enrollment_number: '',
@@ -54,8 +60,15 @@ export function Students() {
     gender: 'Masculino',
     enrollment_year: new Date().getFullYear().toString(),
     class_id: '',
+    bi_number: '',
+    birth_date: undefined as Date | undefined,
+    birthplace: '',
+    province: '',
+    father_name: '',
+    mother_name: '',
     guardian_name: '',
     guardian_contact: '',
+    enrollment_date: undefined as Date | undefined,
   });
 
   const stats = useMemo(() => {
@@ -101,15 +114,31 @@ export function Students() {
       return;
     }
 
+    const parentNames = [newStudent.father_name, newStudent.mother_name]
+      .filter((n) => n.trim().length > 0)
+      .join(' / ');
+
+    const birthDateString = newStudent.birth_date
+      ? newStudent.birth_date.toISOString().split('T')[0]
+      : undefined;
+
+    const enrollmentDate = newStudent.enrollment_date || new Date();
+    const enrollmentYear = enrollmentDate.getFullYear();
+
     createStudent.mutate(
       {
         enrollment_number: newStudent.enrollment_number,
         full_name: newStudent.full_name,
-        enrollment_year: parseInt(newStudent.enrollment_year, 10),
+        enrollment_year: enrollmentYear,
         gender: newStudent.gender,
         class_id: newStudent.class_id || undefined,
         guardian_name: newStudent.guardian_name || undefined,
         guardian_contact: newStudent.guardian_contact || undefined,
+        bi_number: newStudent.bi_number || undefined,
+        birthplace: newStudent.birthplace || undefined,
+        province: newStudent.province || undefined,
+        parent_names: parentNames || undefined,
+        birth_date: birthDateString as any,
       },
       {
         onSuccess: () => {
@@ -121,8 +150,15 @@ export function Students() {
             gender: 'Masculino',
             enrollment_year: new Date().getFullYear().toString(),
             class_id: '',
+            bi_number: '',
+            birth_date: undefined,
+            birthplace: '',
+            province: '',
+            father_name: '',
+            mother_name: '',
             guardian_name: '',
             guardian_contact: '',
+            enrollment_date: undefined,
           });
         },
         onError: (error) => {
@@ -191,6 +227,16 @@ export function Students() {
                 />
               </div>
               <div className="space-y-2">
+                <Label>BI</Label>
+                <Input
+                  placeholder="Número do BI"
+                  value={newStudent.bi_number}
+                  onChange={(e) =>
+                    setNewStudent({ ...newStudent, bi_number: e.target.value })
+                  }
+                />
+              </div>
+              <div className="space-y-2">
                 <Label>Género</Label>
                 <Select
                   value={newStudent.gender}
@@ -208,6 +254,58 @@ export function Students() {
                 </Select>
               </div>
               <div className="space-y-2">
+                <Label>Data de Nascimento</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant={"outline"}
+                      className={cn(
+                        'w-full justify-start text-left font-normal',
+                        !newStudent.birth_date && 'text-muted-foreground',
+                      )}
+                    >
+                      {newStudent.birth_date ? (
+                        newStudent.birth_date.toLocaleDateString()
+                      ) : (
+                        <span>Escolha a data</span>
+                      )}
+                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={newStudent.birth_date}
+                      onSelect={(date) =>
+                        setNewStudent({ ...newStudent, birth_date: date || undefined })
+                      }
+                      initialFocus
+                      className={cn('p-3 pointer-events-auto')}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <div className="space-y-2">
+                <Label>Naturalidade</Label>
+                <Input
+                  placeholder="Local de nascimento"
+                  value={newStudent.birthplace}
+                  onChange={(e) =>
+                    setNewStudent({ ...newStudent, birthplace: e.target.value })
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Província</Label>
+                <Input
+                  placeholder="Província"
+                  value={newStudent.province}
+                  onChange={(e) =>
+                    setNewStudent({ ...newStudent, province: e.target.value })
+                  }
+                />
+              </div>
+              <div className="space-y-2">
                 <Label>Ano de Matrícula</Label>
                 <Input
                   type="number"
@@ -216,6 +314,41 @@ export function Students() {
                     setNewStudent({ ...newStudent, enrollment_year: e.target.value })
                   }
                 />
+              </div>
+              <div className="space-y-2">
+                <Label>Data de Matrícula</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant={"outline"}
+                      className={cn(
+                        'w-full justify-start text-left font-normal',
+                        !newStudent.enrollment_date && 'text-muted-foreground',
+                      )}
+                    >
+                      {newStudent.enrollment_date ? (
+                        newStudent.enrollment_date.toLocaleDateString()
+                      ) : (
+                        <span>Escolha a data</span>
+                      )}
+                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={newStudent.enrollment_date}
+                      onSelect={(date) =>
+                        setNewStudent({
+                          ...newStudent,
+                          enrollment_date: date || undefined,
+                        })
+                      }
+                      initialFocus
+                      className={cn('p-3 pointer-events-auto')}
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
               <div className="space-y-2 md:col-span-2">
                 <Label>Turma</Label>
@@ -236,6 +369,26 @@ export function Students() {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <Label>Filiação — Nome do Pai</Label>
+                <Input
+                  placeholder="Nome do pai"
+                  value={newStudent.father_name}
+                  onChange={(e) =>
+                    setNewStudent({ ...newStudent, father_name: e.target.value })
+                  }
+                />
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <Label>Filiação — Nome da Mãe</Label>
+                <Input
+                  placeholder="Nome da mãe"
+                  value={newStudent.mother_name}
+                  onChange={(e) =>
+                    setNewStudent({ ...newStudent, mother_name: e.target.value })
+                  }
+                />
               </div>
               <div className="space-y-2 md:col-span-2">
                 <Label>Nome do Encarregado de Educação</Label>
@@ -259,10 +412,7 @@ export function Students() {
               </div>
             </div>
             <div className="flex justify-end gap-3 pt-2">
-              <Button
-                variant="outline"
-                onClick={() => setIsDialogOpen(false)}
-              >
+              <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
                 Cancelar
               </Button>
               <Button

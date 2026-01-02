@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, Lock, User, GraduationCap, AlertCircle, Loader2 } from 'lucide-react';
+import { Eye, EyeOff, Lock, User, GraduationCap, AlertCircle, Loader2, Settings } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -13,6 +15,27 @@ export function LoginPage() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [isSeeding, setIsSeeding] = useState(false);
+
+  const handleSeedAdmin = async () => {
+    setIsSeeding(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('seed-admin', {
+        body: { resetPassword: true }
+      });
+      
+      if (error) {
+        toast.error('Erro ao criar admin: ' + error.message);
+      } else {
+        toast.success('Admin criado/atualizado com sucesso! Username: supadmin-001, Senha: XyZ@2025StrongPass');
+        setUsername('supadmin-001');
+      }
+    } catch (err) {
+      toast.error('Erro ao criar admin');
+    } finally {
+      setIsSeeding(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -165,6 +188,25 @@ export function LoginPage() {
           </form>
 
           <div className="mt-8 pt-8 border-t border-border">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleSeedAdmin}
+              disabled={isSeeding}
+              className="w-full mb-4"
+            >
+              {isSeeding ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  A criar admin...
+                </>
+              ) : (
+                <>
+                  <Settings className="w-4 h-4 mr-2" />
+                  Inicializar Super Admin
+                </>
+              )}
+            </Button>
             <p className="text-center text-sm text-muted-foreground">
               Sistema de Gestão Escolar v1.0
             </p>

@@ -91,7 +91,6 @@ export function Courses() {
       morningSections: '',
       afternoonSections: '',
       internshipFee: '',
-      credentialFee: '',
     },
     '12': {
       subjects: [],
@@ -100,7 +99,6 @@ export function Courses() {
       morningSections: '',
       afternoonSections: '',
       internshipFee: '',
-      credentialFee: '',
     },
     '13': {
       subjects: [],
@@ -109,7 +107,6 @@ export function Courses() {
       morningSections: '',
       afternoonSections: '',
       internshipFee: '',
-      credentialFee: '',
       defenseEntryFee: '',
       tutorFee: '',
     },
@@ -539,18 +536,6 @@ export function Courses() {
                                   value={config.internshipFee || ''}
                                   onChange={(e) =>
                                     setConfig({ internshipFee: e.target.value })
-                                  }
-                                  onFocus={(e) => e.target.select()}
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <Label>Credencial de estagiário</Label>
-                                <Input
-                                  type="number"
-                                  placeholder="Valor da credencial"
-                                  value={config.credentialFee || ''}
-                                  onChange={(e) =>
-                                    setConfig({ credentialFee: e.target.value })
                                   }
                                   onFocus={(e) => e.target.select()}
                                 />

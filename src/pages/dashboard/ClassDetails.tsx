@@ -112,6 +112,25 @@ export function ClassDetails() {
     enabled: !!classId,
   });
 
+  // Fetch payments for students in this class
+  const { data: payments } = useQuery({
+    queryKey: ['payments', classId],
+    queryFn: async () => {
+      if (!students || students.length === 0) return [];
+
+      const studentIds = students.map((s) => s.id);
+
+      const { data, error } = await supabase
+        .from('payments')
+        .select('*')
+        .in('student_id', studentIds);
+
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!classId && !!students,
+  });
+
   const classData = classes?.find(c => c.id === classId);
   const course = courses?.find(c => c.id === classData?.course_id);
   const director = teachers?.find(t => t.id === classData?.class_director_id);
@@ -482,6 +501,7 @@ export function ClassDetails() {
           <TabsTrigger value="students">Estudantes</TabsTrigger>
           <TabsTrigger value="grades">Notas</TabsTrigger>
           <TabsTrigger value="subjects">Disciplinas</TabsTrigger>
+          <TabsTrigger value="finance">Finanças</TabsTrigger>
         </TabsList>
 
         <TabsContent value="students" className="space-y-4">
@@ -662,6 +682,73 @@ export function ClassDetails() {
                     <TableRow>
                       <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
                         Nenhuma disciplina cadastrada para esta classe
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="finance" className="space-y-4">
+          <Card className="card-elevated">
+            <CardHeader>
+              <CardTitle>Pagamentos dos Estudantes</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow className="table-header">
+                    <TableHead>N°</TableHead>
+                    <TableHead>N° Matrícula</TableHead>
+                    <TableHead>Nome do Estudante</TableHead>
+                    <TableHead>Mês/Ano</TableHead>
+                    <TableHead className="text-right">Valor</TableHead>
+                    <TableHead>Método</TableHead>
+                    <TableHead>Data do Pagamento</TableHead>
+                    <TableHead>Recibo</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {payments && payments.length > 0 ? (
+                    payments.map((payment, index) => {
+                      const student = students?.find((s) => s.id === payment.student_id);
+
+                      const month = String(payment.month_reference).padStart(2, '0');
+                      const year = payment.year_reference;
+                      const paymentDate = payment.payment_date
+                        ? new Date(payment.payment_date).toLocaleDateString()
+                        : '-';
+
+                      return (
+                        <TableRow key={payment.id ?? `${payment.student_id}-${index}`}>
+                          <TableCell>{index + 1}</TableCell>
+                          <TableCell className="font-mono">
+                            {student?.enrollment_number ?? '-'}
+                          </TableCell>
+                          <TableCell className="font-medium">
+                            {student?.full_name ?? '-'}
+                          </TableCell>
+                          <TableCell>
+                            {month}/{year}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {Number(payment.amount).toLocaleString('pt-PT', {
+                              style: 'currency',
+                              currency: 'AOA',
+                            })}
+                          </TableCell>
+                          <TableCell>{payment.payment_method ?? '-'}</TableCell>
+                          <TableCell>{paymentDate}</TableCell>
+                          <TableCell>{payment.receipt_number ?? '-'}</TableCell>
+                        </TableRow>
+                      );
+                    })
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                        Nenhum pagamento registado para esta turma
                       </TableCell>
                     </TableRow>
                   )}

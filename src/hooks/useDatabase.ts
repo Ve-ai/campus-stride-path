@@ -452,6 +452,10 @@ export function useUpdateCourse() {
       monthly_fee_11?: number;
       monthly_fee_12?: number;
       monthly_fee_13?: number;
+      credential_fee?: number;
+      tutor_fee?: number;
+      internship_fee?: number;
+      defense_entry_fee?: number;
     }) => {
       const { data, error } = await supabase
         .from('courses')

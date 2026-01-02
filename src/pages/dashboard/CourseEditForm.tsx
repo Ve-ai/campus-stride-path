@@ -17,6 +17,10 @@ export function CourseEditForm({ course, onClose, onUpdated }: CourseEditFormPro
   const [monthly11, setMonthly11] = useState(course.monthly_fee_11?.toString() || '');
   const [monthly12, setMonthly12] = useState(course.monthly_fee_12?.toString() || '');
   const [monthly13, setMonthly13] = useState(course.monthly_fee_13?.toString() || '');
+  const [credentialFee, setCredentialFee] = useState(course.credential_fee?.toString() || '');
+  const [tutorFee, setTutorFee] = useState(course.tutor_fee?.toString() || '');
+  const [internshipFee, setInternshipFee] = useState(course.internship_fee?.toString() || '');
+  const [defenseFee, setDefenseFee] = useState(course.defense_entry_fee?.toString() || '');
 
   const handleSave = () => {
     updateCourse.mutate(
@@ -27,6 +31,10 @@ export function CourseEditForm({ course, onClose, onUpdated }: CourseEditFormPro
         monthly_fee_11: monthly11 ? Number(monthly11) : undefined,
         monthly_fee_12: monthly12 ? Number(monthly12) : undefined,
         monthly_fee_13: monthly13 ? Number(monthly13) : undefined,
+        credential_fee: credentialFee ? Number(credentialFee) : undefined,
+        tutor_fee: tutorFee ? Number(tutorFee) : undefined,
+        internship_fee: internshipFee ? Number(internshipFee) : undefined,
+        defense_entry_fee: defenseFee ? Number(defenseFee) : undefined,
       },
       {
         onSuccess: () => {
@@ -74,6 +82,38 @@ export function CourseEditForm({ course, onClose, onUpdated }: CourseEditFormPro
             type="number"
             value={monthly13}
             onChange={(e) => setMonthly13(e.target.value)}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Taxa credencial</Label>
+          <Input
+            type="number"
+            value={credentialFee}
+            onChange={(e) => setCredentialFee(e.target.value)}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Taxa tutor</Label>
+          <Input
+            type="number"
+            value={tutorFee}
+            onChange={(e) => setTutorFee(e.target.value)}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Taxa estágio</Label>
+          <Input
+            type="number"
+            value={internshipFee}
+            onChange={(e) => setInternshipFee(e.target.value)}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Taxa defesa</Label>
+          <Input
+            type="number"
+            value={defenseFee}
+            onChange={(e) => setDefenseFee(e.target.value)}
           />
         </div>
       </div>

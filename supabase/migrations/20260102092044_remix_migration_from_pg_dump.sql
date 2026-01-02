@@ -1,8 +1,8 @@
-CREATE EXTENSION IF NOT EXISTS "pg_graphql" WITH SCHEMA "graphql";
+CREATE EXTENSION IF NOT EXISTS "pg_graphql";
 CREATE EXTENSION IF NOT EXISTS "pg_stat_statements" WITH SCHEMA "extensions";
 CREATE EXTENSION IF NOT EXISTS "pgcrypto" WITH SCHEMA "extensions";
-CREATE EXTENSION IF NOT EXISTS "plpgsql" WITH SCHEMA "pg_catalog";
-CREATE EXTENSION IF NOT EXISTS "supabase_vault" WITH SCHEMA "vault";
+CREATE EXTENSION IF NOT EXISTS "plpgsql";
+CREATE EXTENSION IF NOT EXISTS "supabase_vault";
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA "extensions";
 BEGIN;
 
@@ -812,6 +812,13 @@ ALTER TABLE ONLY public.user_roles
 
 
 --
+-- Name: students Admins and professors can view students; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Admins and professors can view students" ON public.students FOR SELECT USING ((public.has_role(auth.uid(), 'super_admin'::public.app_role) OR public.has_role(auth.uid(), 'admin'::public.app_role) OR public.has_role(auth.uid(), 'professor'::public.app_role)));
+
+
+--
 -- Name: teacher_class_assignments Admins can manage assignments; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -847,6 +854,13 @@ CREATE POLICY "Admins can update requests" ON public.grade_change_requests FOR U
 
 
 --
+-- Name: grades Admins can view all grades; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Admins can view all grades" ON public.grades FOR SELECT USING ((public.has_role(auth.uid(), 'super_admin'::public.app_role) OR public.has_role(auth.uid(), 'admin'::public.app_role)));
+
+
+--
 -- Name: profiles Admins can view all profiles; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -875,24 +889,10 @@ CREATE POLICY "Authenticated users can view courses" ON public.courses FOR SELEC
 
 
 --
--- Name: grades Authenticated users can view grades; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY "Authenticated users can view grades" ON public.grades FOR SELECT TO authenticated USING (true);
-
-
---
 -- Name: school_nuclei Authenticated users can view school nuclei; Type: POLICY; Schema: public; Owner: -
 --
 
 CREATE POLICY "Authenticated users can view school nuclei" ON public.school_nuclei FOR SELECT TO authenticated USING (true);
-
-
---
--- Name: students Authenticated users can view students; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY "Authenticated users can view students" ON public.students FOR SELECT TO authenticated USING (true);
 
 
 --
@@ -928,6 +928,13 @@ CREATE POLICY "Finance and admins can view payments" ON public.payments FOR SELE
 --
 
 CREATE POLICY "Finance can manage payments" ON public.payments USING (public.has_role(auth.uid(), 'finance'::public.app_role));
+
+
+--
+-- Name: students Finance can view students for payments; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Finance can view students for payments" ON public.students FOR SELECT USING (public.has_role(auth.uid(), 'finance'::public.app_role));
 
 
 --
@@ -1035,6 +1042,16 @@ CREATE POLICY "Teachers can create requests" ON public.grade_change_requests FOR
 CREATE POLICY "Teachers can manage their own grades" ON public.grades USING ((EXISTS ( SELECT 1
    FROM public.teachers t
   WHERE ((t.user_id = auth.uid()) AND (t.id = grades.teacher_id)))));
+
+
+--
+-- Name: grades Teachers can view grades for their classes; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Teachers can view grades for their classes" ON public.grades FOR SELECT USING ((EXISTS ( SELECT 1
+   FROM (public.teacher_class_assignments tca
+     JOIN public.teachers t ON ((t.id = tca.teacher_id)))
+  WHERE ((t.user_id = auth.uid()) AND (tca.class_id = grades.class_id)))));
 
 
 --

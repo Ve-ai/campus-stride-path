@@ -41,6 +41,7 @@ import { toast } from 'sonner';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
 
 export function Students() {
   const navigate = useNavigate();
@@ -54,6 +55,7 @@ export function Students() {
     'Todos',
   );
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [newStudent, setNewStudent] = useState({
     enrollment_number: '',
     full_name: '',
@@ -103,7 +105,7 @@ export function Students() {
     return `${year}${random}`;
   };
 
-  const handleCreateStudent = () => {
+  const handleCreateStudent = async () => {
     if (!newStudent.full_name.trim()) {
       toast.error('Nome do estudante é obrigatório');
       return;
@@ -125,6 +127,29 @@ export function Students() {
     const enrollmentDate = newStudent.enrollment_date || new Date();
     const enrollmentYear = enrollmentDate.getFullYear();
 
+    let photoUrl: string | undefined;
+
+    if (photoFile) {
+      const fileExt = photoFile.name.split('.').pop();
+      const fileName = `${newStudent.enrollment_number || generateEnrollmentNumber()}-${Date.now()}.${fileExt}`;
+      const filePath = `students/${fileName}`;
+
+      const { data, error } = await supabase.storage
+        .from('student-photos')
+        .upload(filePath, photoFile);
+
+      if (error) {
+        toast.error('Erro ao carregar foto: ' + error.message);
+        return;
+      }
+
+      const publicUrl = supabase.storage
+        .from('student-photos')
+        .getPublicUrl(data.path).data.publicUrl;
+
+      photoUrl = publicUrl;
+    }
+
     createStudent.mutate(
       {
         enrollment_number: newStudent.enrollment_number,
@@ -139,11 +164,13 @@ export function Students() {
         province: newStudent.province || undefined,
         parent_names: parentNames || undefined,
         birth_date: birthDateString as any,
+        photo_url: photoUrl,
       },
       {
         onSuccess: () => {
           toast.success('Estudante criado com sucesso!');
           setIsDialogOpen(false);
+          setPhotoFile(null);
           setNewStudent({
             enrollment_number: '',
             full_name: '',
@@ -206,6 +233,14 @@ export function Students() {
               <DialogTitle>Novo Estudante</DialogTitle>
             </DialogHeader>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
+              <div className="space-y-2 md:col-span-2">
+                <Label>Foto do estudante</Label>
+                <Input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setPhotoFile(e.target.files?.[0] || null)}
+                />
+              </div>
               <div className="space-y-2 md:col-span-2">
                 <Label>Nome Completo *</Label>
                 <Input

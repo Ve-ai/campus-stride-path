@@ -411,6 +411,41 @@ export function useCreateCourse() {
   });
 }
 
+// Update Course
+export function useUpdateCourse() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, ...updates }: {
+      id: string;
+      name?: string;
+      school_nucleus_id?: string;
+      coordinator_id?: string;
+      monthly_fee_10?: number;
+      monthly_fee_11?: number;
+      monthly_fee_12?: number;
+      monthly_fee_13?: number;
+      credential_fee?: number;
+      tutor_fee?: number;
+      internship_fee?: number;
+      defense_entry_fee?: number;
+    }) => {
+      const { data, error } = await supabase
+        .from('courses')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['courses'] });
+    },
+  });
+}
+
 // Create Teacher
 export function useCreateTeacher() {
   const queryClient = useQueryClient();

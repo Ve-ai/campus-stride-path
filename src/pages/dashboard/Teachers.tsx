@@ -81,6 +81,7 @@ export function Teachers() {
 
   const createTeacherMutation = useCreateTeacher();
   const updateTeacherMutation = useUpdateTeacher();
+  const createTeacherAssignmentsMutation = useCreateTeacherAssignments();
 
   const filteredTeachers =
     teachers
@@ -599,74 +600,6 @@ export function Teachers() {
                   ) : (
                     'Próximo'
                   )}
-                </Button>
-              </div>
-                         {
-                           onSuccess: async (createdTeacher: any) => {
-                             try {
-                               if (assignments.length) {
-                                 const validAssignments = assignments.filter(
-                                   (a) => a.classId && a.subjectId && a.periods.length,
-                                 );
-
-                                 if (validAssignments.length) {
-                                   await createTeacherAssignmentsMutation.mutateAsync(
-                                     validAssignments.map((a) => ({
-                                       teacher_id: createdTeacher.id,
-                                       class_id: a.classId!,
-                                       subject_id: a.subjectId!,
-                                       periods: a.periods,
-                                     })),
-                                   );
-                                 }
-                               }
-
-                               toast.success('Professor adicionado com sucesso!');
-                               setIsAddDialogOpen(false);
-                               setCurrentStep('pessoais');
-                               setNewTeacher({
-                                 full_name: '',
-                                 phone: '',
-                                 bi_number: '',
-                                 birth_date: '',
-                                 birth_place: '',
-                                 employee_number: '',
-                                 degree: '',
-                                 degree_area: '',
-                                 hire_date: '',
-                                 gross_salary: '',
-                                 functions: '',
-                                 username: '',
-                                 is_active: true,
-                               });
-                               setAssignments([]);
-                             } catch (error: any) {
-                               toast.error('Erro ao salvar atribuições: ' + error.message);
-                             }
-                           },
-                           onError: (error: any) => {
-                             toast.error('Erro ao adicionar professor: ' + error.message);
-                           },
-                         },
-                       );
-                     }
-                  }}
-                  disabled={
-                    createTeacherMutation.isPending ||
-                    !newTeacher.full_name ||
-                    !newTeacher.employee_number
-                  }
-                >
-                  {createTeacherMutation.isPending
-                    ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        A guardar...
-                      </>
-                    )
-                    : currentStep === 'salario'
-                      ? 'Concluir cadastro'
-                      : 'Próximo'}
                 </Button>
               </div>
             </div>

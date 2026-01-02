@@ -531,7 +531,11 @@ export function ClassDetails() {
                 </TableHeader>
                 <TableBody>
                   {filteredStudents.map((student, index) => (
-                    <TableRow key={student.id} className="table-row-hover cursor-pointer">
+                    <TableRow
+                      key={student.id}
+                      className="table-row-hover cursor-pointer"
+                      onClick={() => navigate(`/dashboard/financas/estudante/${student.id}`)}
+                    >
                       <TableCell>{index + 1}</TableCell>
                       <TableCell className="font-mono">{student.enrollment_number}</TableCell>
                       <TableCell className="font-medium">{student.full_name}</TableCell>
@@ -694,7 +698,7 @@ export function ClassDetails() {
         <TabsContent value="finance" className="space-y-4">
           <Card className="card-elevated">
             <CardHeader>
-              <CardTitle>Pagamentos dos Estudantes</CardTitle>
+              <CardTitle>Resumo Financeiro por Estudante</CardTitle>
             </CardHeader>
             <CardContent>
               <Table>
@@ -703,52 +707,43 @@ export function ClassDetails() {
                     <TableHead>N°</TableHead>
                     <TableHead>N° Matrícula</TableHead>
                     <TableHead>Nome do Estudante</TableHead>
-                    <TableHead>Mês/Ano</TableHead>
-                    <TableHead className="text-right">Valor</TableHead>
-                    <TableHead>Método</TableHead>
-                    <TableHead>Data do Pagamento</TableHead>
-                    <TableHead>Recibo</TableHead>
+                    <TableHead className="text-center">Meses pagos</TableHead>
+                    <TableHead className="text-center">Meses adiantados</TableHead>
+                    <TableHead className="text-center">Regalias</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {payments && payments.length > 0 ? (
-                    payments.map((payment, index) => {
-                      const student = students?.find((s) => s.id === payment.student_id);
+                  {filteredStudents.length > 0 ? (
+                    filteredStudents.map((student, index) => {
+                      const currentYear = new Date().getFullYear();
+                      const currentMonth = new Date().getMonth() + 1;
 
-                      const month = String(payment.month_reference).padStart(2, '0');
-                      const year = payment.year_reference;
-                      const paymentDate = payment.payment_date
-                        ? new Date(payment.payment_date).toLocaleDateString()
-                        : '-';
+                      const studentPayments = (payments || []).filter(
+                        (p) => p.student_id === student.id && p.year_reference === currentYear,
+                      );
+
+                      const uniqueMonths = Array.from(
+                        new Set(studentPayments.map((p) => p.month_reference)),
+                      );
+
+                      const monthsPaid = uniqueMonths.filter((m) => m <= currentMonth).length;
+                      const monthsInAdvance = uniqueMonths.filter((m) => m > currentMonth).length;
 
                       return (
-                        <TableRow key={payment.id ?? `${payment.student_id}-${index}`}>
+                        <TableRow key={student.id} className="table-row-hover">
                           <TableCell>{index + 1}</TableCell>
-                          <TableCell className="font-mono">
-                            {student?.enrollment_number ?? '-'}
-                          </TableCell>
-                          <TableCell className="font-medium">
-                            {student?.full_name ?? '-'}
-                          </TableCell>
-                          <TableCell>
-                            {month}/{year}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            {Number(payment.amount).toLocaleString('pt-PT', {
-                              style: 'currency',
-                              currency: 'AOA',
-                            })}
-                          </TableCell>
-                          <TableCell>{payment.payment_method ?? '-'}</TableCell>
-                          <TableCell>{paymentDate}</TableCell>
-                          <TableCell>{payment.receipt_number ?? '-'}</TableCell>
+                          <TableCell className="font-mono">{student.enrollment_number}</TableCell>
+                          <TableCell className="font-medium">{student.full_name}</TableCell>
+                          <TableCell className="text-center">{monthsPaid}</TableCell>
+                          <TableCell className="text-center">{monthsInAdvance}</TableCell>
+                          <TableCell className="text-center text-muted-foreground">-</TableCell>
                         </TableRow>
                       );
                     })
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
-                        Nenhum pagamento registado para esta turma
+                      <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                        Nenhum estudante matriculado nesta turma
                       </TableCell>
                     </TableRow>
                   )}
@@ -756,8 +751,8 @@ export function ClassDetails() {
               </Table>
             </CardContent>
           </Card>
-        </TabsContent>
-      </Tabs>
-    </div>
-  );
+</TabsContent>
+       </Tabs>
+     </div>
+   );
 }

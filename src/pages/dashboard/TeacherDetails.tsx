@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -26,6 +26,9 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import {
   BarChart,
   Bar,
@@ -37,7 +40,8 @@ import {
   LineChart,
   Line,
 } from 'recharts';
-import { useTeachers, useGrades, useStudents, useClasses } from '@/hooks/useDatabase';
+import { useTeachers, useGrades, useStudents, useClasses, useUpdateTeacher } from '@/hooks/useDatabase';
+import { toast } from 'sonner';
 
 export function TeacherDetails() {
   const { teacherId } = useParams();
@@ -49,6 +53,33 @@ export function TeacherDetails() {
   const { data: classes } = useClasses();
 
   const teacher = teachers?.find(t => t.id === teacherId);
+
+  const updateTeacher = useUpdateTeacher();
+  const [formValues, setFormValues] = useState({
+    full_name: '',
+    employee_number: '',
+    degree: '',
+    degree_area: '',
+    hire_date: '',
+    gross_salary: '',
+    functions: '',
+    is_active: true,
+  });
+
+  useEffect(() => {
+    if (teacher) {
+      setFormValues({
+        full_name: teacher.full_name || teacher.profiles?.full_name || '',
+        employee_number: teacher.employee_number || '',
+        degree: teacher.degree || '',
+        degree_area: teacher.degree_area || '',
+        hire_date: teacher.hire_date || '',
+        gross_salary: teacher.gross_salary ? String(teacher.gross_salary) : '',
+        functions: teacher.functions ? teacher.functions.join(', ') : '',
+        is_active: teacher.is_active ?? true,
+      });
+    }
+  }, [teacher]);
 
   if (!teacher) {
     return (
@@ -167,12 +198,12 @@ export function TeacherDetails() {
               <Avatar className="w-24 h-24">
                 <AvatarImage src={teacher.profiles?.avatar_url || undefined} />
                 <AvatarFallback className="text-2xl bg-primary/10 text-primary">
-                  {getInitials(teacher.profiles?.full_name || '')}
+                  {getInitials(formValues.full_name || teacher.profiles?.full_name || '')}
                 </AvatarFallback>
               </Avatar>
               <div>
-                <h2 className="text-2xl font-bold">{teacher.profiles?.full_name}</h2>
-                <p className="text-muted-foreground">Nº Funcionário: {teacher.employee_number}</p>
+                <h2 className="text-2xl font-bold">{formValues.full_name}</h2>
+                <p className="text-muted-foreground">Nº Funcionário: {formValues.employee_number}</p>
                 <div className="flex flex-wrap gap-2 mt-2">
                   {teacher.functions?.map((f: string, i: number) => (
                     <Badge key={i} variant="secondary">{f}</Badge>
@@ -194,20 +225,131 @@ export function TeacherDetails() {
               <div className="space-y-2">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <GraduationCap className="w-4 h-4" />
-                  <span>{teacher.degree} em {teacher.degree_area || 'Não informado'}</span>
+                  <span>{formValues.degree || 'Grau não informado'}{formValues.degree_area && ` em ${formValues.degree_area}`}</span>
                 </div>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Calendar className="w-4 h-4" />
-                  <span>Desde {teacher.hire_date ? new Date(teacher.hire_date).getFullYear() : 'Não informado'}</span>
+                  <span>
+                    Desde {formValues.hire_date ? new Date(formValues.hire_date).getFullYear() : 'Não informado'}
+                  </span>
                 </div>
               </div>
               <div className="space-y-2">
                 <p className="text-sm text-muted-foreground">Salário Bruto</p>
                 <p className="text-xl font-bold text-primary">
-                  {formatCurrency(teacher.gross_salary || 0)}
+                  {formValues.gross_salary
+                    ? formatCurrency(Number(formValues.gross_salary))
+                    : formatCurrency(teacher.gross_salary || 0)}
                 </p>
               </div>
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Edit Form */}
+      <Card className="card-elevated">
+        <CardHeader>
+          <CardTitle>Dados do Professor</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Nome completo</Label>
+              <Input
+                value={formValues.full_name}
+                onChange={(e) => setFormValues((prev) => ({ ...prev, full_name: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Nº de funcionário</Label>
+              <Input value={formValues.employee_number} disabled />
+            </div>
+            <div className="space-y-2">
+              <Label>Grau académico</Label>
+              <Input
+                value={formValues.degree}
+                onChange={(e) => setFormValues((prev) => ({ ...prev, degree: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Área de formação</Label>
+              <Input
+                value={formValues.degree_area}
+                onChange={(e) => setFormValues((prev) => ({ ...prev, degree_area: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Data de contratação</Label>
+              <Input
+                type="date"
+                value={formValues.hire_date}
+                onChange={(e) => setFormValues((prev) => ({ ...prev, hire_date: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Salário bruto (AOA)</Label>
+              <Input
+                type="number"
+                value={formValues.gross_salary}
+                onChange={(e) => setFormValues((prev) => ({ ...prev, gross_salary: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2 md:col-span-2">
+              <Label>Funções</Label>
+              <Input
+                placeholder="Ex: Coordenador de Turma, Orientador"
+                value={formValues.functions}
+                onChange={(e) => setFormValues((prev) => ({ ...prev, functions: e.target.value }))}
+              />
+              <p className="text-xs text-muted-foreground">Separe múltiplas funções por vírgula.</p>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between pt-2">
+            <div className="flex items-center gap-3">
+              <Switch
+                checked={formValues.is_active}
+                onCheckedChange={(checked) =>
+                  setFormValues((prev) => ({ ...prev, is_active: checked }))
+                }
+              />
+              <span className="text-sm">
+                {formValues.is_active ? 'Professor ativo' : 'Professor inativo'}
+              </span>
+            </div>
+            <Button
+              className="btn-primary"
+              disabled={updateTeacher.isPending || !formValues.full_name}
+              onClick={() => {
+                updateTeacher.mutate(
+                  {
+                    id: teacher.id,
+                    full_name: formValues.full_name,
+                    degree: formValues.degree || null,
+                    degree_area: formValues.degree_area || null,
+                    hire_date: formValues.hire_date || null,
+                    gross_salary: formValues.gross_salary
+                      ? Number(formValues.gross_salary)
+                      : null,
+                    functions: formValues.functions
+                      ? formValues.functions.split(',').map((f) => f.trim()).filter(Boolean)
+                      : [],
+                    is_active: formValues.is_active,
+                  },
+                  {
+                    onSuccess: () => {
+                      toast.success('Dados do professor atualizados com sucesso!');
+                    },
+                    onError: (error: any) => {
+                      toast.error('Erro ao atualizar professor: ' + error.message);
+                    },
+                  },
+                );
+              }}
+            >
+              {updateTeacher.isPending ? 'A guardar...' : 'Guardar alterações'}
+            </Button>
           </div>
         </CardContent>
       </Card>

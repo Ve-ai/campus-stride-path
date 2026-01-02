@@ -574,7 +574,11 @@ export function Teachers() {
                 </TableRow>
               ) : (
                 filteredTeachers.map((teacher, index) => (
-                  <TableRow key={teacher.id} className="table-row-hover cursor-pointer" onClick={() => setSelectedTeacher(teacher)}>
+                  <TableRow
+                    key={teacher.id}
+                    className="table-row-hover cursor-pointer"
+                    onClick={() => navigate(`/dashboard/professores/${teacher.id}`)}
+                  >
                     <TableCell className="font-medium">{String(index + 1).padStart(2, '0')}</TableCell>
                     <TableCell>{teacher.employee_number}</TableCell>
                     <TableCell className="font-medium">{teacher.full_name || teacher.profiles?.full_name || '-'}</TableCell>
@@ -621,13 +625,22 @@ export function Teachers() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedTeacher(teacher);
-                          }}>Ver Perfil</DropdownMenuItem>
-                          <DropdownMenuItem>Editar Dados</DropdownMenuItem>
-                          <DropdownMenuItem>Ver Turmas</DropdownMenuItem>
-                          <DropdownMenuItem>Avaliar Desempenho</DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedTeacher(teacher);
+                            }}
+                          >
+                            Ver Perfil Rápido
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/dashboard/professores/${teacher.id}`);
+                            }}
+                          >
+                            Página de Detalhes
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>

@@ -43,12 +43,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useTeachers, useCourses, useCreateTeacher } from '@/hooks/useDatabase';
+import { useTeachers, useCourses, useCreateTeacher, useUpdateTeacher } from '@/hooks/useDatabase';
 import { toast } from 'sonner';
 
 export function Teachers() {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
+  const [disciplineFilter, setDisciplineFilter] = useState<string>('todas');
+  const [statusFilter, setStatusFilter] = useState<'todos' | 'ativos' | 'inativos'>('todos');
   const [selectedTeacher, setSelectedTeacher] = useState<any | null>(null);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [currentStep, setCurrentStep] = useState<'pessoais' | 'profissionais' | 'formacao' | 'salario'>('pessoais');
@@ -65,19 +67,35 @@ export function Teachers() {
     gross_salary: '',
     functions: '',
     username: '',
+    is_active: true,
   });
 
   const { data: teachers, isLoading, error } = useTeachers();
   const { data: courses } = useCourses();
 
   const createTeacherMutation = useCreateTeacher();
+  const updateTeacherMutation = useUpdateTeacher();
 
   const filteredTeachers =
-    teachers?.filter(
-      (teacher) =>
-        teacher.profiles?.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        teacher.employee_number?.includes(searchTerm)
-    ) || [];
+    teachers
+      ?.filter((teacher) => {
+        const matchesSearch =
+          teacher.profiles?.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          teacher.employee_number?.includes(searchTerm);
+
+        const matchesDiscipline =
+          disciplineFilter === 'todas' ||
+          teacher.teacher_class_assignments?.some(
+            (a: any) => a.subject?.id === disciplineFilter
+          );
+
+        const matchesStatus =
+          statusFilter === 'todos' ||
+          (statusFilter === 'ativos' && teacher.is_active) ||
+          (statusFilter === 'inativos' && !teacher.is_active);
+
+        return matchesSearch && matchesDiscipline && matchesStatus;
+      }) || [];
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-AO', {
@@ -219,6 +237,27 @@ export function Teachers() {
                       onChange={(e) => setNewTeacher({ ...newTeacher, hire_date: e.target.value })}
                     />
                   </div>
+                  <div className="space-y-2">
+                    <Label>Estado</Label>
+                    <div className="flex items-center gap-3">
+                      <Button
+                        type="button"
+                        variant={newTeacher.is_active ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setNewTeacher({ ...newTeacher, is_active: true })}
+                      >
+                        Ativo
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={!newTeacher.is_active ? 'destructive' : 'outline'}
+                        size="sm"
+                        onClick={() => setNewTeacher({ ...newTeacher, is_active: false })}
+                      >
+                        Inativo
+                      </Button>
+                    </div>
+                  </div>
                   <div className="col-span-2 space-y-2">
                     <Label>Funções Adicionais</Label>
                     <Input
@@ -325,6 +364,7 @@ export function Teachers() {
                           functions: newTeacher.functions
                             ? newTeacher.functions.split(',').map((f) => f.trim())
                             : [],
+                          is_active: newTeacher.is_active,
                         },
                         {
                           onSuccess: () => {
@@ -344,6 +384,7 @@ export function Teachers() {
                               gross_salary: '',
                               functions: '',
                               username: '',
+                              is_active: true,
                             });
                           },
                           onError: (error: any) => {
@@ -432,15 +473,73 @@ export function Teachers() {
         </Card>
       </div>
 
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-        <Input
-          placeholder="Pesquisar por nome ou número de funcionário..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="pl-10 input-field"
-        />
+      {/* Pesquisa e filtros */}
+      <div className="space-y-3">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+          <Input
+            placeholder="Pesquisar por nome ou número de funcionário..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10 input-field"
+          />
+        </div>
+        <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+          <div className="flex flex-wrap gap-3">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Disciplina:</span>
+              <Select
+                value={disciplineFilter}
+                onValueChange={setDisciplineFilter}
+              >
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Todas" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todas">Todas</SelectItem>
+                  {Array.from(
+                    new Map(
+                      (teachers || [])
+                        .flatMap((t: any) => t.teacher_class_assignments || [])
+                        .filter((a: any) => !!a.subject)
+                        .map((a: any) => [a.subject.id, a.subject])
+                    ).values()
+                  ).map((subject: any) => (
+                    <SelectItem key={subject.id} value={subject.id}>
+                      {subject.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant={statusFilter === 'todos' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setStatusFilter('todos')}
+            >
+              Todos
+            </Button>
+            <Button
+              type="button"
+              variant={statusFilter === 'ativos' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setStatusFilter('ativos')}
+            >
+              Ativos
+            </Button>
+            <Button
+              type="button"
+              variant={statusFilter === 'inativos' ? 'destructive' : 'outline'}
+              size="sm"
+              onClick={() => setStatusFilter('inativos')}
+            >
+              Inativos
+            </Button>
+          </div>
+        </div>
       </div>
 
       {/* Teachers Table */}
@@ -458,6 +557,7 @@ export function Teachers() {
                 <TableHead>Grau</TableHead>
                 <TableHead>Disciplina(s)</TableHead>
                 <TableHead>Salário Bruto</TableHead>
+                <TableHead>Estado</TableHead>
                 <TableHead>Funções</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>

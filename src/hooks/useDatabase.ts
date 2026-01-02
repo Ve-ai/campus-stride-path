@@ -114,7 +114,6 @@ export function useTeachers() {
             subject:subjects (id, name)
           )
         `)
-        .eq('is_active', true)
         .order('created_at', { ascending: false });
       
       if (error) throw error;
@@ -122,6 +121,7 @@ export function useTeachers() {
     },
   });
 }
+
 
 // Grades
 export function useGrades(filters?: { studentId?: string; classId?: string; subjectId?: string; trimester?: number }) {
@@ -422,6 +422,7 @@ export function useCreateTeacher() {
       hire_date?: string;
       gross_salary?: number;
       functions?: string[];
+      is_active?: boolean;
     }) => {
       const { data, error } = await supabase
         .from('teachers')
@@ -438,6 +439,30 @@ export function useCreateTeacher() {
     },
   });
 }
+
+// Update Teacher
+export function useUpdateTeacher() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, ...updates }: { id: string; is_active?: boolean }) => {
+      const { data, error } = await supabase
+        .from('teachers')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['teachers'] });
+      queryClient.invalidateQueries({ queryKey: ['statistics'] });
+    },
+  });
+}
+
 
 // Update Course
 export function useUpdateCourse() {

@@ -45,8 +45,6 @@ import {
 } from '@/components/ui/select';
 import { useTeachers, useCourses, useCreateTeacher } from '@/hooks/useDatabase';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 export function Teachers() {
   const navigate = useNavigate();
@@ -71,76 +69,15 @@ export function Teachers() {
 
   const { data: teachers, isLoading, error } = useTeachers();
   const { data: courses } = useCourses();
-  const queryClient = useQueryClient();
 
-  // Create teacher mutation with profile creation
-  const createTeacherMutation = useMutation({
-    mutationFn: async (teacherData: typeof newTeacher) => {
-      // First, create the profile
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .insert({
-          user_id: crypto.randomUUID(), // Generate a placeholder user_id
-          full_name: teacherData.full_name,
-          phone: teacherData.phone,
-          bi_number: teacherData.bi_number,
-          birth_date: teacherData.birth_date || null,
-          birth_place: teacherData.birth_place,
-        })
-        .select()
-        .single();
+  const createTeacherMutation = useCreateTeacher();
 
-      if (profileError) throw profileError;
-
-      // Then create the teacher
-      const { data: teacher, error: teacherError } = await supabase
-        .from('teachers')
-        .insert({
-          profile_id: profileData.id,
-          employee_number: teacherData.employee_number,
-          degree: teacherData.degree || null,
-          degree_area: teacherData.degree_area || null,
-          hire_date: teacherData.hire_date || null,
-          gross_salary: teacherData.gross_salary ? parseFloat(teacherData.gross_salary) : 0,
-          functions: teacherData.functions ? teacherData.functions.split(',').map(f => f.trim()) : [],
-        })
-        .select()
-        .single();
-
-      if (teacherError) throw teacherError;
-      return teacher;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['teachers'] });
-      queryClient.invalidateQueries({ queryKey: ['statistics'] });
-      toast.success('Professor adicionado com sucesso!');
-      setIsAddDialogOpen(false);
-      setCurrentStep('pessoais');
-      setNewTeacher({
-        full_name: '',
-        phone: '',
-        bi_number: '',
-        birth_date: '',
-        birth_place: '',
-        employee_number: '',
-        degree: '',
-        degree_area: '',
-        hire_date: '',
-        gross_salary: '',
-        functions: '',
-        username: '',
-      });
-    },
-    onError: (error: any) => {
-      toast.error('Erro ao adicionar professor: ' + error.message);
-    },
-  });
-
-  const filteredTeachers = teachers?.filter(
-    (teacher) =>
-      teacher.profiles?.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      teacher.employee_number?.includes(searchTerm)
-  ) || [];
+  const filteredTeachers =
+    teachers?.filter(
+      (teacher) =>
+        teacher.profiles?.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        teacher.employee_number?.includes(searchTerm)
+    ) || [];
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-AO', {
@@ -376,7 +313,44 @@ export function Teachers() {
                     if (!isLast) {
                       setCurrentStep(order[idx + 1]);
                     } else {
-                      createTeacherMutation.mutate(newTeacher);
+                      createTeacherMutation.mutate(
+                        {
+                          employee_number: newTeacher.employee_number,
+                          degree: newTeacher.degree || undefined,
+                          degree_area: newTeacher.degree_area || undefined,
+                          hire_date: newTeacher.hire_date || undefined,
+                          gross_salary: newTeacher.gross_salary
+                            ? parseFloat(newTeacher.gross_salary)
+                            : undefined,
+                          functions: newTeacher.functions
+                            ? newTeacher.functions.split(',').map((f) => f.trim())
+                            : [],
+                        },
+                        {
+                          onSuccess: () => {
+                            toast.success('Professor adicionado com sucesso!');
+                            setIsAddDialogOpen(false);
+                            setCurrentStep('pessoais');
+                            setNewTeacher({
+                              full_name: '',
+                              phone: '',
+                              bi_number: '',
+                              birth_date: '',
+                              birth_place: '',
+                              employee_number: '',
+                              degree: '',
+                              degree_area: '',
+                              hire_date: '',
+                              gross_salary: '',
+                              functions: '',
+                              username: '',
+                            });
+                          },
+                          onError: (error: any) => {
+                            toast.error('Erro ao adicionar professor: ' + error.message);
+                          },
+                        }
+                      );
                     }
                   }}
                   disabled={

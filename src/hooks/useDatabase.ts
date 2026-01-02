@@ -110,6 +110,7 @@ export function useTeachers() {
           ),
           teacher_class_assignments (
             id,
+            schedule,
             class:classes (id, section, grade_level, course:courses (name)),
             subject:subjects (id, name)
           )
@@ -472,6 +473,34 @@ export function useUpdateTeacher() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['teachers'] });
       queryClient.invalidateQueries({ queryKey: ['statistics'] });
+    },
+  });
+}
+
+// Update teacher class assignment schedule
+export function useUpdateTeacherAssignmentSchedule() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      id,
+      schedule,
+    }: {
+      id: string;
+      schedule: any;
+    }) => {
+      const { data, error } = await supabase
+        .from('teacher_class_assignments')
+        .update({ schedule })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['teachers'] });
     },
   });
 }

@@ -55,6 +55,7 @@ export function ClassDetails() {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [newStudent, setNewStudent] = useState({
     enrollment_number: '',
     full_name: '',
@@ -144,7 +145,7 @@ export function ClassDetails() {
     s.enrollment_number.toLowerCase().includes(searchTerm.toLowerCase())
   ) || [];
 
-  const handleCreateStudent = () => {
+  const handleCreateStudent = async () => {
     if (!newStudent.full_name.trim()) {
       toast.error('Nome do estudante é obrigatório');
       return;
@@ -166,6 +167,29 @@ export function ClassDetails() {
     const enrollmentDate = newStudent.enrollment_date || new Date();
     const enrollmentYear = enrollmentDate.getFullYear();
 
+    let photoUrl: string | undefined;
+
+    if (photoFile) {
+      const fileExt = photoFile.name.split('.').pop();
+      const fileName = `${newStudent.enrollment_number || generateEnrollmentNumber()}-${Date.now()}.${fileExt}`;
+      const filePath = `students/${fileName}`;
+
+      const { data, error } = await supabase.storage
+        .from('student-photos')
+        .upload(filePath, photoFile);
+
+      if (error) {
+        toast.error('Erro ao carregar foto: ' + error.message);
+        return;
+      }
+
+      const publicUrl = supabase.storage
+        .from('student-photos')
+        .getPublicUrl(data.path).data.publicUrl;
+
+      photoUrl = publicUrl;
+    }
+
     createStudent.mutate(
       {
         enrollment_number: newStudent.enrollment_number,
@@ -180,12 +204,14 @@ export function ClassDetails() {
         province: newStudent.province || undefined,
         parent_names: parentNames || undefined,
         birth_date: birthDateString as any,
+        photo_url: photoUrl,
       },
       {
         onSuccess: () => {
           toast.success('Estudante criado com sucesso!');
           refetchStudents();
           setIsDialogOpen(false);
+          setPhotoFile(null);
           setNewStudent({
             enrollment_number: '',
             full_name: '',
@@ -207,7 +233,6 @@ export function ClassDetails() {
       },
     );
   };
-
   if (!classData) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -251,6 +276,14 @@ export function ClassDetails() {
               <DialogTitle>Novo Estudante para esta Turma</DialogTitle>
             </DialogHeader>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
+              <div className="space-y-2 md:col-span-2">
+                <Label>Foto do estudante</Label>
+                <Input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setPhotoFile(e.target.files?.[0] || null)}
+                />
+              </div>
               <div className="space-y-2 md:col-span-2">
                 <Label>Nome Completo *</Label>
                 <Input

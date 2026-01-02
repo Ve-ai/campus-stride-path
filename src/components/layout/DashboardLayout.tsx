@@ -92,7 +92,7 @@ export function DashboardLayout() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex">
+    <div className="h-screen bg-background flex overflow-hidden">
       {/* Mobile Overlay */}
       {isSidebarOpen && (
         <div

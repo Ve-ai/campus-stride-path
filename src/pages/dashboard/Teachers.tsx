@@ -53,6 +53,7 @@ export function Teachers() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTeacher, setSelectedTeacher] = useState<any | null>(null);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [currentStep, setCurrentStep] = useState<'pessoais' | 'profissionais' | 'formacao' | 'salario'>('pessoais');
   const [newTeacher, setNewTeacher] = useState({
     full_name: '',
     phone: '',
@@ -65,6 +66,7 @@ export function Teachers() {
     hire_date: '',
     gross_salary: '',
     functions: '',
+    username: '',
   });
 
   const { data: teachers, isLoading, error } = useTeachers();
@@ -113,6 +115,7 @@ export function Teachers() {
       queryClient.invalidateQueries({ queryKey: ['statistics'] });
       toast.success('Professor adicionado com sucesso!');
       setIsAddDialogOpen(false);
+      setCurrentStep('pessoais');
       setNewTeacher({
         full_name: '',
         phone: '',
@@ -125,6 +128,7 @@ export function Teachers() {
         hire_date: '',
         gross_salary: '',
         functions: '',
+        username: '',
       });
     },
     onError: (error: any) => {
@@ -202,91 +206,101 @@ export function Teachers() {
             <DialogHeader>
               <DialogTitle>Adicionar Novo Professor</DialogTitle>
             </DialogHeader>
-            <Tabs defaultValue="pessoais" className="w-full">
-              <TabsList className="grid w-full grid-cols-4">
-                <TabsTrigger value="pessoais">Dados Pessoais</TabsTrigger>
-                <TabsTrigger value="profissionais">Profissionais</TabsTrigger>
-                <TabsTrigger value="formacao">Formação</TabsTrigger>
-                <TabsTrigger value="salario">Salário</TabsTrigger>
-              </TabsList>
-              <TabsContent value="pessoais" className="space-y-4 py-4">
+            <div className="space-y-4 py-4">
+              <div className="flex items-center justify-between text-sm text-muted-foreground">
+                <span>
+                  Passo {['pessoais', 'profissionais', 'formacao', 'salario'].indexOf(currentStep) + 1} de 4
+                </span>
+                <span className="font-medium capitalize">
+                  {currentStep === 'pessoais' && 'Dados pessoais'}
+                  {currentStep === 'profissionais' && 'Dados profissionais'}
+                  {currentStep === 'formacao' && 'Formação'}
+                  {currentStep === 'salario' && 'Salário'}
+                </span>
+              </div>
+
+              {currentStep === 'pessoais' && (
                 <div className="grid grid-cols-2 gap-4">
                   <div className="col-span-2 space-y-2">
                     <Label>Nome Completo *</Label>
-                    <Input 
-                      placeholder="Nome completo do professor" 
+                    <Input
+                      placeholder="Nome completo do professor"
                       value={newTeacher.full_name}
                       onChange={(e) => setNewTeacher({ ...newTeacher, full_name: e.target.value })}
                     />
                   </div>
                   <div className="space-y-2">
                     <Label>Data de Nascimento</Label>
-                    <Input 
-                      type="date" 
+                    <Input
+                      type="date"
                       value={newTeacher.birth_date}
                       onChange={(e) => setNewTeacher({ ...newTeacher, birth_date: e.target.value })}
                     />
                   </div>
                   <div className="space-y-2">
                     <Label>Local de Nascimento</Label>
-                    <Input 
-                      placeholder="Ex: Luanda" 
+                    <Input
+                      placeholder="Ex: Luanda"
                       value={newTeacher.birth_place}
                       onChange={(e) => setNewTeacher({ ...newTeacher, birth_place: e.target.value })}
                     />
                   </div>
                   <div className="space-y-2">
                     <Label>Número do BI</Label>
-                    <Input 
-                      placeholder="Ex: 000123456LA789" 
+                    <Input
+                      placeholder="Ex: 000123456LA789"
                       value={newTeacher.bi_number}
                       onChange={(e) => setNewTeacher({ ...newTeacher, bi_number: e.target.value })}
                     />
                   </div>
                   <div className="space-y-2">
                     <Label>Contacto</Label>
-                    <Input 
-                      placeholder="Ex: 925 654 254" 
+                    <Input
+                      placeholder="Ex: 925 654 254"
                       value={newTeacher.phone}
                       onChange={(e) => setNewTeacher({ ...newTeacher, phone: e.target.value })}
                     />
                   </div>
                 </div>
-              </TabsContent>
-              <TabsContent value="profissionais" className="space-y-4 py-4">
+              )}
+
+              {currentStep === 'profissionais' && (
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Nº de Funcionário *</Label>
-                    <Input 
-                      placeholder="Ex: PROF-2025-001" 
+                    <Input
+                      placeholder="Ex: PROF-2025-001"
                       value={newTeacher.employee_number}
                       onChange={(e) => setNewTeacher({ ...newTeacher, employee_number: e.target.value })}
                     />
                   </div>
                   <div className="space-y-2">
                     <Label>Data de Contratação</Label>
-                    <Input 
-                      type="date" 
+                    <Input
+                      type="date"
                       value={newTeacher.hire_date}
                       onChange={(e) => setNewTeacher({ ...newTeacher, hire_date: e.target.value })}
                     />
                   </div>
                   <div className="col-span-2 space-y-2">
                     <Label>Funções Adicionais</Label>
-                    <Input 
-                      placeholder="Ex: Coordenador de Turma, Orientador" 
+                    <Input
+                      placeholder="Ex: Coordenador de Turma, Orientador"
                       value={newTeacher.functions}
                       onChange={(e) => setNewTeacher({ ...newTeacher, functions: e.target.value })}
                     />
-                    <p className="text-xs text-muted-foreground">Separe múltiplas funções por vírgula</p>
+                    <p className="text-xs text-muted-foreground">
+                      Separe múltiplas funções por vírgula
+                    </p>
                   </div>
                 </div>
-              </TabsContent>
-              <TabsContent value="formacao" className="space-y-4 py-4">
+              )}
+
+              {currentStep === 'formacao' && (
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Grau Académico</Label>
-                    <Select 
+                    <Select
                       value={newTeacher.degree}
                       onValueChange={(v) => setNewTeacher({ ...newTeacher, degree: v })}
                     >
@@ -303,46 +317,86 @@ export function Teachers() {
                   </div>
                   <div className="space-y-2">
                     <Label>Área de Formação</Label>
-                    <Input 
-                      placeholder="Ex: Engenharia Informática" 
+                    <Input
+                      placeholder="Ex: Engenharia Informática"
                       value={newTeacher.degree_area}
                       onChange={(e) => setNewTeacher({ ...newTeacher, degree_area: e.target.value })}
                     />
                   </div>
                 </div>
-              </TabsContent>
-              <TabsContent value="salario" className="space-y-4 py-4">
+              )}
+
+              {currentStep === 'salario' && (
                 <div className="space-y-4">
                   <div className="space-y-2">
+                    <Label>Nome de utilizador para acesso</Label>
+                    <Input
+                      placeholder="Ex: j.silva"
+                      value={newTeacher.username}
+                      onChange={(e) => setNewTeacher({ ...newTeacher, username: e.target.value })}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Este nome de utilizador será associado às credenciais do professor.
+                    </p>
+                  </div>
+                  <div className="space-y-2">
                     <Label>Salário Bruto (AOA)</Label>
-                    <Input 
-                      type="number" 
-                      placeholder="Ex: 85000" 
+                    <Input
+                      type="number"
+                      placeholder="Ex: 85000"
                       value={newTeacher.gross_salary}
                       onChange={(e) => setNewTeacher({ ...newTeacher, gross_salary: e.target.value })}
                     />
                   </div>
                 </div>
-              </TabsContent>
-            </Tabs>
-            <div className="flex justify-end gap-3 pt-4">
-              <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
-                Cancelar
-              </Button>
-              <Button 
-                className="btn-primary" 
-                onClick={() => createTeacherMutation.mutate(newTeacher)}
-                disabled={createTeacherMutation.isPending || !newTeacher.full_name || !newTeacher.employee_number}
-              >
-                {createTeacherMutation.isPending ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Adicionando...
-                  </>
-                ) : (
-                  'Adicionar Professor'
-                )}
-              </Button>
+              )}
+
+              <div className="flex justify-between gap-3 pt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    if (currentStep === 'pessoais') {
+                      setIsAddDialogOpen(false);
+                    } else {
+                      const order: Array<'pessoais' | 'profissionais' | 'formacao' | 'salario'> = ['pessoais', 'profissionais', 'formacao', 'salario'];
+                      const idx = order.indexOf(currentStep);
+                      setCurrentStep(order[Math.max(0, idx - 1)]);
+                    }
+                  }}
+                >
+                  {currentStep === 'pessoais' ? 'Cancelar' : 'Anterior'}
+                </Button>
+                <Button
+                  className="btn-primary"
+                  onClick={() => {
+                    const order: Array<'pessoais' | 'profissionais' | 'formacao' | 'salario'> = ['pessoais', 'profissionais', 'formacao', 'salario'];
+                    const idx = order.indexOf(currentStep);
+                    const isLast = idx === order.length - 1;
+
+                    if (!isLast) {
+                      setCurrentStep(order[idx + 1]);
+                    } else {
+                      createTeacherMutation.mutate(newTeacher);
+                    }
+                  }}
+                  disabled={
+                    createTeacherMutation.isPending ||
+                    !newTeacher.full_name ||
+                    !newTeacher.employee_number
+                  }
+                >
+                  {createTeacherMutation.isPending
+                    ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        A guardar...
+                      </>
+                    )
+                    : currentStep === 'salario'
+                      ? 'Concluir cadastro'
+                      : 'Próximo'}
+                </Button>
+              </div>
             </div>
           </DialogContent>
         </Dialog>

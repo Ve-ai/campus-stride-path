@@ -488,26 +488,119 @@ export function Teachers() {
                     if (currentStep === 'pessoais') {
                       setIsAddDialogOpen(false);
                     } else {
-                      const order: Array<'pessoais' | 'profissionais' | 'formacao' | 'turmas' | 'salario'> = ['pessoais', 'profissionais', 'formacao', 'turmas', 'salario'];
+                      const order: Array<'pessoais' | 'profissionais' | 'formacao' | 'turmas' | 'salario'> = [
+                        'pessoais',
+                        'profissionais',
+                        'formacao',
+                        'turmas',
+                        'salario',
+                      ];
                       const idx = order.indexOf(currentStep);
                       setCurrentStep(order[Math.max(0, idx - 1)]);
                     }
                   }}
                 >
-                         {
-                           employee_number: newTeacher.employee_number,
-                           full_name: newTeacher.full_name,
-                           degree: newTeacher.degree || undefined,
-                           degree_area: newTeacher.degree_area || undefined,
-                           hire_date: newTeacher.hire_date || undefined,
-                           gross_salary: newTeacher.gross_salary
-                             ? parseFloat(newTeacher.gross_salary)
-                             : undefined,
-                           functions: newTeacher.functions
-                             ? newTeacher.functions.split(',').map((f) => f.trim())
-                             : [],
-                           is_active: newTeacher.is_active,
-                         },
+                  {currentStep === 'pessoais' ? 'Cancelar' : 'Anterior'}
+                </Button>
+                <Button
+                  className="btn-primary"
+                  onClick={() => {
+                    const order: Array<'pessoais' | 'profissionais' | 'formacao' | 'turmas' | 'salario'> = [
+                      'pessoais',
+                      'profissionais',
+                      'formacao',
+                      'turmas',
+                      'salario',
+                    ];
+                    const idx = order.indexOf(currentStep);
+                    const isLast = idx === order.length - 1;
+
+                    if (!isLast) {
+                      setCurrentStep(order[idx + 1]);
+                    } else {
+                      createTeacherMutation.mutate(
+                        {
+                          employee_number: newTeacher.employee_number,
+                          full_name: newTeacher.full_name,
+                          degree: newTeacher.degree || undefined,
+                          degree_area: newTeacher.degree_area || undefined,
+                          hire_date: newTeacher.hire_date || undefined,
+                          gross_salary: newTeacher.gross_salary
+                            ? parseFloat(newTeacher.gross_salary)
+                            : undefined,
+                          functions: newTeacher.functions
+                            ? newTeacher.functions.split(',').map((f) => f.trim())
+                            : [],
+                          is_active: newTeacher.is_active,
+                        },
+                        {
+                          onSuccess: async (createdTeacher: any) => {
+                            try {
+                              if (assignments.length) {
+                                const validAssignments = assignments.filter(
+                                  (a) => a.classId && a.subjectId && a.periods.length,
+                                );
+
+                                if (validAssignments.length) {
+                                  await createTeacherAssignmentsMutation.mutateAsync(
+                                    validAssignments.map((a) => ({
+                                      teacher_id: createdTeacher.id,
+                                      class_id: a.classId!,
+                                      subject_id: a.subjectId!,
+                                      periods: a.periods,
+                                    })),
+                                  );
+                                }
+                              }
+
+                              toast.success('Professor adicionado com sucesso!');
+                              setIsAddDialogOpen(false);
+                              setCurrentStep('pessoais');
+                              setNewTeacher({
+                                full_name: '',
+                                phone: '',
+                                bi_number: '',
+                                birth_date: '',
+                                birth_place: '',
+                                employee_number: '',
+                                degree: '',
+                                degree_area: '',
+                                hire_date: '',
+                                gross_salary: '',
+                                functions: '',
+                                username: '',
+                                is_active: true,
+                              });
+                              setAssignments([]);
+                            } catch (error: any) {
+                              toast.error('Erro ao salvar atribuições: ' + error.message);
+                            }
+                          },
+                          onError: (error: any) => {
+                            toast.error('Erro ao adicionar professor: ' + error.message);
+                          },
+                        },
+                      );
+                    }
+                  }}
+                  disabled={
+                    createTeacherMutation.isPending ||
+                    !newTeacher.full_name ||
+                    !newTeacher.employee_number
+                  }
+                >
+                  {createTeacherMutation.isPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      A guardar...
+                    </>
+                  ) : currentStep === 'salario' ? (
+                    'Concluir cadastro'
+                  ) : (
+                    'Próximo'
+                  )}
+                </Button>
+              </div>
                          {
                            onSuccess: async (createdTeacher: any) => {
                              try {

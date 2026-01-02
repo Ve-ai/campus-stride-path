@@ -8,6 +8,7 @@ import {
   Download,
   UserPlus,
   Search,
+  CalendarIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,14 +28,55 @@ import {
   TabsTrigger,
 } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { useClasses, useCourses, useTeachers, useSubjects } from '@/hooks/useDatabase';
+import { Label } from '@/components/ui/label';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { cn } from '@/lib/utils';
+import { useClasses, useCourses, useTeachers, useSubjects, useCreateStudent } from '@/hooks/useDatabase';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
-
+import { toast } from 'sonner';
 export function ClassDetails() {
   const { classId } = useParams();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [newStudent, setNewStudent] = useState({
+    enrollment_number: '',
+    full_name: '',
+    gender: 'Masculino',
+    bi_number: '',
+    birth_date: undefined as Date | undefined,
+    birthplace: '',
+    province: '',
+    father_name: '',
+    mother_name: '',
+    guardian_name: '',
+    guardian_contact: '',
+    enrollment_date: undefined as Date | undefined,
+  });
+
+  const createStudent = useCreateStudent();
+  
+  const generateEnrollmentNumber = () => {
+    const year = new Date().getFullYear();
+    const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+    return `${year}${random}`;
+  };
   
   const { data: classes } = useClasses();
   const { data: courses } = useCourses();
@@ -42,7 +84,7 @@ export function ClassDetails() {
   const { data: subjects } = useSubjects();
 
   // Fetch students for this class
-  const { data: students } = useQuery({
+  const { data: students, refetch: refetchStudents } = useQuery({
     queryKey: ['students', classId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -83,6 +125,70 @@ export function ClassDetails() {
     s.enrollment_number.toLowerCase().includes(searchTerm.toLowerCase())
   ) || [];
 
+  const handleCreateStudent = () => {
+    if (!newStudent.full_name.trim()) {
+      toast.error('Nome do estudante é obrigatório');
+      return;
+    }
+
+    if (!newStudent.enrollment_number) {
+      toast.error('Número de matrícula é obrigatório');
+      return;
+    }
+
+    const parentNames = [newStudent.father_name, newStudent.mother_name]
+      .filter((n) => n.trim().length > 0)
+      .join(' / ');
+
+    const birthDateString = newStudent.birth_date
+      ? newStudent.birth_date.toISOString().split('T')[0]
+      : undefined;
+
+    const enrollmentDate = newStudent.enrollment_date || new Date();
+    const enrollmentYear = enrollmentDate.getFullYear();
+
+    createStudent.mutate(
+      {
+        enrollment_number: newStudent.enrollment_number,
+        full_name: newStudent.full_name,
+        enrollment_year: enrollmentYear,
+        gender: newStudent.gender,
+        class_id: classId,
+        guardian_name: newStudent.guardian_name || undefined,
+        guardian_contact: newStudent.guardian_contact || undefined,
+        bi_number: newStudent.bi_number || undefined,
+        birthplace: newStudent.birthplace || undefined,
+        province: newStudent.province || undefined,
+        parent_names: parentNames || undefined,
+        birth_date: birthDateString as any,
+      },
+      {
+        onSuccess: () => {
+          toast.success('Estudante criado com sucesso!');
+          refetchStudents();
+          setIsDialogOpen(false);
+          setNewStudent({
+            enrollment_number: '',
+            full_name: '',
+            gender: 'Masculino',
+            bi_number: '',
+            birth_date: undefined,
+            birthplace: '',
+            province: '',
+            father_name: '',
+            mother_name: '',
+            guardian_name: '',
+            guardian_contact: '',
+            enrollment_date: undefined,
+          });
+        },
+        onError: (error) => {
+          toast.error('Erro ao criar estudante: ' + error.message);
+        },
+      },
+    );
+  };
+
   if (!classData) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -106,10 +212,206 @@ export function ClassDetails() {
             Diretor de Turma: {director?.profiles?.full_name || 'Não atribuído'}
           </p>
         </div>
-        <Button className="btn-primary">
-          <UserPlus className="w-4 h-4 mr-2" />
-          Adicionar Estudante
-        </Button>
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTrigger asChild>
+            <Button
+              className="btn-primary"
+              onClick={() => {
+                setNewStudent((current) => ({
+                  ...current,
+                  enrollment_number: current.enrollment_number || generateEnrollmentNumber(),
+                }));
+              }}
+            >
+              <UserPlus className="w-4 h-4 mr-2" />
+              Adicionar Estudante
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Novo Estudante para esta Turma</DialogTitle>
+            </DialogHeader>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
+              <div className="space-y-2 md:col-span-2">
+                <Label>Nome Completo *</Label>
+                <Input
+                  placeholder="Nome do estudante"
+                  value={newStudent.full_name}
+                  onChange={(e) =>
+                    setNewStudent({ ...newStudent, full_name: e.target.value })
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Nº Matrícula *</Label>
+                <Input
+                  placeholder="Número de matrícula"
+                  value={newStudent.enrollment_number}
+                  onChange={(e) =>
+                    setNewStudent({ ...newStudent, enrollment_number: e.target.value })
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>BI</Label>
+                <Input
+                  placeholder="Número do BI"
+                  value={newStudent.bi_number}
+                  onChange={(e) =>
+                    setNewStudent({ ...newStudent, bi_number: e.target.value })
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Género</Label>
+                <Select
+                  value={newStudent.gender}
+                  onValueChange={(value) =>
+                    setNewStudent({ ...newStudent, gender: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Masculino">Masculino</SelectItem>
+                    <SelectItem value="Feminino">Feminino</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Data de Nascimento</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant={"outline"}
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !newStudent.birth_date && "text-muted-foreground",
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {newStudent.birth_date ? (
+                        newStudent.birth_date.toLocaleDateString()
+                      ) : (
+                        <span>Selecionar data</span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={newStudent.birth_date}
+                      onSelect={(date) =>
+                        setNewStudent({ ...newStudent, birth_date: date || undefined })
+                      }
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <div className="space-y-2">
+                <Label>Naturalidade</Label>
+                <Input
+                  placeholder="Cidade/Local de nascimento"
+                  value={newStudent.birthplace}
+                  onChange={(e) =>
+                    setNewStudent({ ...newStudent, birthplace: e.target.value })
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Província</Label>
+                <Input
+                  placeholder="Província"
+                  value={newStudent.province}
+                  onChange={(e) =>
+                    setNewStudent({ ...newStudent, province: e.target.value })
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Filiação - Nome do Pai</Label>
+                <Input
+                  placeholder="Nome do pai"
+                  value={newStudent.father_name}
+                  onChange={(e) =>
+                    setNewStudent({ ...newStudent, father_name: e.target.value })
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Filiação - Nome da Mãe</Label>
+                <Input
+                  placeholder="Nome da mãe"
+                  value={newStudent.mother_name}
+                  onChange={(e) =>
+                    setNewStudent({ ...newStudent, mother_name: e.target.value })
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Nome do Encarregado</Label>
+                <Input
+                  placeholder="Nome do encarregado de educação"
+                  value={newStudent.guardian_name}
+                  onChange={(e) =>
+                    setNewStudent({ ...newStudent, guardian_name: e.target.value })
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Contacto do Encarregado</Label>
+                <Input
+                  placeholder="Telefone do encarregado"
+                  value={newStudent.guardian_contact}
+                  onChange={(e) =>
+                    setNewStudent({ ...newStudent, guardian_contact: e.target.value })
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Data de Matrícula</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant={"outline"}
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !newStudent.enrollment_date && "text-muted-foreground",
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {newStudent.enrollment_date ? (
+                        newStudent.enrollment_date.toLocaleDateString()
+                      ) : (
+                        <span>Selecionar data</span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={newStudent.enrollment_date}
+                      onSelect={(date) =>
+                        setNewStudent({ ...newStudent, enrollment_date: date || undefined })
+                      }
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+                Cancelar
+              </Button>
+              <Button className="btn-primary" onClick={handleCreateStudent}>
+                Guardar Estudante
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
         <Button variant="outline">
           <Download className="w-4 h-4 mr-2" />
           Exportar
@@ -231,10 +533,22 @@ export function ClassDetails() {
                         <div className="flex flex-col items-center gap-4">
                           <Users className="w-12 h-12 text-muted-foreground/50" />
                           <p>Nenhum estudante matriculado nesta turma</p>
-                          <Button className="btn-primary">
-                            <Plus className="w-4 h-4 mr-2" />
-                            Adicionar Estudante
-                          </Button>
+                          <DialogTrigger asChild>
+                            <Button
+                              className="btn-primary"
+                              onClick={() => {
+                                setNewStudent((current) => ({
+                                  ...current,
+                                  enrollment_number:
+                                    current.enrollment_number || generateEnrollmentNumber(),
+                                }));
+                                setIsDialogOpen(true);
+                              }}
+                            >
+                              <Plus className="w-4 h-4 mr-2" />
+                              Adicionar Estudante
+                            </Button>
+                          </DialogTrigger>
                         </div>
                       </TableCell>
                     </TableRow>

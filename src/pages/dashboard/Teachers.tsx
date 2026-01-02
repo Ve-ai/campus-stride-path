@@ -72,7 +72,7 @@ export function Teachers() {
   const [assignments, setAssignments] = useState<{
     courseId?: string;
     classId?: string;
-    subjectId?: string;
+    subjectIds: string[];
     periods: string[];
   }[]>([]);
 
@@ -325,7 +325,7 @@ export function Teachers() {
                       variant="outline"
                       size="sm"
                       onClick={() =>
-                        setAssignments((prev) => [...prev, { periods: [] }])
+                        setAssignments((prev) => [...prev, { courseId: undefined, classId: undefined, subjectIds: [], periods: [] }])
                       }
                     >
                       <Plus className="w-4 h-4 mr-1" /> Adicionar linha
@@ -356,7 +356,7 @@ export function Teachers() {
                               onValueChange={(value) => {
                                 setAssignments((prev) => {
                                   const copy = [...prev];
-                                  copy[index] = { courseId: value, classId: undefined, subjectId: undefined, periods: [] };
+                                  copy[index] = { courseId: value, classId: undefined, subjectIds: [], periods: [] };
                                   return copy;
                                 });
                               }}
@@ -381,7 +381,7 @@ export function Teachers() {
                               onValueChange={(value) => {
                                 setAssignments((prev) => {
                                   const copy = [...prev];
-                                  copy[index] = { ...copy[index], classId: value, subjectId: undefined };
+                                  copy[index] = { ...copy[index], classId: value, subjectIds: [] };
                                   return copy;
                                 });
                               }}
@@ -400,38 +400,49 @@ export function Teachers() {
                           </div>
 
                           <div className="space-y-1">
-                            <Label className="text-xs">Disciplina</Label>
-                            <Select
-                              value={a.subjectId}
-                              onValueChange={(value) => {
-                                setAssignments((prev) => {
-                                  const copy = [...prev];
-                                  copy[index] = { ...copy[index], subjectId: value };
-                                  return copy;
+                            <Label className="text-xs">Disciplinas</Label>
+                            <div className="flex flex-wrap gap-2 text-xs">
+                              {(() => {
+                                const selectedClass = classesForCourse.find((cls: any) => cls.id === a.classId);
+                                const gradeLevel = selectedClass?.grade_level;
+                                const subjectsForClass = (subjects || [])
+                                  .filter((subject: any) =>
+                                    subject.course_id === a.courseId &&
+                                    (!gradeLevel || subject.grade_level === gradeLevel),
+                                  );
+
+                                return subjectsForClass.map((subject: any) => {
+                                  const checked = a.subjectIds.includes(subject.id);
+                                  return (
+                                    <button
+                                      key={subject.id}
+                                      type="button"
+                                      disabled={!a.courseId || !a.classId}
+                                      onClick={() =>
+                                        setAssignments((prev) => {
+                                          const copy = [...prev];
+                                          const current = copy[index];
+                                          copy[index] = {
+                                            ...current,
+                                            subjectIds: checked
+                                              ? current.subjectIds.filter((id) => id !== subject.id)
+                                              : [...current.subjectIds, subject.id],
+                                          };
+                                          return copy;
+                                        })
+                                      }
+                                      className={`px-3 py-1 rounded-full border text-xs ${
+                                        checked
+                                          ? 'bg-primary text-primary-foreground border-primary'
+                                          : 'bg-background text-muted-foreground'
+                                      }`}
+                                    >
+                                      {subject.name}
+                                    </button>
+                                  );
                                 });
-                              }}
-                              disabled={!a.courseId || !a.classId}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecione a disciplina" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {(() => {
-                                  const selectedClass = classesForCourse.find((cls: any) => cls.id === a.classId);
-                                  const gradeLevel = selectedClass?.grade_level;
-                                  return (subjects || [])
-                                    .filter((subject: any) =>
-                                      subject.course_id === a.courseId &&
-                                      (!gradeLevel || subject.grade_level === gradeLevel),
-                                    )
-                                    .map((subject: any) => (
-                                      <SelectItem key={subject.id} value={subject.id}>
-                                        {subject.name}
-                                      </SelectItem>
-                                    ));
-                                })()}
-                              </SelectContent>
-                            </Select>
+                              })()}
+                            </div>
                           </div>
 
                           <div className="space-y-1">
@@ -467,6 +478,19 @@ export function Teachers() {
                                 );
                               })}
                             </div>
+                          </div>
+
+                          <div className="flex justify-end mt-2">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() =>
+                                setAssignments((prev) => prev.filter((_, i) => i !== index))
+                              }
+                            >
+                              Remover
+                            </Button>
                           </div>
                         </div>
                       );
@@ -557,17 +581,19 @@ export function Teachers() {
                             try {
                               if (assignments.length) {
                                 const validAssignments = assignments.filter(
-                                  (a) => a.classId && a.subjectId && a.periods.length,
+                                  (a) => a.classId && a.subjectIds.length && a.periods.length,
                                 );
 
                                 if (validAssignments.length) {
                                   await createTeacherAssignmentsMutation.mutateAsync(
-                                    validAssignments.map((a) => ({
-                                      teacher_id: createdTeacher.id,
-                                      class_id: a.classId!,
-                                      subject_id: a.subjectId!,
-                                      periods: a.periods,
-                                    })),
+                                    validAssignments.flatMap((a) =>
+                                      a.subjectIds.map((subjectId) => ({
+                                        teacher_id: createdTeacher.id,
+                                        class_id: a.classId!,
+                                        subject_id: subjectId,
+                                        periods: a.periods,
+                                      })),
+                                    ),
                                   );
                                 }
                               }

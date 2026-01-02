@@ -446,7 +446,19 @@ export function useUpdateTeacher() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, ...updates }: { id: string; is_active?: boolean }) => {
+    mutationFn: async ({
+      id,
+      ...updates
+    }: {
+      id: string;
+      full_name?: string;
+      degree?: string | null;
+      degree_area?: string | null;
+      hire_date?: string | null;
+      gross_salary?: number | null;
+      functions?: string[];
+      is_active?: boolean;
+    }) => {
       const { data, error } = await supabase
         .from('teachers')
         .update(updates)

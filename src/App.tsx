@@ -17,6 +17,7 @@ import { Teachers } from "@/pages/dashboard/Teachers";
 import { TeacherDetails } from "@/pages/dashboard/TeacherDetails";
 import { Finance } from "@/pages/dashboard/Finance";
 import { StudentFinanceDetails } from "@/pages/dashboard/StudentFinanceDetails";
+import { Students } from "@/pages/dashboard/Students";
 import { Profile } from "@/pages/dashboard/Profile";
 import { Settings } from "@/pages/dashboard/Settings";
 import NotFound from "./pages/NotFound";
@@ -60,6 +61,7 @@ function AppRoutes() {
         <Route path="cursos/:courseId" element={<CourseDetails />} />
         <Route path="turmas" element={<Classes />} />
         <Route path="turmas/:classId" element={<ClassDetails />} />
+        <Route path="estudantes" element={<Students />} />
         <Route path="diretores" element={<ClassDirectors />} />
         <Route path="professores" element={<Teachers />} />
         <Route path="professores/:teacherId" element={<TeacherDetails />} />

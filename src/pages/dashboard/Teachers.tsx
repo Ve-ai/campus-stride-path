@@ -79,6 +79,7 @@ export function Teachers() {
   const { data: teachers, isLoading, error } = useTeachers();
   const { data: courses } = useCourses();
   const { data: classes } = useClasses();
+  const { data: subjects } = useSubjects();
 
   const createTeacherMutation = useCreateTeacher();
   const updateTeacherMutation = useUpdateTeacher();
@@ -374,7 +375,7 @@ export function Teachers() {
                           </div>
 
                           <div className="space-y-1">
-                            <Label className="text-xs">Classe / Turma</Label>
+                            <Label className="text-xs">Classe</Label>
                             <Select
                               value={a.classId}
                               onValueChange={(value) => {
@@ -400,12 +401,37 @@ export function Teachers() {
 
                           <div className="space-y-1">
                             <Label className="text-xs">Disciplina</Label>
-                            <Input
-                              placeholder="Ex: Matemática"
-                              value={a.subjectId || ''}
-                              onChange={() => {}}
-                              disabled
-                            />
+                            <Select
+                              value={a.subjectId}
+                              onValueChange={(value) => {
+                                setAssignments((prev) => {
+                                  const copy = [...prev];
+                                  copy[index] = { ...copy[index], subjectId: value };
+                                  return copy;
+                                });
+                              }}
+                              disabled={!a.courseId || !a.classId}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecione a disciplina" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {(() => {
+                                  const selectedClass = classesForCourse.find((cls: any) => cls.id === a.classId);
+                                  const gradeLevel = selectedClass?.grade_level;
+                                  return (subjects || [])
+                                    .filter((subject: any) =>
+                                      subject.course_id === a.courseId &&
+                                      (!gradeLevel || subject.grade_level === gradeLevel),
+                                    )
+                                    .map((subject: any) => (
+                                      <SelectItem key={subject.id} value={subject.id}>
+                                        {subject.name}
+                                      </SelectItem>
+                                    ));
+                                })()}
+                              </SelectContent>
+                            </Select>
                           </div>
 
                           <div className="space-y-1">

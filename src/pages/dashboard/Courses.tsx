@@ -13,6 +13,8 @@ import {
   GraduationCap,
   Loader2,
 } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -46,21 +48,71 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useCourses, useTeachers, useSchoolNuclei, useClasses, useStudents, useSubjects, useCreateCourse } from '@/hooks/useDatabase';
+import { useCourses, useTeachers, useSchoolNuclei, useClasses, useStudents, useSubjects } from '@/hooks/useDatabase';
 import { toast } from 'sonner';
 
 export function Courses() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [wizardStep, setWizardStep] = useState<1 | 2 | 3 | 4 | 5>(1);
+
+  type GradeConfig = {
+    subjects: string[];
+    subjectsInput: string;
+    monthlyFee: string;
+    morningSections: string;
+    afternoonSections: string;
+    internshipFee?: string;
+    credentialFee?: string;
+    defenseEntryFee?: string;
+    tutorFee?: string;
+  };
+
   const [newCourse, setNewCourse] = useState({
     name: '',
     school_nucleus_id: '',
     coordinator_id: '',
-    monthly_fee_10: '',
-    monthly_fee_11: '',
-    monthly_fee_12: '',
-    monthly_fee_13: '',
+  });
+
+  const [gradeConfigs, setGradeConfigs] = useState<Record<'10' | '11' | '12' | '13', GradeConfig>>({
+    '10': {
+      subjects: [],
+      subjectsInput: '',
+      monthlyFee: '',
+      morningSections: '',
+      afternoonSections: '',
+    },
+    '11': {
+      subjects: [],
+      subjectsInput: '',
+      monthlyFee: '',
+      morningSections: '',
+      afternoonSections: '',
+      internshipFee: '',
+      credentialFee: '',
+    },
+    '12': {
+      subjects: [],
+      subjectsInput: '',
+      monthlyFee: '',
+      morningSections: '',
+      afternoonSections: '',
+      internshipFee: '',
+      credentialFee: '',
+    },
+    '13': {
+      subjects: [],
+      subjectsInput: '',
+      monthlyFee: '',
+      morningSections: '',
+      afternoonSections: '',
+      internshipFee: '',
+      credentialFee: '',
+      defenseEntryFee: '',
+      tutorFee: '',
+    },
   });
 
   const { data: courses, isLoading: loadingCourses } = useCourses();
@@ -69,7 +121,6 @@ export function Courses() {
   const { data: classes } = useClasses();
   const { data: students } = useStudents();
   const { data: subjects } = useSubjects();
-  const createCourseMutation = useCreateCourse();
 
   // Calculate statistics for each course
   const coursesWithStats = React.useMemo(() => {
@@ -115,38 +166,166 @@ export function Courses() {
   const totalFemales = filteredCourses.reduce((sum, c) => sum + c.females, 0);
   const totalDropouts = filteredCourses.reduce((sum, c) => sum + c.dropouts, 0);
 
-  const handleCreateCourse = () => {
+  const parseList = (value: string) =>
+    value
+      .split(',')
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0);
+
+  const handleConfirmCourse = async () => {
     if (!newCourse.name.trim()) {
       toast.error('O nome do curso é obrigatório');
       return;
     }
 
-    createCourseMutation.mutate({
-      name: newCourse.name,
-      school_nucleus_id: newCourse.school_nucleus_id || nuclei?.[0]?.id,
-      coordinator_id: newCourse.coordinator_id || undefined,
-      monthly_fee_10: newCourse.monthly_fee_10 ? parseFloat(newCourse.monthly_fee_10) : 0,
-      monthly_fee_11: newCourse.monthly_fee_11 ? parseFloat(newCourse.monthly_fee_11) : 0,
-      monthly_fee_12: newCourse.monthly_fee_12 ? parseFloat(newCourse.monthly_fee_12) : 0,
-      monthly_fee_13: newCourse.monthly_fee_13 ? parseFloat(newCourse.monthly_fee_13) : 0,
-    }, {
-      onSuccess: () => {
-        toast.success('Curso criado com sucesso!');
-        setIsAddDialogOpen(false);
-        setNewCourse({
-          name: '',
-          school_nucleus_id: '',
-          coordinator_id: '',
-          monthly_fee_10: '',
-          monthly_fee_11: '',
-          monthly_fee_12: '',
-          monthly_fee_13: '',
-        });
-      },
-      onError: (error) => {
-        toast.error('Erro ao criar curso: ' + error.message);
+    try {
+      const { data: createdCourse, error } = await supabase
+        .from('courses')
+        .insert({
+          name: newCourse.name,
+          school_nucleus_id: newCourse.school_nucleus_id || nuclei?.[0]?.id,
+          coordinator_id: newCourse.coordinator_id || undefined,
+          monthly_fee_10: gradeConfigs['10'].monthlyFee
+            ? parseFloat(gradeConfigs['10'].monthlyFee)
+            : 0,
+          monthly_fee_11: gradeConfigs['11'].monthlyFee
+            ? parseFloat(gradeConfigs['11'].monthlyFee)
+            : 0,
+          monthly_fee_12: gradeConfigs['12'].monthlyFee
+            ? parseFloat(gradeConfigs['12'].monthlyFee)
+            : 0,
+          monthly_fee_13: gradeConfigs['13'].monthlyFee
+            ? parseFloat(gradeConfigs['13'].monthlyFee)
+            : 0,
+          internship_fee: gradeConfigs['11'].internshipFee
+            ? parseFloat(gradeConfigs['11'].internshipFee)
+            : undefined,
+          credential_fee: gradeConfigs['11'].credentialFee
+            ? parseFloat(gradeConfigs['11'].credentialFee)
+            : undefined,
+          defense_entry_fee: gradeConfigs['13'].defenseEntryFee
+            ? parseFloat(gradeConfigs['13'].defenseEntryFee)
+            : undefined,
+          tutor_fee: gradeConfigs['13'].tutorFee
+            ? parseFloat(gradeConfigs['13'].tutorFee)
+            : undefined,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      const courseId = createdCourse.id as string;
+      const academicYear = new Date().getFullYear();
+
+      // Create subjects for each grade
+      const subjectsPayload = Object.entries(gradeConfigs).flatMap(
+        ([grade, config]) =>
+          config.subjects.map((name) => ({
+            course_id: courseId,
+            name,
+            grade_level: Number(grade),
+          })),
+      );
+
+      if (subjectsPayload.length > 0) {
+        const { error: subjectsError } = await supabase
+          .from('subjects')
+          .insert(subjectsPayload);
+        if (subjectsError) throw subjectsError;
       }
-    });
+
+      // Create classes based on periods and turmas
+      const classesPayload: any[] = [];
+      (['10', '11', '12', '13'] as const).forEach((grade) => {
+        const config = gradeConfigs[grade];
+        const morningSections = parseList(config.morningSections);
+        const afternoonSections = parseList(config.afternoonSections);
+
+        morningSections.forEach((section) => {
+          classesPayload.push({
+            course_id: courseId,
+            grade_level: Number(grade),
+            section: section.toUpperCase(),
+            period: 'Manhã',
+            academic_year: academicYear,
+          });
+        });
+
+        afternoonSections.forEach((section) => {
+          classesPayload.push({
+            course_id: courseId,
+            grade_level: Number(grade),
+            section: section.toUpperCase(),
+            period: 'Tarde',
+            academic_year: academicYear,
+          });
+        });
+      });
+
+      if (classesPayload.length > 0) {
+        const { error: classesError } = await supabase
+          .from('classes')
+          .insert(classesPayload);
+        if (classesError) throw classesError;
+      }
+
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['courses'] }),
+        queryClient.invalidateQueries({ queryKey: ['classes'] }),
+        queryClient.invalidateQueries({ queryKey: ['subjects'] }),
+        queryClient.invalidateQueries({ queryKey: ['statistics'] }),
+      ]);
+
+      toast.success('Curso e estrutura académica criados com sucesso!');
+      setIsAddDialogOpen(false);
+      setWizardStep(1);
+      setNewCourse({
+        name: '',
+        school_nucleus_id: '',
+        coordinator_id: '',
+      });
+      setGradeConfigs({
+        '10': {
+          subjects: [],
+          subjectsInput: '',
+          monthlyFee: '',
+          morningSections: '',
+          afternoonSections: '',
+        },
+        '11': {
+          subjects: [],
+          subjectsInput: '',
+          monthlyFee: '',
+          morningSections: '',
+          afternoonSections: '',
+          internshipFee: '',
+          credentialFee: '',
+        },
+        '12': {
+          subjects: [],
+          subjectsInput: '',
+          monthlyFee: '',
+          morningSections: '',
+          afternoonSections: '',
+          internshipFee: '',
+          credentialFee: '',
+        },
+        '13': {
+          subjects: [],
+          subjectsInput: '',
+          monthlyFee: '',
+          morningSections: '',
+          afternoonSections: '',
+          internshipFee: '',
+          credentialFee: '',
+          defenseEntryFee: '',
+          tutorFee: '',
+        },
+      });
+    } catch (err: any) {
+      toast.error('Erro ao guardar curso: ' + err.message);
+    }
   };
 
   if (loadingCourses) {
@@ -165,119 +344,297 @@ export function Courses() {
           <h1 className="text-2xl font-bold text-foreground">Cursos</h1>
           <p className="text-muted-foreground">Gestão de cursos e suas turmas</p>
         </div>
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+        <Dialog open={isAddDialogOpen} onOpenChange={(open) => {
+          setIsAddDialogOpen(open);
+          if (!open) {
+            setWizardStep(1);
+          }
+        }}>
           <DialogTrigger asChild>
             <Button className="btn-primary">
               <Plus className="w-4 h-4 mr-2" />
               Adicionar Curso
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-lg">
+          <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Adicionar Novo Curso</DialogTitle>
+              <DialogTitle>Configurar Novo Curso</DialogTitle>
             </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label>Nome do Curso *</Label>
-                <Input 
-                  placeholder="Ex: Enfermagem Geral" 
-                  value={newCourse.name}
-                  onChange={(e) => setNewCourse({ ...newCourse, name: e.target.value })}
-                />
+
+            {/* Step indicator */}
+            <div className="flex items-center justify-between mb-4 text-sm text-muted-foreground">
+              <span>
+                {wizardStep === 1 && 'Passo 1 de 5 — Dados do Curso'}
+                {wizardStep === 2 && 'Passo 2 de 5 — Configuração 10ª Classe'}
+                {wizardStep === 3 && 'Passo 3 de 5 — Configuração 11ª Classe'}
+                {wizardStep === 4 && 'Passo 4 de 5 — Configuração 12ª Classe'}
+                {wizardStep === 5 && 'Passo 5 de 5 — Configuração 13ª Classe'}
+              </span>
+            </div>
+
+            {/* Step 1: basic course data */}
+            {wizardStep === 1 && (
+              <div className="space-y-4 py-2">
+                <div className="space-y-2">
+                  <Label>Nome do Curso *</Label>
+                  <Input
+                    placeholder="Ex: Enfermagem Geral"
+                    value={newCourse.name}
+                    onChange={(e) =>
+                      setNewCourse((c) => ({ ...c, name: e.target.value }))
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Núcleo Escolar</Label>
+                  <Select
+                    value={newCourse.school_nucleus_id}
+                    onValueChange={(v) =>
+                      setNewCourse((c) => ({ ...c, school_nucleus_id: v }))
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o núcleo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {nuclei?.map((nucleus) => (
+                        <SelectItem key={nucleus.id} value={nucleus.id}>
+                          {nucleus.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Coordenador</Label>
+                  <Select
+                    value={newCourse.coordinator_id}
+                    onValueChange={(v) =>
+                      setNewCourse((c) => ({ ...c, coordinator_id: v }))
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o coordenador" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {teachers?.map((teacher) => (
+                        <SelectItem key={teacher.id} value={teacher.id}>
+                          {teacher.profiles?.full_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label>Núcleo Escolar</Label>
-                <Select 
-                  value={newCourse.school_nucleus_id}
-                  onValueChange={(v) => setNewCourse({ ...newCourse, school_nucleus_id: v })}
+            )}
+
+            {/* Helper to render grade configuration blocks */}
+            {wizardStep >= 2 && wizardStep <= 5 && (
+              <div className="space-y-6 py-2">
+                {(['10', '11', '12', '13'] as const)
+                  .filter((grade) => {
+                    if (wizardStep === 2) return grade === '10';
+                    if (wizardStep === 3) return grade === '11';
+                    if (wizardStep === 4) return grade === '12';
+                    return grade === '13';
+                  })
+                  .map((grade) => {
+                    const config = gradeConfigs[grade];
+                    const setConfig = (partial: Partial<GradeConfig>) => {
+                      setGradeConfigs((prev) => ({
+                        ...prev,
+                        [grade]: { ...prev[grade], ...partial },
+                      }));
+                    };
+
+                    const gradeLabel = `${grade}ª Classe`;
+
+                    return (
+                      <Card key={grade} className="card-elevated">
+                        <CardHeader>
+                          <CardTitle>{gradeLabel}</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          <div className="space-y-2">
+                            <Label>Disciplinas do Curso</Label>
+                            <div className="flex gap-2">
+                              <Input
+                                placeholder="Ex: Matemática, Fisica, Química"
+                                value={config.subjectsInput}
+                                onChange={(e) => setConfig({ subjectsInput: e.target.value })}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    const items = parseList(config.subjectsInput);
+                                    if (items.length > 0) {
+                                      setConfig({
+                                        subjects: [...config.subjects, ...items],
+                                        subjectsInput: '',
+                                      });
+                                    }
+                                  }
+                                }}
+                              />
+                              <Button
+                                type="button"
+                                className="btn-accent"
+                                onClick={() => {
+                                  const items = parseList(config.subjectsInput);
+                                  if (items.length === 0) return;
+                                  setConfig({
+                                    subjects: [...config.subjects, ...items],
+                                    subjectsInput: '',
+                                  });
+                                }}
+                              >
+                                Adicionar
+                              </Button>
+                            </div>
+                            {config.subjects.length > 0 && (
+                              <div className="flex flex-wrap gap-2 mt-2">
+                                {config.subjects.map((subject) => (
+                                  <Badge
+                                    key={subject}
+                                    variant="outline"
+                                    className="flex items-center gap-1"
+                                  >
+                                    <span>{subject}</span>
+                                    <button
+                                      type="button"
+                                      className="text-xs text-destructive ml-1"
+                                      onClick={() =>
+                                        setConfig({
+                                          subjects: config.subjects.filter(
+                                            (s) => s !== subject,
+                                          ),
+                                        })
+                                      }
+                                    >
+                                      remover
+                                    </button>
+                                  </Badge>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label>Mensalidade</Label>
+                            <Input
+                              type="number"
+                              placeholder="Ex: 5000"
+                              value={config.monthlyFee}
+                              onChange={(e) => setConfig({ monthlyFee: e.target.value })}
+                              onFocus={(e) => e.target.select()}
+                            />
+                          </div>
+
+                          {(grade === '11' || grade === '12' || grade === '13') && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <Label>Estágio</Label>
+                                <Input
+                                  type="number"
+                                  placeholder="Valor do estágio"
+                                  value={config.internshipFee || ''}
+                                  onChange={(e) =>
+                                    setConfig({ internshipFee: e.target.value })
+                                  }
+                                  onFocus={(e) => e.target.select()}
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label>Credencial de estagiário</Label>
+                                <Input
+                                  type="number"
+                                  placeholder="Valor da credencial"
+                                  value={config.credentialFee || ''}
+                                  onChange={(e) =>
+                                    setConfig({ credentialFee: e.target.value })
+                                  }
+                                  onFocus={(e) => e.target.select()}
+                                />
+                              </div>
+                            </div>
+                          )}
+
+                          {grade === '13' && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <Label>Defesa — Entrada do Trabalho</Label>
+                                <Input
+                                  type="number"
+                                  placeholder="Valor de entrada"
+                                  value={config.defenseEntryFee || ''}
+                                  onChange={(e) =>
+                                    setConfig({ defenseEntryFee: e.target.value })
+                                  }
+                                  onFocus={(e) => e.target.select()}
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label>Defesa — Valor do Tutor</Label>
+                                <Input
+                                  type="number"
+                                  placeholder="Valor do tutor"
+                                  value={config.tutorFee || ''}
+                                  onChange={(e) => setConfig({ tutorFee: e.target.value })}
+                                  onFocus={(e) => e.target.select()}
+                                />
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+                            <div className="space-y-2">
+                              <Label>Período Manhã — Turmas (separadas por vírgulas)</Label>
+                              <Input
+                                placeholder="Ex: A, B, C"
+                                value={config.morningSections}
+                                onChange={(e) =>
+                                  setConfig({ morningSections: e.target.value })
+                                }
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Período Tarde — Turmas (separadas por vírgulas)</Label>
+                              <Input
+                                placeholder="Ex: D, E"
+                                value={config.afternoonSections}
+                                onChange={(e) =>
+                                  setConfig({ afternoonSections: e.target.value })
+                                }
+                              />
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+              </div>
+            )}
+
+            {/* Footer navigation */}
+            <div className="flex justify-between pt-4">
+              <Button
+                variant="outline"
+                disabled={wizardStep === 1}
+                onClick={() => setWizardStep((s) => (s > 1 ? ((s - 1) as any) : s))}
+              >
+                Anterior
+              </Button>
+              {wizardStep < 5 ? (
+                <Button
+                  className="btn-primary"
+                  onClick={() => setWizardStep((s) => (s < 5 ? ((s + 1) as any) : s))}
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o núcleo" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {nuclei?.map((nucleus) => (
-                      <SelectItem key={nucleus.id} value={nucleus.id}>
-                        {nucleus.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Coordenador</Label>
-                <Select 
-                  value={newCourse.coordinator_id}
-                  onValueChange={(v) => setNewCourse({ ...newCourse, coordinator_id: v })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o coordenador" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {teachers?.map((teacher) => (
-                      <SelectItem key={teacher.id} value={teacher.id}>
-                        {teacher.profiles?.full_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Mensalidade 10ª</Label>
-                  <Input 
-                    type="number" 
-                    placeholder="Ex: 5000" 
-                    value={newCourse.monthly_fee_10}
-                    onChange={(e) => setNewCourse({ ...newCourse, monthly_fee_10: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Mensalidade 11ª</Label>
-                  <Input 
-                    type="number" 
-                    placeholder="Ex: 5500" 
-                    value={newCourse.monthly_fee_11}
-                    onChange={(e) => setNewCourse({ ...newCourse, monthly_fee_11: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Mensalidade 12ª</Label>
-                  <Input 
-                    type="number" 
-                    placeholder="Ex: 6000" 
-                    value={newCourse.monthly_fee_12}
-                    onChange={(e) => setNewCourse({ ...newCourse, monthly_fee_12: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Mensalidade 13ª</Label>
-                  <Input 
-                    type="number" 
-                    placeholder="Ex: 6500" 
-                    value={newCourse.monthly_fee_13}
-                    onChange={(e) => setNewCourse({ ...newCourse, monthly_fee_13: e.target.value })}
-                  />
-                </div>
-              </div>
-              <div className="flex justify-end gap-3 pt-4">
-                <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
-                  Cancelar
+                  Próximo
                 </Button>
-                <Button 
-                  className="btn-primary" 
-                  onClick={handleCreateCourse}
-                  disabled={createCourseMutation.isPending}
-                >
-                  {createCourseMutation.isPending ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Criando...
-                    </>
-                  ) : (
-                    'Adicionar Curso'
-                  )}
+              ) : (
+                <Button className="btn-primary" onClick={handleConfirmCourse}>
+                  Confirmar e Guardar
                 </Button>
-              </div>
+              )}
             </div>
           </DialogContent>
         </Dialog>

@@ -43,7 +43,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useTeachers, useCourses, useCreateTeacher, useUpdateTeacher } from '@/hooks/useDatabase';
+import { useTeachers, useCourses, useCreateTeacher, useUpdateTeacher, useClasses, useSubjects, useCreateTeacherAssignments } from '@/hooks/useDatabase';
 import { toast } from 'sonner';
 
 export function Teachers() {
@@ -53,7 +53,7 @@ export function Teachers() {
   const [statusFilter, setStatusFilter] = useState<'todos' | 'ativos' | 'inativos'>('todos');
   const [selectedTeacher, setSelectedTeacher] = useState<any | null>(null);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [currentStep, setCurrentStep] = useState<'pessoais' | 'profissionais' | 'formacao' | 'salario'>('pessoais');
+  const [currentStep, setCurrentStep] = useState<'pessoais' | 'profissionais' | 'formacao' | 'turmas' | 'salario'>('pessoais');
   const [newTeacher, setNewTeacher] = useState({
     full_name: '',
     phone: '',
@@ -69,6 +69,12 @@ export function Teachers() {
     username: '',
     is_active: true,
   });
+  const [assignments, setAssignments] = useState<{
+    courseId?: string;
+    classId?: string;
+    subjectId?: string;
+    periods: string[];
+  }[]>([]);
 
   const { data: teachers, isLoading, error } = useTeachers();
   const { data: courses } = useCourses();
@@ -166,12 +172,13 @@ export function Teachers() {
             <div className="space-y-4 py-4">
               <div className="flex items-center justify-between text-sm text-muted-foreground">
                 <span>
-                  Passo {['pessoais', 'profissionais', 'formacao', 'salario'].indexOf(currentStep) + 1} de 4
+                  Passo {['pessoais', 'profissionais', 'formacao', 'turmas', 'salario'].indexOf(currentStep) + 1} de 5
                 </span>
                 <span className="font-medium capitalize">
                   {currentStep === 'pessoais' && 'Dados pessoais'}
                   {currentStep === 'profissionais' && 'Dados profissionais'}
                   {currentStep === 'formacao' && 'Formação'}
+                  {currentStep === 'turmas' && 'Turmas e disciplinas'}
                   {currentStep === 'salario' && 'Salário'}
                 </span>
               </div>
@@ -304,6 +311,151 @@ export function Teachers() {
                 </div>
               )}
 
+              {currentStep === 'turmas' && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-muted-foreground">
+                      Adicione as turmas, disciplinas e períodos em que o professor irá lecionar.
+                    </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        setAssignments((prev) => [...prev, { periods: [] }])
+                      }
+                    >
+                      <Plus className="w-4 h-4 mr-1" /> Adicionar linha
+                    </Button>
+                  </div>
+
+                  {assignments.length === 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      Nenhuma turma adicionada ainda. Este passo é opcional e pode ser editado depois.
+                    </p>
+                  )}
+
+                  <div className="space-y-3">
+                    {assignments.map((a, index) => {
+                      const classesForCourse = a.courseId
+                        ? (courses || []).flatMap((course: any) =>
+                            course.id === a.courseId
+                              ? []
+                              : []
+                          )
+                        : [];
+
+                      return (
+                        <div
+                          key={index}
+                          className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end border rounded-lg p-3"
+                        >
+                          <div className="space-y-1">
+                            <Label className="text-xs">Curso</Label>
+                            <Select
+                              value={a.courseId}
+                              onValueChange={(value) => {
+                                setAssignments((prev) => {
+                                  const copy = [...prev];
+                                  copy[index] = { courseId: value, classId: undefined, subjectId: undefined, periods: [] };
+                                  return copy;
+                                });
+                              }}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecione o curso" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {(courses || []).map((course: any) => (
+                                  <SelectItem key={course.id} value={course.id}>
+                                    {course.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div className="space-y-1">
+                            <Label className="text-xs">Classe / Turma</Label>
+                            <Select
+                              value={a.classId}
+                              onValueChange={(value) => {
+                                setAssignments((prev) => {
+                                  const copy = [...prev];
+                                  copy[index] = { ...copy[index], classId: value, subjectId: undefined };
+                                  return copy;
+                                });
+                              }}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecione a turma" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {(teachers && a.courseId
+                                  ? (teachers as any[])
+                                      .flatMap((t) => t.teacher_class_assignments || [])
+                                      .filter((ta: any) => ta.class?.course?.id === a.courseId)
+                                  : []
+                                ).map((ta: any) => (
+                                  <SelectItem key={ta.class.id} value={ta.class.id}>
+                                    {ta.class.grade_level}ª {ta.class.section} ({ta.class.period})
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div className="space-y-1">
+                            <Label className="text-xs">Disciplina</Label>
+                            <Input
+                              placeholder="Ex: Matemática"
+                              value={a.subjectId || ''}
+                              onChange={() => {}}
+                              disabled
+                            />
+                          </div>
+
+                          <div className="space-y-1">
+                            <Label className="text-xs">Períodos</Label>
+                            <div className="flex gap-2 text-xs">
+                              {['Manhã', 'Tarde'].map((period) => {
+                                const checked = a.periods.includes(period);
+                                return (
+                                  <button
+                                    key={period}
+                                    type="button"
+                                    onClick={() =>
+                                      setAssignments((prev) => {
+                                        const copy = [...prev];
+                                        const current = copy[index];
+                                        copy[index] = {
+                                          ...current,
+                                          periods: checked
+                                            ? current.periods.filter((p) => p !== period)
+                                            : [...current.periods, period],
+                                        };
+                                        return copy;
+                                      })
+                                    }
+                                    className={`px-3 py-1 rounded-full border text-xs ${
+                                      checked
+                                        ? 'bg-primary text-primary-foreground border-primary'
+                                        : 'bg-background text-muted-foreground'
+                                    }`}
+                                  >
+                                    {period}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               {currentStep === 'salario' && (
                 <div className="space-y-4">
                   <div className="space-y-2">
@@ -336,66 +488,75 @@ export function Teachers() {
                     if (currentStep === 'pessoais') {
                       setIsAddDialogOpen(false);
                     } else {
-                      const order: Array<'pessoais' | 'profissionais' | 'formacao' | 'salario'> = ['pessoais', 'profissionais', 'formacao', 'salario'];
+                      const order: Array<'pessoais' | 'profissionais' | 'formacao' | 'turmas' | 'salario'> = ['pessoais', 'profissionais', 'formacao', 'turmas', 'salario'];
                       const idx = order.indexOf(currentStep);
                       setCurrentStep(order[Math.max(0, idx - 1)]);
                     }
                   }}
                 >
-                  {currentStep === 'pessoais' ? 'Cancelar' : 'Anterior'}
-                </Button>
-                <Button
-                  className="btn-primary"
-                  onClick={() => {
-                    const order: Array<'pessoais' | 'profissionais' | 'formacao' | 'salario'> = ['pessoais', 'profissionais', 'formacao', 'salario'];
-                    const idx = order.indexOf(currentStep);
-                    const isLast = idx === order.length - 1;
+                         {
+                           employee_number: newTeacher.employee_number,
+                           full_name: newTeacher.full_name,
+                           degree: newTeacher.degree || undefined,
+                           degree_area: newTeacher.degree_area || undefined,
+                           hire_date: newTeacher.hire_date || undefined,
+                           gross_salary: newTeacher.gross_salary
+                             ? parseFloat(newTeacher.gross_salary)
+                             : undefined,
+                           functions: newTeacher.functions
+                             ? newTeacher.functions.split(',').map((f) => f.trim())
+                             : [],
+                           is_active: newTeacher.is_active,
+                         },
+                         {
+                           onSuccess: async (createdTeacher: any) => {
+                             try {
+                               if (assignments.length) {
+                                 const validAssignments = assignments.filter(
+                                   (a) => a.classId && a.subjectId && a.periods.length,
+                                 );
 
-                    if (!isLast) {
-                      setCurrentStep(order[idx + 1]);
-                    } else {
-                      createTeacherMutation.mutate(
-                        {
-                          employee_number: newTeacher.employee_number,
-                          full_name: newTeacher.full_name,
-                          degree: newTeacher.degree || undefined,
-                          degree_area: newTeacher.degree_area || undefined,
-                          hire_date: newTeacher.hire_date || undefined,
-                          gross_salary: newTeacher.gross_salary
-                            ? parseFloat(newTeacher.gross_salary)
-                            : undefined,
-                          functions: newTeacher.functions
-                            ? newTeacher.functions.split(',').map((f) => f.trim())
-                            : [],
-                          is_active: newTeacher.is_active,
-                        },
-                        {
-                          onSuccess: () => {
-                            toast.success('Professor adicionado com sucesso!');
-                            setIsAddDialogOpen(false);
-                            setCurrentStep('pessoais');
-                            setNewTeacher({
-                              full_name: '',
-                              phone: '',
-                              bi_number: '',
-                              birth_date: '',
-                              birth_place: '',
-                              employee_number: '',
-                              degree: '',
-                              degree_area: '',
-                              hire_date: '',
-                              gross_salary: '',
-                              functions: '',
-                              username: '',
-                              is_active: true,
-                            });
-                          },
-                          onError: (error: any) => {
-                            toast.error('Erro ao adicionar professor: ' + error.message);
-                          },
-                        }
-                      );
-                    }
+                                 if (validAssignments.length) {
+                                   await createTeacherAssignmentsMutation.mutateAsync(
+                                     validAssignments.map((a) => ({
+                                       teacher_id: createdTeacher.id,
+                                       class_id: a.classId!,
+                                       subject_id: a.subjectId!,
+                                       periods: a.periods,
+                                     })),
+                                   );
+                                 }
+                               }
+
+                               toast.success('Professor adicionado com sucesso!');
+                               setIsAddDialogOpen(false);
+                               setCurrentStep('pessoais');
+                               setNewTeacher({
+                                 full_name: '',
+                                 phone: '',
+                                 bi_number: '',
+                                 birth_date: '',
+                                 birth_place: '',
+                                 employee_number: '',
+                                 degree: '',
+                                 degree_area: '',
+                                 hire_date: '',
+                                 gross_salary: '',
+                                 functions: '',
+                                 username: '',
+                                 is_active: true,
+                               });
+                               setAssignments([]);
+                             } catch (error: any) {
+                               toast.error('Erro ao salvar atribuições: ' + error.message);
+                             }
+                           },
+                           onError: (error: any) => {
+                             toast.error('Erro ao adicionar professor: ' + error.message);
+                           },
+                         },
+                       );
+                     }
                   }}
                   disabled={
                     createTeacherMutation.isPending ||

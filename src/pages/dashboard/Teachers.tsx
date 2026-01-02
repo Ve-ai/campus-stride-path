@@ -78,6 +78,7 @@ export function Teachers() {
 
   const { data: teachers, isLoading, error } = useTeachers();
   const { data: courses } = useCourses();
+  const { data: classes } = useClasses();
 
   const createTeacherMutation = useCreateTeacher();
   const updateTeacherMutation = useUpdateTeacher();
@@ -339,11 +340,7 @@ export function Teachers() {
                   <div className="space-y-3">
                     {assignments.map((a, index) => {
                       const classesForCourse = a.courseId
-                        ? (courses || []).flatMap((course: any) =>
-                            course.id === a.courseId
-                              ? []
-                              : []
-                          )
+                        ? (classes || []).filter((cls: any) => cls.course_id === a.courseId)
                         : [];
 
                       return (
@@ -392,14 +389,9 @@ export function Teachers() {
                                 <SelectValue placeholder="Selecione a turma" />
                               </SelectTrigger>
                               <SelectContent>
-                                {(teachers && a.courseId
-                                  ? (teachers as any[])
-                                      .flatMap((t) => t.teacher_class_assignments || [])
-                                      .filter((ta: any) => ta.class?.course?.id === a.courseId)
-                                  : []
-                                ).map((ta: any) => (
-                                  <SelectItem key={ta.class.id} value={ta.class.id}>
-                                    {ta.class.grade_level}ª {ta.class.section} ({ta.class.period})
+                                {classesForCourse.map((cls: any) => (
+                                  <SelectItem key={cls.id} value={cls.id}>
+                                    {cls.grade_level}ª {cls.section} ({cls.period})
                                   </SelectItem>
                                 ))}
                               </SelectContent>

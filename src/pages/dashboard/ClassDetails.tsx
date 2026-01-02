@@ -533,22 +533,20 @@ export function ClassDetails() {
                         <div className="flex flex-col items-center gap-4">
                           <Users className="w-12 h-12 text-muted-foreground/50" />
                           <p>Nenhum estudante matriculado nesta turma</p>
-                          <DialogTrigger asChild>
-                            <Button
-                              className="btn-primary"
-                              onClick={() => {
-                                setNewStudent((current) => ({
-                                  ...current,
-                                  enrollment_number:
-                                    current.enrollment_number || generateEnrollmentNumber(),
-                                }));
-                                setIsDialogOpen(true);
-                              }}
-                            >
-                              <Plus className="w-4 h-4 mr-2" />
-                              Adicionar Estudante
-                            </Button>
-                          </DialogTrigger>
+                          <Button
+                            className="btn-primary"
+                            onClick={() => {
+                              setNewStudent((current) => ({
+                                ...current,
+                                enrollment_number:
+                                  current.enrollment_number || generateEnrollmentNumber(),
+                              }));
+                              setIsDialogOpen(true);
+                            }}
+                          >
+                            <Plus className="w-4 h-4 mr-2" />
+                            Adicionar Estudante
+                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>

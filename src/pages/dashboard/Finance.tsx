@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Search,
   Wallet,
@@ -10,6 +11,7 @@ import {
   XCircle,
   MoreHorizontal,
   Loader2,
+  Plus,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -35,8 +37,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Label } from '@/components/ui/label';
 import {
   BarChart,
   Bar,
@@ -49,18 +59,29 @@ import {
   Pie,
   Cell,
 } from 'recharts';
-import { usePayments, useClasses, useStudents, useCourses, useStatistics } from '@/hooks/useDatabase';
+import { usePayments, useClasses, useStudents, useCourses, useStatistics, useCreatePayment } from '@/hooks/useDatabase';
 import { toast } from 'sonner';
 
 export function Finance() {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCourse, setSelectedCourse] = useState('Todos');
+  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+  const [newPayment, setNewPayment] = useState({
+    student_id: '',
+    amount: '',
+    month_reference: (new Date().getMonth() + 1).toString(),
+    year_reference: new Date().getFullYear().toString(),
+    payment_method: 'Numerário',
+    observations: '',
+  });
 
   const { data: payments, isLoading: loadingPayments } = usePayments();
   const { data: classes, isLoading: loadingClasses } = useClasses();
   const { data: students, isLoading: loadingStudents } = useStudents();
   const { data: courses } = useCourses();
   const { data: statistics } = useStatistics();
+  const createPaymentMutation = useCreatePayment();
 
   const isLoading = loadingPayments || loadingClasses || loadingStudents;
 
@@ -135,6 +156,7 @@ export function Finance() {
       return {
         id: classItem.id,
         course: classItem.course?.name || '-',
+        course_id: classItem.course_id,
         class: `${classItem.grade_level}ª`,
         section: classItem.section,
         totalStudents: classStudents.length,
@@ -185,6 +207,44 @@ export function Finance() {
     { name: 'Pendentes', value: financialStats.pendingStudents, color: 'hsl(0, 84%, 60%)' },
   ];
 
+  const handleCreatePayment = () => {
+    if (!newPayment.student_id) {
+      toast.error('Selecione um estudante');
+      return;
+    }
+    if (!newPayment.amount || parseFloat(newPayment.amount) <= 0) {
+      toast.error('Valor inválido');
+      return;
+    }
+
+    createPaymentMutation.mutate({
+      student_id: newPayment.student_id,
+      amount: parseFloat(newPayment.amount),
+      month_reference: parseInt(newPayment.month_reference),
+      year_reference: parseInt(newPayment.year_reference),
+      payment_method: newPayment.payment_method,
+      observations: newPayment.observations || undefined,
+    }, {
+      onSuccess: () => {
+        toast.success('Pagamento registado com sucesso!');
+        setIsPaymentDialogOpen(false);
+        setNewPayment({
+          student_id: '',
+          amount: '',
+          month_reference: (new Date().getMonth() + 1).toString(),
+          year_reference: new Date().getFullYear().toString(),
+          payment_method: 'Numerário',
+          observations: '',
+        });
+      },
+      onError: (error) => {
+        toast.error('Erro ao registar pagamento: ' + error.message);
+      }
+    });
+  };
+
+  const monthNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -206,10 +266,128 @@ export function Finance() {
             <Download className="w-4 h-4 mr-2" />
             Exportar Relatório
           </Button>
-          <Button className="btn-primary" onClick={() => toast.info('Registo de pagamento em desenvolvimento')}>
-            <Wallet className="w-4 h-4 mr-2" />
-            Registar Pagamento
-          </Button>
+          <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="btn-primary">
+                <Wallet className="w-4 h-4 mr-2" />
+                Registar Pagamento
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-lg">
+              <DialogHeader>
+                <DialogTitle>Registar Novo Pagamento</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label>Estudante *</Label>
+                  <Select 
+                    value={newPayment.student_id}
+                    onValueChange={(v) => setNewPayment({ ...newPayment, student_id: v })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o estudante" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {students?.filter(s => s.status === 'active').map((student) => (
+                        <SelectItem key={student.id} value={student.id}>
+                          {student.enrollment_number} - {student.full_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Mês Referência *</Label>
+                    <Select 
+                      value={newPayment.month_reference}
+                      onValueChange={(v) => setNewPayment({ ...newPayment, month_reference: v })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {monthNames.map((month, index) => (
+                          <SelectItem key={index} value={(index + 1).toString()}>
+                            {month}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Ano Referência *</Label>
+                    <Select 
+                      value={newPayment.year_reference}
+                      onValueChange={(v) => setNewPayment({ ...newPayment, year_reference: v })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="2025">2025</SelectItem>
+                        <SelectItem value="2026">2026</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Valor (AOA) *</Label>
+                    <Input 
+                      type="number" 
+                      placeholder="Ex: 5000" 
+                      value={newPayment.amount}
+                      onChange={(e) => setNewPayment({ ...newPayment, amount: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Método de Pagamento</Label>
+                    <Select 
+                      value={newPayment.payment_method}
+                      onValueChange={(v) => setNewPayment({ ...newPayment, payment_method: v })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Numerário">Numerário</SelectItem>
+                        <SelectItem value="Transferência">Transferência</SelectItem>
+                        <SelectItem value="Depósito">Depósito</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Observações</Label>
+                  <Input 
+                    placeholder="Observações opcionais..." 
+                    value={newPayment.observations}
+                    onChange={(e) => setNewPayment({ ...newPayment, observations: e.target.value })}
+                  />
+                </div>
+                <div className="flex justify-end gap-3 pt-4">
+                  <Button variant="outline" onClick={() => setIsPaymentDialogOpen(false)}>
+                    Cancelar
+                  </Button>
+                  <Button 
+                    className="btn-primary" 
+                    onClick={handleCreatePayment}
+                    disabled={createPaymentMutation.isPending}
+                  >
+                    {createPaymentMutation.isPending ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Registando...
+                      </>
+                    ) : (
+                      'Registar Pagamento'
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
@@ -414,7 +592,7 @@ export function Finance() {
                 </TableRow>
               ) : (
                 filteredPayments.map((item) => (
-                  <TableRow key={item.id} className="table-row-hover">
+                  <TableRow key={item.id} className="table-row-hover cursor-pointer" onClick={() => navigate(`/dashboard/turmas/${item.id}`)}>
                     <TableCell className="font-medium">{item.course}</TableCell>
                     <TableCell>{item.class}</TableCell>
                     <TableCell>{item.section}</TableCell>
@@ -430,10 +608,10 @@ export function Finance() {
                         variant="outline"
                         className={
                           item.percentage >= 90
-                            ? 'badge-success'
+                            ? 'bg-success/10 text-success border-success/20'
                             : item.percentage >= 80
-                            ? 'badge-warning'
-                            : 'badge-danger'
+                            ? 'bg-warning/10 text-warning border-warning/20'
+                            : 'bg-destructive/10 text-destructive border-destructive/20'
                         }
                       >
                         {item.percentage}%
@@ -442,14 +620,21 @@ export function Finance() {
                     <TableCell className="text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
+                          <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}>
                             <MoreHorizontal className="w-4 h-4" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem>Ver Estudantes</DropdownMenuItem>
-                          <DropdownMenuItem>Registar Pagamento</DropdownMenuItem>
-                          <DropdownMenuItem>Exportar PDF</DropdownMenuItem>
+                          <DropdownMenuItem onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/dashboard/turmas/${item.id}`);
+                          }}>Ver Estudantes</DropdownMenuItem>
+                          <DropdownMenuItem onClick={(e) => {
+                            e.stopPropagation();
+                            setIsPaymentDialogOpen(true);
+                          }}>Registar Pagamento</DropdownMenuItem>
+                          <DropdownMenuItem>Enviar Lembretes</DropdownMenuItem>
+                          <DropdownMenuItem>Exportar Lista</DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>

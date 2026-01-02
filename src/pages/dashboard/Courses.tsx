@@ -46,13 +46,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useCourses, useTeachers, useSchoolNuclei, useClasses, useStudents, useSubjects } from '@/hooks/useDatabase';
+import { useCourses, useTeachers, useSchoolNuclei, useClasses, useStudents, useSubjects, useCreateCourse } from '@/hooks/useDatabase';
 import { toast } from 'sonner';
 
 export function Courses() {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [newCourse, setNewCourse] = useState({
+    name: '',
+    school_nucleus_id: '',
+    coordinator_id: '',
+    monthly_fee_10: '',
+    monthly_fee_11: '',
+    monthly_fee_12: '',
+    monthly_fee_13: '',
+  });
 
   const { data: courses, isLoading: loadingCourses } = useCourses();
   const { data: teachers } = useTeachers();
@@ -60,6 +69,7 @@ export function Courses() {
   const { data: classes } = useClasses();
   const { data: students } = useStudents();
   const { data: subjects } = useSubjects();
+  const createCourseMutation = useCreateCourse();
 
   // Calculate statistics for each course
   const coursesWithStats = React.useMemo(() => {
@@ -105,6 +115,40 @@ export function Courses() {
   const totalFemales = filteredCourses.reduce((sum, c) => sum + c.females, 0);
   const totalDropouts = filteredCourses.reduce((sum, c) => sum + c.dropouts, 0);
 
+  const handleCreateCourse = () => {
+    if (!newCourse.name.trim()) {
+      toast.error('O nome do curso é obrigatório');
+      return;
+    }
+
+    createCourseMutation.mutate({
+      name: newCourse.name,
+      school_nucleus_id: newCourse.school_nucleus_id || nuclei?.[0]?.id,
+      coordinator_id: newCourse.coordinator_id || undefined,
+      monthly_fee_10: newCourse.monthly_fee_10 ? parseFloat(newCourse.monthly_fee_10) : 0,
+      monthly_fee_11: newCourse.monthly_fee_11 ? parseFloat(newCourse.monthly_fee_11) : 0,
+      monthly_fee_12: newCourse.monthly_fee_12 ? parseFloat(newCourse.monthly_fee_12) : 0,
+      monthly_fee_13: newCourse.monthly_fee_13 ? parseFloat(newCourse.monthly_fee_13) : 0,
+    }, {
+      onSuccess: () => {
+        toast.success('Curso criado com sucesso!');
+        setIsAddDialogOpen(false);
+        setNewCourse({
+          name: '',
+          school_nucleus_id: '',
+          coordinator_id: '',
+          monthly_fee_10: '',
+          monthly_fee_11: '',
+          monthly_fee_12: '',
+          monthly_fee_13: '',
+        });
+      },
+      onError: (error) => {
+        toast.error('Erro ao criar curso: ' + error.message);
+      }
+    });
+  };
+
   if (loadingCourses) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -134,12 +178,19 @@ export function Courses() {
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label>Nome do Curso</Label>
-                <Input placeholder="Ex: Enfermagem Geral" />
+                <Label>Nome do Curso *</Label>
+                <Input 
+                  placeholder="Ex: Enfermagem Geral" 
+                  value={newCourse.name}
+                  onChange={(e) => setNewCourse({ ...newCourse, name: e.target.value })}
+                />
               </div>
               <div className="space-y-2">
                 <Label>Núcleo Escolar</Label>
-                <Select>
+                <Select 
+                  value={newCourse.school_nucleus_id}
+                  onValueChange={(v) => setNewCourse({ ...newCourse, school_nucleus_id: v })}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione o núcleo" />
                   </SelectTrigger>
@@ -154,7 +205,10 @@ export function Courses() {
               </div>
               <div className="space-y-2">
                 <Label>Coordenador</Label>
-                <Select>
+                <Select 
+                  value={newCourse.coordinator_id}
+                  onValueChange={(v) => setNewCourse({ ...newCourse, coordinator_id: v })}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione o coordenador" />
                   </SelectTrigger>
@@ -170,30 +224,58 @@ export function Courses() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Mensalidade 10ª</Label>
-                  <Input type="number" placeholder="Ex: 5000" />
+                  <Input 
+                    type="number" 
+                    placeholder="Ex: 5000" 
+                    value={newCourse.monthly_fee_10}
+                    onChange={(e) => setNewCourse({ ...newCourse, monthly_fee_10: e.target.value })}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Mensalidade 11ª</Label>
-                  <Input type="number" placeholder="Ex: 5500" />
+                  <Input 
+                    type="number" 
+                    placeholder="Ex: 5500" 
+                    value={newCourse.monthly_fee_11}
+                    onChange={(e) => setNewCourse({ ...newCourse, monthly_fee_11: e.target.value })}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Mensalidade 12ª</Label>
-                  <Input type="number" placeholder="Ex: 6000" />
+                  <Input 
+                    type="number" 
+                    placeholder="Ex: 6000" 
+                    value={newCourse.monthly_fee_12}
+                    onChange={(e) => setNewCourse({ ...newCourse, monthly_fee_12: e.target.value })}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Mensalidade 13ª</Label>
-                  <Input type="number" placeholder="Ex: 6500" />
+                  <Input 
+                    type="number" 
+                    placeholder="Ex: 6500" 
+                    value={newCourse.monthly_fee_13}
+                    onChange={(e) => setNewCourse({ ...newCourse, monthly_fee_13: e.target.value })}
+                  />
                 </div>
               </div>
               <div className="flex justify-end gap-3 pt-4">
                 <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
                   Cancelar
                 </Button>
-                <Button className="btn-primary" onClick={() => {
-                  toast.info('Funcionalidade em desenvolvimento');
-                  setIsAddDialogOpen(false);
-                }}>
-                  Adicionar Curso
+                <Button 
+                  className="btn-primary" 
+                  onClick={handleCreateCourse}
+                  disabled={createCourseMutation.isPending}
+                >
+                  {createCourseMutation.isPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Criando...
+                    </>
+                  ) : (
+                    'Adicionar Curso'
+                  )}
                 </Button>
               </div>
             </div>

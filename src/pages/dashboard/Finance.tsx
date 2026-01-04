@@ -207,6 +207,43 @@ export function Finance() {
     { name: 'Pendentes', value: financialStats.pendingStudents, color: 'hsl(0, 84%, 60%)' },
   ];
 
+  const handleExportReport = () => {
+    if (!filteredPayments.length) {
+      toast.error('Não há dados para exportar');
+      return;
+    }
+
+    const header = ['Curso', 'Classe', 'Turma', 'Total Alunos', 'Pagos', 'Pendentes', '% Pagos'];
+    const rows = filteredPayments.map((item) => [
+      item.course,
+      item.class,
+      item.section,
+      item.totalStudents.toString(),
+      item.paidStudents.toString(),
+      item.pendingStudents.toString(),
+      item.percentage.toString().replace('.', ','),
+    ]);
+
+    const csvContent = [header, ...rows]
+      .map((cols) => cols.map((c) => `"${c}"`).join(';'))
+      .join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const now = new Date();
+    const fileName = `relatorio-financas-${now.getFullYear()}-${now.getMonth() + 1}.csv`;
+
+    link.href = url;
+    link.setAttribute('download', fileName);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    toast.success('Relatório exportado com sucesso');
+  };
+
   const handleCreatePayment = () => {
     if (!newPayment.student_id) {
       toast.error('Selecione um estudante');
@@ -262,9 +299,9 @@ export function Finance() {
           <p className="text-muted-foreground">Gestão de pagamentos e mensalidades</p>
         </div>
         <div className="flex gap-3">
-          <Button variant="outline" onClick={() => toast.info('Exportação em desenvolvimento')}>
+          <Button variant="outline" onClick={handleExportReport}>
             <Download className="w-4 h-4 mr-2" />
-            Exportar Relatório
+            Exportar Relatório (CSV)
           </Button>
           <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
             <DialogTrigger asChild>

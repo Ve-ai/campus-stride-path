@@ -44,13 +44,38 @@ import {
 import { Label } from '@/components/ui/label';
 import { useClasses, useTeachers } from '@/hooks/useDatabase';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 export function ClassDirectors() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
+  const [selectedTeacherId, setSelectedTeacherId] = useState<string>('');
+  const [selectedClassId, setSelectedClassId] = useState<string>('');
 
   const { data: classes, isLoading: loadingClasses } = useClasses();
   const { data: teachers, isLoading: loadingTeachers } = useTeachers();
+  const queryClient = useQueryClient();
+
+  const assignDirectorMutation = useMutation({
+    mutationFn: async ({ classId, teacherId }: { classId: string; teacherId: string }) => {
+      const { error } = await supabase
+        .from('classes')
+        .update({ class_director_id: teacherId })
+        .eq('id', classId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success('Director de turma nomeado com sucesso');
+      queryClient.invalidateQueries({ queryKey: ['classes'] });
+      setIsAssignDialogOpen(false);
+      setSelectedTeacherId('');
+      setSelectedClassId('');
+    },
+    onError: (error) => {
+      toast.error('Erro ao nomear director: ' + (error as Error).message);
+    },
+  });
 
   const isLoading = loadingClasses || loadingTeachers;
 
@@ -153,7 +178,10 @@ export function ClassDirectors() {
             <div className="space-y-4 py-4">
               <div className="space-y-2">
                 <Label>Professor</Label>
-                <Select>
+                <Select
+                  value={selectedTeacherId}
+                  onValueChange={(v) => setSelectedTeacherId(v)}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione o professor" />
                   </SelectTrigger>
@@ -174,7 +202,10 @@ export function ClassDirectors() {
               </div>
               <div className="space-y-2">
                 <Label>Turma</Label>
-                <Select>
+                <Select
+                  value={selectedClassId}
+                  onValueChange={(v) => setSelectedClassId(v)}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione a turma" />
                   </SelectTrigger>
@@ -197,11 +228,17 @@ export function ClassDirectors() {
                 <Button variant="outline" onClick={() => setIsAssignDialogOpen(false)}>
                   Cancelar
                 </Button>
-                <Button className="btn-primary" onClick={() => {
-                  toast.success('Funcionalidade em desenvolvimento');
-                  setIsAssignDialogOpen(false);
-                }}>
-                  Nomear
+                <Button
+                  className="btn-primary"
+                  disabled={!selectedTeacherId || !selectedClassId || assignDirectorMutation.isPending}
+                  onClick={() =>
+                    assignDirectorMutation.mutate({
+                      classId: selectedClassId,
+                      teacherId: selectedTeacherId,
+                    })
+                  }
+                >
+                  {assignDirectorMutation.isPending ? 'A nomear...' : 'Nomear'}
                 </Button>
               </div>
             </div>

@@ -60,12 +60,32 @@ export function Settings() {
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [isAddCourseOpen, setIsAddCourseOpen] = useState(false);
   const [isAddAdminOpen, setIsAddAdminOpen] = useState(false);
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    if (typeof window === 'undefined') return 'light';
+    const stored = localStorage.getItem('theme');
+    return stored === 'dark' ? 'dark' : 'light';
+  });
 
   const { data: courses, isLoading: loadingCourses } = useCourses();
   const { data: schoolNuclei } = useSchoolNuclei();
   const { data: teachers } = useTeachers();
 
   const isSuperAdmin = user?.role === 'super_admin';
+
+  const applyTheme = (value: 'light' | 'dark') => {
+    setTheme(value);
+    if (typeof document !== 'undefined') {
+      const root = document.documentElement;
+      if (value === 'dark') {
+        root.classList.add('dark');
+      } else {
+        root.classList.remove('dark');
+      }
+    }
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('theme', value);
+    }
+  };
 
   const handleChangePassword = async () => {
     if (newPassword !== confirmPassword) {
@@ -268,11 +288,23 @@ export function Settings() {
               <div className="space-y-4">
                 <Label>Modo de Cor</Label>
                 <div className="grid grid-cols-2 gap-4">
-                  <button className="p-4 rounded-lg border-2 border-primary bg-background flex flex-col items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => applyTheme('light')}
+                    className={`p-4 rounded-lg border-2 flex flex-col items-center gap-2 transition-colors ${
+                      theme === 'light' ? 'border-primary bg-background' : 'border-border bg-muted/40'
+                    }`}
+                  >
                     <div className="w-12 h-12 rounded-lg bg-background border border-border shadow-sm" />
                     <span className="text-sm font-medium">Claro</span>
                   </button>
-                  <button className="p-4 rounded-lg border border-border bg-background flex flex-col items-center gap-2 opacity-50">
+                  <button
+                    type="button"
+                    onClick={() => applyTheme('dark')}
+                    className={`p-4 rounded-lg border-2 flex flex-col items-center gap-2 transition-colors ${
+                      theme === 'dark' ? 'border-primary bg-background' : 'border-border bg-muted/40'
+                    }`}
+                  >
                     <div className="w-12 h-12 rounded-lg bg-foreground" />
                     <span className="text-sm font-medium">Escuro</span>
                   </button>

@@ -466,7 +466,7 @@ export function useCreateTeacher() {
       functions?: string[];
       is_active?: boolean;
     }) => {
-      // 1) Criar utilizador de autenticação com email baseado no BI
+      // 1) Preparar dados básicos (email e senha padrão)
       const email = `${teacher.bi_number.toLowerCase()}@professor.escola.co.ao`;
 
       let birthYear: number | null = null;
@@ -485,65 +485,151 @@ export function useCreateTeacher() {
       const password = generateDefaultTeacherPassword(teacher.full_name, birthYear);
       const redirectUrl = `${window.location.origin}/`;
 
-      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: redirectUrl,
-          data: {
+      // 2) Verificar se já existe perfil com este BI (utilizador já registado)
+      const { data: existingProfile, error: existingProfileError } = await supabase
+        .from('profiles')
+        .select('user_id')
+        .eq('bi_number', teacher.bi_number)
+        .maybeSingle();
+
+      if (existingProfileError) {
+        throw existingProfileError;
+      }
+
+      let authUserId: string | null = existingProfile?.user_id ?? null;
+
+      // 3) Se não existir utilizador associado a este BI, criar novo utilizador de autenticação
+      if (!authUserId) {
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            emailRedirectTo: redirectUrl,
+            data: {
+              full_name: teacher.full_name,
+              username: teacher.bi_number,
+            },
+          },
+        });
+
+        if (signUpError) {
+          // Caso o utilizador já exista, tentar recuperar o perfil associado
+          if (
+            signUpError.message?.toLowerCase().includes('user already registered') ||
+            signUpError.message?.toLowerCase().includes('user already exists')
+          ) {
+            const { data: profileByBi, error: profileByBiError } = await supabase
+              .from('profiles')
+              .select('user_id')
+              .eq('bi_number', teacher.bi_number)
+              .maybeSingle();
+
+            if (profileByBiError) {
+              throw profileByBiError;
+            }
+
+            if (!profileByBi) {
+              throw new Error('Já existe um utilizador registado com este login. Utilize outro número de BI.');
+            }
+
+            authUserId = profileByBi.user_id;
+          } else {
+            throw signUpError;
+          }
+        } else {
+          authUserId = signUpData.user?.id ?? null;
+        }
+      }
+
+      if (!authUserId) {
+        throw new Error('Não foi possível obter o utilizador associado ao professor.');
+      }
+
+      // 4) Garantir que o perfil existe/é atualizado para este utilizador
+      const { data: existingProfileForUser, error: existingProfileForUserError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('user_id', authUserId)
+        .maybeSingle();
+
+      if (existingProfileForUserError) {
+        throw existingProfileForUserError;
+      }
+
+      if (existingProfileForUser) {
+        const { error: updateProfileError } = await supabase
+          .from('profiles')
+          .update({
             full_name: teacher.full_name,
             username: teacher.bi_number,
-          },
-        },
-      });
+            bi_number: teacher.bi_number,
+            birth_date: teacher.birth_date || null,
+            phone: teacher.phone || null,
+            must_change_password: true,
+          })
+          .eq('user_id', authUserId);
 
-      if (signUpError) {
-        // Tratar caso específico em que o utilizador já existe
-        if (
-          signUpError.message?.toLowerCase().includes('user already registered') ||
-          signUpError.message?.toLowerCase().includes('user already exists')
-        ) {
-          throw new Error('Já existe um utilizador registado com este login. Utilize outro número de BI.');
+        if (updateProfileError) {
+          throw updateProfileError;
         }
+      } else {
+        const { error: insertProfileError } = await supabase
+          .from('profiles')
+          .insert({
+            user_id: authUserId,
+            full_name: teacher.full_name,
+            username: teacher.bi_number,
+            bi_number: teacher.bi_number,
+            birth_date: teacher.birth_date || null,
+            phone: teacher.phone || null,
+            must_change_password: true,
+          });
 
-        throw signUpError;
+        if (insertProfileError) {
+          throw insertProfileError;
+        }
       }
 
-      const authUserId = signUpData.user?.id;
-      if (!authUserId) {
-        throw new Error('Não foi possível obter o utilizador criado para o professor.');
-      }
-
-      // 2) Criar/atualizar perfil com BI e dados básicos
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert({
-          user_id: authUserId,
-          full_name: teacher.full_name,
-          username: teacher.bi_number,
-          bi_number: teacher.bi_number,
-          birth_date: teacher.birth_date || null,
-          phone: teacher.phone || null,
-          must_change_password: true,
-        });
-
-      if (profileError) {
-        throw profileError;
-      }
-
-      // 3) Atribuir role de professor
-      const { error: roleError } = await supabase
+      // 5) Garantir que o utilizador tem o role de professor
+      const { data: existingRole, error: existingRoleError } = await supabase
         .from('user_roles')
-        .insert({
-          user_id: authUserId,
-          role: 'professor',
-        });
+        .select('id')
+        .eq('user_id', authUserId)
+        .eq('role', 'professor')
+        .maybeSingle();
 
-      if (roleError) {
-        throw roleError;
+      if (existingRoleError) {
+        throw existingRoleError;
       }
 
-      // 4) Criar registo na tabela teachers ligado ao utilizador
+      if (!existingRole) {
+        const { error: roleError } = await supabase
+          .from('user_roles')
+          .insert({
+            user_id: authUserId,
+            role: 'professor',
+          });
+
+        if (roleError) {
+          throw roleError;
+        }
+      }
+
+      // 6) Criar registo na tabela teachers ligado ao utilizador
+      const { data: existingTeacher, error: existingTeacherError } = await supabase
+        .from('teachers')
+        .select('id')
+        .eq('user_id', authUserId)
+        .maybeSingle();
+
+      if (existingTeacherError) {
+        throw existingTeacherError;
+      }
+
+      if (existingTeacher) {
+        throw new Error('Já existe um professor associado a este utilizador.');
+      }
+
       const { data, error } = await supabase
         .from('teachers')
         .insert({

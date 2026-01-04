@@ -33,6 +33,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuCheckboxItem,
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -72,7 +73,7 @@ export function Teachers() {
   });
   const [assignments, setAssignments] = useState<{
     courseId?: string;
-    classId?: string;
+    gradeLevel?: number;
     subjectIds: string[];
     periods: string[];
   }[]>([]);
@@ -336,7 +337,10 @@ export function Teachers() {
                       variant="outline"
                       size="sm"
                       onClick={() =>
-                        setAssignments((prev) => [...prev, { courseId: undefined, classId: undefined, subjectIds: [], periods: [] }])
+                        setAssignments((prev) => [
+                          ...prev,
+                          { courseId: undefined, gradeLevel: undefined, subjectIds: [], periods: [] },
+                        ])
                       }
                     >
                       <Plus className="w-4 h-4 mr-1" /> Adicionar linha
@@ -355,6 +359,24 @@ export function Teachers() {
                         ? (classes || []).filter((cls: any) => cls.course_id === a.courseId)
                         : [];
 
+                      const availableGradesForCourse = Array.from(
+                        new Set(classesForCourse.map((cls: any) => cls.grade_level)),
+                      ).sort();
+
+                      const selectedGrades = assignments
+                        .filter((_, i) => i !== index)
+                        .map((assignment) => assignment.gradeLevel)
+                        .filter((g): g is number => g !== undefined);
+
+                      const subjectsForClass = (subjects || []).filter((subject: any) =>
+                        subject.course_id === a.courseId &&
+                        (!a.gradeLevel || subject.grade_level === a.gradeLevel),
+                      );
+
+                      const selectedSubjects = subjectsForClass.filter((subject: any) =>
+                        a.subjectIds.includes(subject.id),
+                      );
+
                       return (
                         <div
                           key={index}
@@ -367,7 +389,12 @@ export function Teachers() {
                               onValueChange={(value) => {
                                 setAssignments((prev) => {
                                   const copy = [...prev];
-                                  copy[index] = { courseId: value, classId: undefined, subjectIds: [], periods: [] };
+                                  copy[index] = {
+                                    courseId: value,
+                                    gradeLevel: undefined,
+                                    subjectIds: [],
+                                    periods: [],
+                                  };
                                   return copy;
                                 });
                               }}
@@ -388,49 +415,67 @@ export function Teachers() {
                           <div className="space-y-1">
                             <Label className="text-xs">Classe</Label>
                             <Select
-                              value={a.classId}
+                              value={a.gradeLevel ? String(a.gradeLevel) : undefined}
                               onValueChange={(value) => {
+                                const grade = parseInt(value, 10);
                                 setAssignments((prev) => {
                                   const copy = [...prev];
-                                  copy[index] = { ...copy[index], classId: value, subjectIds: [] };
+                                  copy[index] = {
+                                    ...copy[index],
+                                    gradeLevel: grade,
+                                    subjectIds: [],
+                                  };
                                   return copy;
                                 });
                               }}
+                              disabled={!a.courseId}
                             >
                               <SelectTrigger>
-                                <SelectValue placeholder="Selecione a turma" />
+                                <SelectValue placeholder="Selecione a classe" />
                               </SelectTrigger>
                               <SelectContent>
-                                {classesForCourse.map((cls: any) => (
-                                  <SelectItem key={cls.id} value={cls.id}>
-                                    {cls.grade_level}ª
-                                  </SelectItem>
-                                ))}
-
+                                {availableGradesForCourse
+                                  .filter((grade) => !selectedGrades.includes(grade))
+                                  .map((grade) => (
+                                    <SelectItem key={grade} value={String(grade)}>
+                                      {grade}ª
+                                    </SelectItem>
+                                  ))}
                               </SelectContent>
                             </Select>
                           </div>
 
                           <div className="space-y-1">
                             <Label className="text-xs">Disciplinas</Label>
-                            <div className="flex flex-wrap gap-2 text-xs">
-                              {(() => {
-                                const selectedClass = classesForCourse.find((cls: any) => cls.id === a.classId);
-                                const gradeLevel = selectedClass?.grade_level;
-                                const subjectsForClass = (subjects || [])
-                                  .filter((subject: any) =>
-                                    subject.course_id === a.courseId &&
-                                    (!gradeLevel || subject.grade_level === gradeLevel),
-                                  );
-
-                                return subjectsForClass.map((subject: any) => {
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild disabled={!a.courseId || !a.gradeLevel}>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  className="w-full justify-start flex-wrap gap-1 text-xs min-h-9"
+                                >
+                                  {selectedSubjects.length ? (
+                                    <div className="flex flex-wrap gap-1">
+                                      {selectedSubjects.map((subject: any) => (
+                                        <Badge key={subject.id} variant="outline" className="text-xs">
+                                          {subject.name}
+                                        </Badge>
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    <span className="text-muted-foreground">Selecione as disciplinas</span>
+                                  )}
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent className="w-64 max-h-64 overflow-y-auto">
+                                {subjectsForClass.map((subject: any) => {
                                   const checked = a.subjectIds.includes(subject.id);
                                   return (
-                                    <button
+                                    <DropdownMenuCheckboxItem
                                       key={subject.id}
-                                      type="button"
-                                      disabled={!a.courseId || !a.classId}
-                                      onClick={() =>
+                                      checked={checked}
+                                      onCheckedChange={() =>
                                         setAssignments((prev) => {
                                           const copy = [...prev];
                                           const current = copy[index];
@@ -443,18 +488,13 @@ export function Teachers() {
                                           return copy;
                                         })
                                       }
-                                      className={`px-3 py-1 rounded-full border text-xs ${
-                                        checked
-                                          ? 'bg-primary text-primary-foreground border-primary'
-                                          : 'bg-background text-muted-foreground'
-                                      }`}
                                     >
                                       {subject.name}
-                                    </button>
+                                    </DropdownMenuCheckboxItem>
                                   );
-                                });
-                              })()}
-                            </div>
+                                })}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </div>
 
                           <div className="space-y-1">
@@ -584,77 +624,88 @@ export function Teachers() {
 
                     if (!isLast) {
                       setCurrentStep(order[idx + 1]);
-                    } else {
-                      createTeacherMutation.mutate(
-                        {
-                          employee_number: newTeacher.employee_number,
-                          full_name: newTeacher.full_name,
-                          bi_number: newTeacher.bi_number,
-                          birth_date: newTeacher.birth_date || undefined,
-                          phone: newTeacher.phone || undefined,
-                          degree: newTeacher.degree || undefined,
-                          degree_area: newTeacher.degree_area || undefined,
-                          hire_date: newTeacher.hire_date || undefined,
-                          gross_salary: newTeacher.gross_salary
-                            ? parseFloat(newTeacher.gross_salary)
-                            : undefined,
-                          functions: newTeacher.functions
-                            ? newTeacher.functions.split(',').map((f) => f.trim())
-                            : [],
-                          is_active: newTeacher.is_active,
-                        },
-                        {
-                          onSuccess: async (createdTeacher: any) => {
-                            try {
-                              if (assignments.length) {
-                                const validAssignments = assignments.filter(
-                                  (a) => a.classId && a.subjectIds.length && a.periods.length,
-                                );
+                      } else {
+                       createTeacherMutation.mutate(
+                         {
+                           employee_number: newTeacher.employee_number,
+                           full_name: newTeacher.full_name,
+                           bi_number: newTeacher.bi_number,
+                           birth_date: newTeacher.birth_date || undefined,
+                           phone: newTeacher.phone || undefined,
+                           degree: newTeacher.degree || undefined,
+                           degree_area: newTeacher.degree_area || undefined,
+                           hire_date: newTeacher.hire_date || undefined,
+                           gross_salary: newTeacher.gross_salary
+                             ? parseFloat(newTeacher.gross_salary)
+                             : undefined,
+                           functions: newTeacher.functions
+                             ? newTeacher.functions.split(',').map((f) => f.trim())
+                             : [],
+                           is_active: newTeacher.is_active,
+                         },
+                         {
+                           onSuccess: async (createdTeacher: any) => {
+                             try {
+                               if (assignments.length) {
+                                 const allClasses = classes || [];
+                                 const validAssignments = assignments.filter(
+                                   (a) => a.courseId && a.gradeLevel && a.subjectIds.length && a.periods.length,
+                                 );
 
-                                if (validAssignments.length) {
-                                  await createTeacherAssignmentsMutation.mutateAsync(
-                                    validAssignments.flatMap((a) =>
-                                      a.subjectIds.map((subjectId) => ({
-                                        teacher_id: createdTeacher.id,
-                                        class_id: a.classId!,
-                                        subject_id: subjectId,
-                                        periods: a.periods,
-                                      })),
-                                    ),
-                                  );
-                                }
-                              }
+                                 if (validAssignments.length) {
+                                   const assignmentsPayload = validAssignments.flatMap((a) => {
+                                     const targetClasses = allClasses.filter((cls: any) =>
+                                       cls.course_id === a.courseId &&
+                                       cls.grade_level === a.gradeLevel &&
+                                       a.periods.includes(cls.period),
+                                     );
 
-                              toast.success('Professor adicionado com sucesso!');
-                              setIsAddDialogOpen(false);
-                              setCurrentStep('pessoais');
-                              setNewTeacher({
-                                full_name: '',
-                                phone: '',
-                                bi_number: '',
-                                birth_date: '',
-                                birth_place: '',
-                                employee_number: '',
-                                degree: '',
-                                degree_area: '',
-                                hire_date: '',
-                                gross_salary: '',
-                                functions: '',
-                                username: '',
-                                is_active: true,
-                              });
-                              setAssignments([]);
-                            } catch (error: any) {
-                              toast.error('Erro ao salvar atribuições: ' + error.message);
-                            }
-                          },
-                          onError: (error: any) => {
-                            toast.error('Erro ao adicionar professor: ' + error.message);
-                          },
-                        },
-                      );
-                    }
-                  }}
+                                     return targetClasses.flatMap((cls: any) =>
+                                       a.subjectIds.map((subjectId) => ({
+                                         teacher_id: createdTeacher.id,
+                                         class_id: cls.id,
+                                         subject_id: subjectId,
+                                         periods: a.periods,
+                                       })),
+                                     );
+                                   });
+
+                                   if (assignmentsPayload.length) {
+                                     await createTeacherAssignmentsMutation.mutateAsync(assignmentsPayload);
+                                   }
+                                 }
+                               }
+
+                               toast.success('Professor adicionado com sucesso!');
+                               setIsAddDialogOpen(false);
+                               setCurrentStep('pessoais');
+                               setNewTeacher({
+                                 full_name: '',
+                                 phone: '',
+                                 bi_number: '',
+                                 birth_date: '',
+                                 birth_place: '',
+                                 employee_number: '',
+                                 degree: '',
+                                 degree_area: '',
+                                 hire_date: '',
+                                 gross_salary: '',
+                                 functions: '',
+                                 username: '',
+                                 is_active: true,
+                               });
+                               setAssignments([]);
+                             } catch (error: any) {
+                               toast.error('Erro ao salvar atribuições: ' + error.message);
+                             }
+                           },
+                           onError: (error: any) => {
+                             toast.error('Erro ao adicionar professor: ' + error.message);
+                           },
+                         },
+                       );
+                     }
+                   }}
                   disabled={
                     createTeacherMutation.isPending ||
                     !newTeacher.full_name ||

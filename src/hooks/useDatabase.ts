@@ -10,7 +10,7 @@ export function useCourses() {
         .from('courses')
         .select(`
           *,
-          school_nuclei (name),
+          school_nuclei (name, logo_url),
           coordinator:teachers!courses_coordinator_fkey (
             id,
             profiles (full_name)

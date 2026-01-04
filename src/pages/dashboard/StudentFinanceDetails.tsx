@@ -123,6 +123,113 @@ export function StudentFinanceDetails() {
     .filter(p => p.year_reference === currentYear)
     .reduce((sum, p) => sum + Number(p.amount), 0);
 
+  const lastPayment = studentPayments[0];
+
+  const handlePrintInvoice = (payment?: any) => {
+    if (!student || !studentClass || !course) {
+      toast.error('Dados do estudante incompletos para gerar fatura.');
+      return;
+    }
+
+    const targetPayment = payment || lastPayment;
+    if (!targetPayment) {
+      toast.error('Nenhum pagamento disponível para imprimir.');
+      return;
+    }
+
+    const nucleusName = (course as any).school_nuclei?.name || 'Núcleo Escolar';
+    const nucleusLogo = (course as any).school_nuclei?.logo_url as string | undefined;
+
+    const monthLabel = MONTHS[targetPayment.month_reference - 1] || '';
+    const paymentDate = targetPayment.payment_date
+      ? new Date(targetPayment.payment_date).toLocaleDateString('pt-AO')
+      : new Date().toLocaleDateString('pt-AO');
+
+    const classLabel = `${studentClass.grade_level}ª ${studentClass.section} - ${studentClass.period}`;
+    const courseName = course.name as string;
+
+    const amountFormatted = new Intl.NumberFormat('pt-AO', {
+      style: 'currency',
+      currency: 'AOA',
+      minimumFractionDigits: 0,
+    }).format(Number(targetPayment.amount));
+
+    const printWindow = window.open('', '_blank', 'width=900,height=650');
+    if (!printWindow) {
+      toast.error('Não foi possível abrir a janela de impressão.');
+      return;
+    }
+
+    printWindow.document.write(`<!DOCTYPE html>
+<html lang="pt-AO">
+  <head>
+    <meta charSet="UTF-8" />
+    <title>Fatura - ${student.full_name}</title>
+    <style>
+      body { font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 40px; color: #111827; }
+      .header { display: flex; align-items: center; gap: 16px; border-bottom: 2px solid #e5e7eb; padding-bottom: 16px; margin-bottom: 24px; }
+      .logo { width: 72px; height: 72px; object-fit: contain; }
+      .title { font-size: 20px; font-weight: 700; margin: 0; }
+      .subtitle { font-size: 12px; color: #6b7280; margin: 2px 0 0 0; }
+      .section { margin-bottom: 16px; }
+      .section-title { font-size: 13px; font-weight: 600; margin-bottom: 8px; text-transform: uppercase; color: #374151; }
+      table { width: 100%; border-collapse: collapse; font-size: 13px; }
+      td { padding: 6px 4px; }
+      .label { color: #6b7280; width: 160px; }
+      .value { font-weight: 500; }
+      .amount { font-size: 18px; font-weight: 700; color: #047857; margin-top: 4px; }
+      .footer { display: flex; justify-content: space-between; margin-top: 40px; }
+      .signature { width: 45%; text-align: center; }
+      .signature-line { border-top: 1px solid #9ca3af; margin-top: 48px; padding-top: 4px; font-size: 12px; color: #6b7280; }
+      .stamp-box { width: 45%; border: 1px dashed #9ca3af; padding: 16px; text-align: center; font-size: 12px; color: #6b7280; }
+      .badge { display: inline-block; padding: 2px 8px; border-radius: 9999px; border: 1px solid #d1d5db; font-size: 11px; color: #374151; }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      ${nucleusLogo ? `<img src="${nucleusLogo}" alt="Logotipo ${nucleusName}" class="logo" />` : ''}
+      <div>
+        <h1 class="title">${nucleusName}</h1>
+        <p class="subtitle">Comprovativo de Pagamento de Mensalidade</p>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Dados do Estudante</div>
+      <table>
+        <tr><td class="label">Nome</td><td class="value">${student.full_name}</td></tr>
+        <tr><td class="label">Nº Matrícula</td><td class="value">${student.enrollment_number}</td></tr>
+        <tr><td class="label">Curso</td><td class="value">${courseName}</td></tr>
+        <tr><td class="label">Turma</td><td class="value">${classLabel}</td></tr>
+      </table>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Dados do Pagamento</div>
+      <table>
+        <tr><td class="label">Mês pago</td><td class="value">${monthLabel} / ${targetPayment.year_reference}</td></tr>
+        <tr><td class="label">Data do pagamento</td><td class="value">${paymentDate}</td></tr>
+        <tr><td class="label">Método</td><td class="value"><span class="badge">${targetPayment.payment_method || 'N/D'}</span></td></tr>
+        <tr><td class="label">Valor pago</td><td class="value amount">${amountFormatted}</td></tr>
+      </table>
+    </div>
+
+    <div class="footer">
+      <div class="signature">
+        <div class="signature-line">Assinatura do Responsável Financeiro</div>
+      </div>
+      <div class="stamp-box">
+        Espaço reservado para carimbo da instituição
+      </div>
+    </div>
+  </body>
+</html>`);
+
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
+  };
+
   const handleCreatePayment = () => {
     if (!studentId) return;
     
@@ -134,7 +241,7 @@ export function StudentFinanceDetails() {
       payment_method: newPayment.method,
       observations: newPayment.observations,
     }, {
-      onSuccess: () => {
+      onSuccess: (createdPayment) => {
         toast.success('Pagamento registado com sucesso!');
         setIsPaymentOpen(false);
         setNewPayment({
@@ -144,13 +251,13 @@ export function StudentFinanceDetails() {
           method: 'Transferência',
           observations: '',
         });
+        handlePrintInvoice(createdPayment);
       },
       onError: (error) => {
         toast.error('Erro ao registar pagamento: ' + error.message);
       },
     });
   };
-
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-AO', {
       style: 'currency',
@@ -275,7 +382,7 @@ export function StudentFinanceDetails() {
             </div>
           </DialogContent>
         </Dialog>
-        <Button variant="outline" onClick={() => toast.info('Funcionalidade em desenvolvimento')}>
+        <Button variant="outline" onClick={() => handlePrintInvoice()}>
           <Printer className="w-4 h-4 mr-2" />
           Imprimir Fatura
         </Button>

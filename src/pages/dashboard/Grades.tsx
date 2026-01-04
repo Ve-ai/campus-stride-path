@@ -471,7 +471,8 @@ function ProfessorGrades() {
     }
 
     await bulkCreateGradeMutation.mutateAsync(rowsToValidate);
-  };
+  if (loadingAssignments) {
+    return (
       <div className="flex items-center justify-center h-96">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>

@@ -138,36 +138,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setState(prev => ({ ...prev, isLoading: true }));
     
     try {
-      // Find the email for the username
+      // Normalizar inputs (remover espaços acidentais)
+      const username = credentials.username.trim();
+      const password = credentials.password.trim();
+
+      // Encontrar o email a partir do username
       let email = '';
       
-      // Check default credentials
-      if (credentials.username === DEFAULT_CREDENTIALS.super_admin.username) {
+      // Credenciais padrão (super admin / admin / finanças)
+      if (username === DEFAULT_CREDENTIALS.super_admin.username) {
         email = DEFAULT_CREDENTIALS.super_admin.email;
-      } else if (credentials.username === DEFAULT_CREDENTIALS.admin.username) {
+      } else if (username === DEFAULT_CREDENTIALS.admin.username) {
         email = DEFAULT_CREDENTIALS.admin.email;
-      } else if (credentials.username === DEFAULT_CREDENTIALS.finance.username) {
+      } else if (username === DEFAULT_CREDENTIALS.finance.username) {
         email = DEFAULT_CREDENTIALS.finance.email;
       } else {
-        // For professors, username is BI number - look up the email
+        // Para professores, o username é o BI - procurar o utilizador
         const { data: profile } = await supabase
           .from('profiles')
           .select('user_id')
-          .eq('bi_number', credentials.username)
+          .eq('bi_number', username)
           .maybeSingle();
         
         if (profile) {
-          // Get user email from auth
-          const { data: userData } = await supabase
-            .from('profiles')
-            .select('user_id')
-            .eq('bi_number', credentials.username)
-            .single();
-          
-          if (userData) {
-            // Build email from BI number
-            email = `${credentials.username.toLowerCase()}@professor.escola.co.ao`;
-          }
+          // Construir email "sintético" a partir do BI
+          email = `${username.toLowerCase()}@professor.escola.co.ao`;
         }
         
         if (!email) {
@@ -178,10 +173,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
-        password: credentials.password,
+        password,
       });
 
       if (error) {
+        console.error('Erro de login Supabase:', error.message);
         setState(prev => ({ ...prev, isLoading: false }));
         return { success: false, error: 'Credenciais inválidas' };
       }

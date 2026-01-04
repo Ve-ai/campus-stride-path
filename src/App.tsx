@@ -19,6 +19,7 @@ import { StudentFinanceDetails } from "@/pages/dashboard/StudentFinanceDetails";
 import { Students } from "@/pages/dashboard/Students";
 import { Profile } from "@/pages/dashboard/Profile";
 import { Settings } from "@/pages/dashboard/Settings";
+import { Grades } from "@/pages/dashboard/Grades";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -62,6 +63,7 @@ function AppRoutes() {
         <Route path="financas/estudante/:studentId" element={<StudentFinanceDetails />} />
         <Route path="perfil" element={<Profile />} />
         <Route path="configuracoes" element={<Settings />} />
+        <Route path="notas" element={<Grades />} />
       </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>

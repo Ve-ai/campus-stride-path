@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { generateDefaultTeacherPassword } from '@/types/auth';
 
 // Courses
 export function useCourses() {
@@ -453,7 +454,10 @@ export function useCreateTeacher() {
   return useMutation({
     mutationFn: async (teacher: {
       employee_number: string;
-      full_name?: string;
+      full_name: string;
+      bi_number: string;
+      birth_date?: string;
+      phone?: string;
       profile_id?: string;
       degree?: string;
       degree_area?: string;
@@ -462,9 +466,89 @@ export function useCreateTeacher() {
       functions?: string[];
       is_active?: boolean;
     }) => {
+      // 1) Criar utilizador de autenticação com email baseado no BI
+      const email = `${teacher.bi_number.toLowerCase()}@professor.escola.co.ao`;
+
+      let birthYear: number | null = null;
+      if (teacher.birth_date) {
+        const date = new Date(teacher.birth_date);
+        const year = date.getFullYear();
+        if (!Number.isNaN(year)) {
+          birthYear = year;
+        }
+      }
+
+      if (!birthYear) {
+        throw new Error('Ano de nascimento inválido para gerar a senha padrão.');
+      }
+
+      const password = generateDefaultTeacherPassword(teacher.full_name, birthYear);
+      const redirectUrl = `${window.location.origin}/`;
+
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: redirectUrl,
+          data: {
+            full_name: teacher.full_name,
+            username: teacher.bi_number,
+          },
+        },
+      });
+
+      if (signUpError) {
+        throw signUpError;
+      }
+
+      const authUserId = signUpData.user?.id;
+      if (!authUserId) {
+        throw new Error('Não foi possível obter o utilizador criado para o professor.');
+      }
+
+      // 2) Criar/atualizar perfil com BI e dados básicos
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert({
+          user_id: authUserId,
+          full_name: teacher.full_name,
+          username: teacher.bi_number,
+          bi_number: teacher.bi_number,
+          birth_date: teacher.birth_date || null,
+          phone: teacher.phone || null,
+          must_change_password: true,
+        });
+
+      if (profileError) {
+        throw profileError;
+      }
+
+      // 3) Atribuir role de professor
+      const { error: roleError } = await supabase
+        .from('user_roles')
+        .insert({
+          user_id: authUserId,
+          role: 'professor',
+        });
+
+      if (roleError) {
+        throw roleError;
+      }
+
+      // 4) Criar registo na tabela teachers ligado ao utilizador
       const { data, error } = await supabase
         .from('teachers')
-        .insert(teacher)
+        .insert({
+          employee_number: teacher.employee_number,
+          full_name: teacher.full_name,
+          user_id: authUserId,
+          degree: teacher.degree,
+          degree_area: teacher.degree_area,
+          hire_date: teacher.hire_date,
+          gross_salary: teacher.gross_salary,
+          functions: teacher.functions,
+          is_active: teacher.is_active,
+        })
         .select()
         .single();
       

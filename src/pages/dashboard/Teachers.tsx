@@ -588,6 +588,9 @@ export function Teachers() {
                         {
                           employee_number: newTeacher.employee_number,
                           full_name: newTeacher.full_name,
+                          bi_number: newTeacher.bi_number,
+                          birth_date: newTeacher.birth_date || undefined,
+                          phone: newTeacher.phone || undefined,
                           degree: newTeacher.degree || undefined,
                           degree_area: newTeacher.degree_area || undefined,
                           hire_date: newTeacher.hire_date || undefined,

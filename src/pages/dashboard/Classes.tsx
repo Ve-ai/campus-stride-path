@@ -37,7 +37,7 @@ import {
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
-import { useClasses, useCourses, useStudents, useSubjects } from '@/hooks/useDatabase';
+import { useClasses, useCourses, useStudents, useSubjects, useGrades } from '@/hooks/useDatabase';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -444,6 +444,11 @@ function ProfessorClasses() {
 
   const { data: classes } = useClasses();
   const { data: students } = useStudents(selectedClassId || undefined);
+  const { data: grades } = useGrades(
+    selectedClassId && user?.teacherId
+      ? { classId: selectedClassId, teacherId: user.teacherId }
+      : undefined,
+  );
 
   // Carrega atribuições do professor para descobrir as turmas
   const [assignments, setAssignments] = useState<any[]>([]);
@@ -500,6 +505,26 @@ function ProfessorClasses() {
     s.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     s.enrollment_number.toLowerCase().includes(searchTerm.toLowerCase()),
   );
+
+  const studentGradeRows = useMemo(() => {
+    if (!grades) return [];
+    return grades
+      .filter((g: any) => !user?.teacherId || g.teacher?.id === user.teacherId)
+      .map((g: any) => {
+        const mt1 = g.mac != null && g.npt != null ? (g.mac + g.npt) / 2 : null;
+        const finalResult = mt1 != null ? (mt1 >= 10 ? 'Aprovado' : 'Reprovado') : '-';
+        return {
+          id: g.id,
+          enrollment: g.student?.enrollment_number,
+          name: g.student?.full_name,
+          subject: g.subject?.name,
+          mac: g.mac,
+          npt: g.npt,
+          mt1,
+          finalResult,
+        };
+      });
+  }, [grades, user?.teacherId]);
 
   if (loadingAssignments) {
     return (
@@ -674,6 +699,53 @@ function ProfessorClasses() {
           ) : (
             <p className="text-muted-foreground text-sm">
               Selecione uma turma na lista acima para visualizar os estudantes e contactos.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Notas médias por estudante (para a turma seleccionada) */}
+      <Card className="card-elevated">
+        <CardHeader>
+          <CardTitle>Notas por estudante (turma seleccionada)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {selectedClass ? (
+            studentGradeRows.length === 0 ? (
+              <p className="text-muted-foreground text-sm">
+                Ainda não existem notas registadas para esta turma/disciplina.
+              </p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow className="table-header">
+                    <TableHead>Nº Matrícula</TableHead>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>Disciplina</TableHead>
+                    <TableHead>MAC</TableHead>
+                    <TableHead>NPT</TableHead>
+                    <TableHead>MT1</TableHead>
+                    <TableHead>Resultado</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {studentGradeRows.map((row) => (
+                    <TableRow key={row.id} className="table-row-hover">
+                      <TableCell className="font-mono text-sm">{row.enrollment}</TableCell>
+                      <TableCell>{row.name}</TableCell>
+                      <TableCell>{row.subject}</TableCell>
+                      <TableCell>{row.mac ?? '-'}</TableCell>
+                      <TableCell>{row.npt ?? '-'}</TableCell>
+                      <TableCell>{row.mt1 != null ? row.mt1.toFixed(1) : '-'}</TableCell>
+                      <TableCell>{row.finalResult}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )
+          ) : (
+            <p className="text-muted-foreground text-sm">
+              Selecione uma turma para ver as notas médias dos estudantes.
             </p>
           )}
         </CardContent>

@@ -14,6 +14,7 @@ import {
   Download,
   Bell,
   Clock,
+  PieChart as PieChartIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -44,8 +45,16 @@ import { useStatistics, useCourses, useClasses, useStudents, usePayments } from 
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 
 export function Overview() {
+  const { user } = useAuth();
+
+  if (user?.role === 'professor') {
+    return <ProfessorOverview />;
+  }
+
   const { data: stats, isLoading } = useStatistics();
   const { data: courses } = useCourses();
   const { data: classes } = useClasses();
@@ -633,6 +642,219 @@ export function Overview() {
           </CardContent>
         </Card>
       )}
+    </div>
+  );
+}
+
+function ProfessorOverview() {
+  const { user } = useAuth();
+  const [loading, setLoading] = React.useState(true);
+  const [assignedClasses, setAssignedClasses] = React.useState<any[]>([]);
+
+  React.useEffect(() => {
+    const loadData = async () => {
+      if (!user?.teacherId) {
+        setLoading(false);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('teacher_class_assignments')
+        .select(`
+          id,
+          class_id,
+          subject_id,
+          class:classes(grade_level, section, period, course:courses(name)),
+          subject:subjects(name)
+        `)
+        .eq('teacher_id', user.teacherId);
+
+      if (!error && data) {
+        setAssignedClasses(data);
+      }
+
+      setLoading(false);
+    };
+
+    loadData();
+  }, [user?.teacherId]);
+
+  const uniqueClasses = React.useMemo(() => {
+    const map = new Map<string, any>();
+    assignedClasses.forEach((a) => {
+      if (!map.has(a.class_id) && a.class) {
+        map.set(a.class_id, a.class);
+      }
+    });
+    return Array.from(map.entries()).map(([id, cls]) => ({ id, ...cls }));
+  }, [assignedClasses]);
+
+  const totalClasses = uniqueClasses.length;
+  const totalSubjects = assignedClasses.length;
+
+  const handleGenerateWeeklyReport = () => {
+    toast.info('Geração de relatório semanal em desenvolvimento');
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {[...Array(3)].map((_, i) => (
+            <Card key={i} className="stat-card">
+              <CardContent className="p-6">
+                <Skeleton className="h-4 w-24 mb-2" />
+                <Skeleton className="h-8 w-16 mb-2" />
+                <Skeleton className="h-4 w-32" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6 animate-fade-in">
+      {/* Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card className="stat-card">
+          <CardContent className="p-6">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Turmas atribuídas</p>
+                <p className="text-3xl font-bold text-foreground mt-2">{totalClasses}</p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Turmas em que você leciona neste ano lectivo.
+                </p>
+              </div>
+              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                <Users className="w-6 h-6 text-primary" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="stat-card">
+          <CardContent className="p-6">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Disciplinas atribuídas</p>
+                <p className="text-3xl font-bold text-foreground mt-2">{totalSubjects}</p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Quantidade total de disciplinas que acompanha nas turmas.
+                </p>
+              </div>
+              <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center">
+                <FileText className="w-6 h-6 text-accent" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="stat-card">
+          <CardContent className="p-6">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Aulas nesta semana</p>
+                <p className="text-3xl font-bold text-foreground mt-2">-</p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Visão semanal de aulas e avaliações (em desenvolvimento).
+                </p>
+              </div>
+              <div className="w-12 h-12 rounded-xl bg-success/10 flex items-center justify-center">
+                <Clock className="w-6 h-6 text-success" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Turmas atribuídas */}
+      <Card className="card-elevated">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-lg font-semibold flex items-center gap-2">
+            <GraduationCap className="w-5 h-5 text-primary" />
+            Turmas atribuídas
+          </CardTitle>
+          <Button size="sm" variant="outline" onClick={handleGenerateWeeklyReport}>
+            <Download className="w-4 h-4 mr-2" />
+            Gerar Relatório Semanal
+          </Button>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Curso</TableHead>
+                <TableHead>Classe</TableHead>
+                <TableHead>Turma</TableHead>
+                <TableHead>Período</TableHead>
+                <TableHead>Disciplinas</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {uniqueClasses.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                    Ainda não existem turmas atribuídas ao seu utilizador.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                uniqueClasses.map((cls) => {
+                  const disciplines = assignedClasses
+                    .filter((a) => a.class_id === cls.id && a.subject)
+                    .map((a) => a.subject.name)
+                    .join(', ');
+
+                  return (
+                    <TableRow key={cls.id}>
+                      <TableCell>{cls.course?.name ?? '-'}</TableCell>
+                      <TableCell>{cls.grade_level ? `${cls.grade_level}ª` : '-'}</TableCell>
+                      <TableCell>{cls.section}</TableCell>
+                      <TableCell>{cls.period}</TableCell>
+                      <TableCell>{disciplines || '-'}</TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      {/* Notificações e desempenho geral (placeholder) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card className="card-elevated">
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold flex items-center gap-2">
+              <Bell className="w-5 h-5 text-warning" />
+              Notificações recentes
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">
+              Aqui irão aparecer alertas sobre prazos de lançamento de notas, ausências frequentes e mensagens
+              importantes da direcção.
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="card-elevated">
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold flex items-center gap-2">
+              <PieChartIcon className="w-5 h-5 text-primary" />
+              Desempenho geral das turmas
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">
+              Gráficos de aproveitamento por turma (aprovados, reprovados, em risco) serão mostrados aqui assim que
+              começarmos a lançar as notas.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

@@ -498,6 +498,14 @@ export function useCreateTeacher() {
       });
 
       if (signUpError) {
+        // Tratar caso específico em que o utilizador já existe
+        if (
+          signUpError.message?.toLowerCase().includes('user already registered') ||
+          signUpError.message?.toLowerCase().includes('user already exists')
+        ) {
+          throw new Error('Já existe um utilizador registado com este login. Utilize outro número de BI.');
+        }
+
         throw signUpError;
       }
 

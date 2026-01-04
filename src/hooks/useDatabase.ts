@@ -127,7 +127,7 @@ export function useTeachers() {
 
 
 // Grades
-export function useGrades(filters?: { studentId?: string; classId?: string; subjectId?: string; trimester?: number }) {
+export function useGrades(filters?: { studentId?: string; classId?: string; subjectId?: string; trimester?: number; teacherId?: string }) {
   return useQuery({
     queryKey: ['grades', filters],
     queryFn: async () => {
@@ -137,7 +137,7 @@ export function useGrades(filters?: { studentId?: string; classId?: string; subj
           *,
           student:students (id, full_name, enrollment_number),
           subject:subjects (id, name),
-          teacher:teachers (id, profiles (full_name))
+          teacher:teachers (id)
         `);
       
       if (filters?.studentId) query = query.eq('student_id', filters.studentId);

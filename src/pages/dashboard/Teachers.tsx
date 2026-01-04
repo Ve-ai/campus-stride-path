@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { generateDefaultTeacherPassword } from '@/types/auth';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   Table,
   TableBody,
@@ -50,6 +51,10 @@ import { toast } from 'sonner';
 
 export function Teachers() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
+  const isProfessor = user?.role === 'professor';
+
   const [searchTerm, setSearchTerm] = useState('');
   const [disciplineFilter, setDisciplineFilter] = useState<string>('todas');
   const [statusFilter, setStatusFilter] = useState<'todos' | 'ativos' | 'inativos'>('todos');
@@ -156,6 +161,82 @@ export function Teachers() {
     return (
       <div className="flex items-center justify-center h-96">
         <p className="text-destructive">Erro ao carregar professores</p>
+      </div>
+    );
+  }
+
+  const myTeacher = teachers?.find((t: any) => t.id === user?.teacherId);
+
+  if (!isAdmin) {
+    if (isProfessor && myTeacher) {
+      return (
+        <div className="space-y-6 animate-fade-in">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Meu Perfil</h1>
+            <p className="text-muted-foreground">Informações básicas do seu cadastro como professor.</p>
+          </div>
+
+          <Card className="card-elevated">
+            <CardHeader>
+              <CardTitle>{myTeacher.full_name || myTeacher.profiles?.full_name}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 text-sm">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <p className="text-muted-foreground">Nº Funcionário</p>
+                  <p className="font-medium">{myTeacher.employee_number || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Grau Académico</p>
+                  <p className="font-medium">{myTeacher.degree || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Área de Formação</p>
+                  <p className="font-medium">{myTeacher.degree_area || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Funções</p>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {myTeacher.functions && myTeacher.functions.length > 0 ? (
+                      myTeacher.functions.map((f: string, i: number) => (
+                        <Badge key={i} variant="secondary" className="text-xs">
+                          {f}
+                        </Badge>
+                      ))
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {myTeacher.teacher_class_assignments?.length > 0 && (
+                <div className="pt-2">
+                  <h3 className="font-medium mb-2">Turmas e disciplinas</h3>
+                  <div className="space-y-2">
+                    {myTeacher.teacher_class_assignments.map((assignment: any, i: number) => (
+                      <div key={i} className="flex items-center justify-between p-2 bg-muted rounded-lg">
+                        <span>{assignment.subject?.name}</span>
+                        <Badge variant="outline" className="text-xs">
+                          {assignment.class?.course?.name} - {assignment.class?.grade_level}ª {assignment.class?.section}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
+
+    return (
+      <div className="flex flex-col items-center justify-center h-96 text-center space-y-2">
+        <h1 className="text-xl font-semibold text-foreground">Sem permissão</h1>
+        <p className="text-muted-foreground max-w-md">
+          Não tem permissão para ver a lista completa de professores. Caso ache que isto é um engano, contacte a administração.
+        </p>
       </div>
     );
   }

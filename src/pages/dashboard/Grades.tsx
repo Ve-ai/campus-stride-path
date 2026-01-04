@@ -614,227 +614,96 @@ function ProfessorGrades() {
             />
           </div>
 
-          <div className="flex flex-wrap items-center gap-3 justify-end">
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button
-                  className="btn-primary"
-                  disabled={!selectedClass || !assignedClasses.length}
-                >
-                  Lançar Notas
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-md">
-                <DialogHeader>
-                  <DialogTitle>Lançar Notas (registo individual)</DialogTitle>
-                </DialogHeader>
-                <form onSubmit={handleLaunchGrades} className="space-y-4">
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button
+                className="btn-primary"
+                disabled={!selectedClass || !assignedClasses.length}
+              >
+                Lançar Notas
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Lançar Notas (registo individual)</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleLaunchGrades} className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Aluno *</Label>
+                  <Select name="studentId" disabled={!selectedClass}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o aluno" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {filteredStudents.map((s: any) => (
+                        <SelectItem key={s.id} value={s.id}>
+                          {s.enrollment_number} - {s.full_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Disciplina *</Label>
+                  <Select name="subjectId" disabled={!selectedClass}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione a disciplina" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {classSubjects.map((sub: any) => (
+                        <SelectItem key={sub.id} value={sub.id}>
+                          {sub.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>Aluno *</Label>
-                    <Select name="studentId" disabled={!selectedClass}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione o aluno" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {filteredStudents.map((s: any) => (
-                          <SelectItem key={s.id} value={s.id}>
-                            {s.enrollment_number} - {s.full_name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Disciplina *</Label>
-                    <Select name="subjectId" disabled={!selectedClass}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione a disciplina" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {classSubjects.map((sub: any) => (
-                          <SelectItem key={sub.id} value={sub.id}>
-                            {sub.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>MAC (0-20)</Label>
-                      <Input
-                        name="mac"
-                        type="number"
-                        min={0}
-                        max={20}
-                        step={0.1}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>NPT (0-20)</Label>
-                      <Input
-                        name="npt"
-                        type="number"
-                        min={0}
-                        max={20}
-                        step={0.1}
-                        required
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Observações</Label>
+                    <Label>MAC (0-20)</Label>
                     <Input
-                      name="observations"
-                      placeholder="Comentário opcional sobre o desempenho"
+                      name="mac"
+                      type="number"
+                      min={0}
+                      max={20}
+                      step={0.1}
+                      required
                     />
                   </div>
-                  <div className="flex justify-end gap-2 pt-2">
-                    <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
-                      Cancelar
-                    </Button>
-                    <Button type="submit" className="btn-primary" disabled={createGradeMutation.isPending}>
-                      {createGradeMutation.isPending && (
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      )}
-                      Guardar
-                    </Button>
+                  <div className="space-y-2">
+                    <Label>NPT (0-20)</Label>
+                    <Input
+                      name="npt"
+                      type="number"
+                      min={0}
+                      max={20}
+                      step={0.1}
+                      required
+                    />
                   </div>
-                </form>
-              </DialogContent>
-            </Dialog>
-
-            {/* Lançamento em massa */}
-            <Dialog open={isBulkDialogOpen} onOpenChange={setIsBulkDialogOpen}>
-              <DialogTrigger asChild>
-                <Button
-                  variant="outline"
-                  onClick={handleOpenBulkDialog}
-                  disabled={!selectedClass || !selectedSubjectId || !assignedClasses.length}
-                >
-                  Lançar Notas em Massa
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-3xl">
-                <DialogHeader>
-                  <DialogTitle>Lançar Notas em Massa</DialogTitle>
-                  <DialogDescription>
-                    Registe MAC e NPT para vários alunos da turma seleccionada nesta disciplina
-                    e trimestre. Apenas linhas com notas preenchidas serão gravadas.
-                  </DialogDescription>
-                </DialogHeader>
-
-                <form onSubmit={handleSubmitBulkGrades} className="space-y-4">
-                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                    <p className="text-sm text-muted-foreground">
-                      Turma: <span className="font-medium">{selectedClass?.grade_level}ª {selectedClass?.section}</span>{' '}
-                      &mdash; Disciplina:{' '}
-                      <span className="font-medium">
-                        {classSubjects.find((s: any) => s.id === selectedSubjectId)?.name || '-'}
-                      </span>{' '}
-                      &mdash; Trimestre: <span className="font-medium">{selectedTrimester}º</span>
-                    </p>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <span>Importar de ficheiro CSV (opcional):</span>
-                      <Input
-                        type="file"
-                        accept=".csv,text/csv"
-                        onChange={handleCsvUpload}
-                        className="max-w-xs cursor-pointer"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="border rounded-lg overflow-hidden">
-                    <div className="max-h-80 overflow-auto">
-                      <Table>
-                        <TableHeader>
-                          <TableRow className="table-header">
-                            <TableHead>Ordem</TableHead>
-                            <TableHead>Nº Matrícula</TableHead>
-                            <TableHead>Nome</TableHead>
-                            <TableHead>MAC (0-20)</TableHead>
-                            <TableHead>NPT (0-20)</TableHead>
-                            <TableHead>Observações</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {bulkRows.map((row, index) => (
-                            <TableRow key={row.studentId} className="table-row-hover">
-                              <TableCell>{index + 1}</TableCell>
-                              <TableCell className="font-mono text-xs">
-                                {row.enrollment}
-                              </TableCell>
-                              <TableCell className="text-sm">{row.name}</TableCell>
-                              <TableCell>
-                                <Input
-                                  type="number"
-                                  min={0}
-                                  max={20}
-                                  step={0.1}
-                                  value={row.mac ?? ''}
-                                  onChange={(e) => handleBulkCellChange(row.studentId, 'mac', e.target.value)}
-                                  className="h-8 text-xs"
-                                />
-                              </TableCell>
-                              <TableCell>
-                                <Input
-                                  type="number"
-                                  min={0}
-                                  max={20}
-                                  step={0.1}
-                                  value={row.npt ?? ''}
-                                  onChange={(e) => handleBulkCellChange(row.studentId, 'npt', e.target.value)}
-                                  className="h-8 text-xs"
-                                />
-                              </TableCell>
-                              <TableCell>
-                                <Input
-                                  type="text"
-                                  value={row.observations ?? ''}
-                                  onChange={(e) => handleBulkCellChange(row.studentId, 'observations', e.target.value)}
-                                  className="h-8 text-xs"
-                                />
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between gap-3 pt-2 text-xs text-muted-foreground">
-                    <p>
-                      Dica: pode deixar linhas em branco para alunos sem nota neste momento. As notas
-                      inseridas serão validadas entre 0 e 20.
-                    </p>
-                    <div className="flex gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setIsBulkDialogOpen(false)}
-                      >
-                        Cancelar
-                      </Button>
-                      <Button
-                        type="submit"
-                        size="sm"
-                        className="btn-primary"
-                        disabled={bulkCreateGradeMutation.isPending}
-                      >
-                        {bulkCreateGradeMutation.isPending && (
-                          <Loader2 className="w-3 h-3 mr-2 animate-spin" />
-                        )}
-                        Lançar notas seleccionadas
-                      </Button>
-                    </div>
-                  </div>
-                </form>
-              </DialogContent>
-            </Dialog>
-          </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Observações</Label>
+                  <Input
+                    name="observations"
+                    placeholder="Comentário opcional sobre o desempenho"
+                  />
+                </div>
+                <div className="flex justify-end gap-2 pt-2">
+                  <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                    Cancelar
+                  </Button>
+                  <Button type="submit" className="btn-primary" disabled={createGradeMutation.isPending}>
+                    {createGradeMutation.isPending && (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    )}
+                    Guardar
+                  </Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
 
         <Card className="card-elevated">
           <CardHeader>
@@ -916,6 +785,7 @@ function ProfessorGrades() {
           </CardContent>
         </Card>
       </section>
+
 
       {/* Relatórios de desempenho */}
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">

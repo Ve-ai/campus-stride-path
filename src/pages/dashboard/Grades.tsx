@@ -388,15 +388,15 @@ function ProfessorGrades() {
         <div>
           <Label>Disciplina</Label>
           <Select
-            value={selectedSubjectId || ''}
-            onValueChange={(v) => setSelectedSubjectId(v || null)}
+            value={selectedSubjectId ?? 'all'}
+            onValueChange={(v) => setSelectedSubjectId(v === 'all' ? null : v)}
             disabled={!selectedClass}
           >
             <SelectTrigger>
               <SelectValue placeholder="Todas" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Todas</SelectItem>
+              <SelectItem value="all">Todas</SelectItem>
               {classSubjects.map((sub: any) => (
                 <SelectItem key={sub.id} value={sub.id}>
                   {sub.name}
@@ -408,10 +408,11 @@ function ProfessorGrades() {
         <div>
           <Label>Aluno</Label>
           <Select
-            value={selectedStudentId || ''}
+            value={selectedStudentId ?? 'all'}
             onValueChange={(v) => {
-              setSelectedStudentId(v || null);
-              setSelectedReportStudentId(v || null);
+              const value = v === 'all' ? null : v;
+              setSelectedStudentId(value);
+              setSelectedReportStudentId(value);
             }}
             disabled={!selectedClass}
           >
@@ -419,7 +420,7 @@ function ProfessorGrades() {
               <SelectValue placeholder="Todos" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Todos</SelectItem>
+              <SelectItem value="all">Todos</SelectItem>
               {filteredStudents.map((s: any) => (
                 <SelectItem key={s.id} value={s.id}>
                   {s.enrollment_number} - {s.full_name}

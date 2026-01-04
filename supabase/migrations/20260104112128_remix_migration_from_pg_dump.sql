@@ -318,7 +318,8 @@ CREATE TABLE public.teacher_class_assignments (
     class_id uuid NOT NULL,
     subject_id uuid NOT NULL,
     schedule jsonb DEFAULT '[]'::jsonb,
-    created_at timestamp with time zone DEFAULT now() NOT NULL
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    periods text[] DEFAULT ARRAY[]::text[] NOT NULL
 );
 
 
@@ -338,7 +339,8 @@ CREATE TABLE public.teachers (
     functions text[],
     is_active boolean DEFAULT true,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    full_name text DEFAULT ''::text NOT NULL
 );
 
 

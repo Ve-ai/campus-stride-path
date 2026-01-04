@@ -28,9 +28,9 @@ export interface LoginCredentials {
 
 export const DEFAULT_CREDENTIALS = {
   super_admin: {
-    username: 'supadmin-001',
+    username: 'Lucidio001',
     email: 'supadmin@escola.co.ao',
-    defaultPassword: 'XyZ@2025StrongPass',
+    defaultPassword: '@Lucidio4321',
     name: 'Administrador Supremo',
   },
   admin: {

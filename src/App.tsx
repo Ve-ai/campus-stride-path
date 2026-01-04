@@ -5,7 +5,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { LoginPage } from "@/components/auth/LoginPage";
-import { ChangePasswordPage } from "@/components/auth/ChangePasswordPage";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Overview } from "@/pages/dashboard/Overview";
 import { Courses } from "@/pages/dashboard/Courses";
@@ -30,11 +29,6 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   if (!isAuthenticated) {
     return <Navigate to="/" replace />;
   }
-
-  if (user?.mustChangePassword) {
-    return <Navigate to="/change-password" replace />;
-  }
-
   return <>{children}</>;
 }
 
@@ -47,7 +41,6 @@ function AppRoutes() {
         path="/" 
         element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <LoginPage />} 
       />
-      <Route path="/change-password" element={<ChangePasswordPage />} />
       <Route
         path="/dashboard"
         element={

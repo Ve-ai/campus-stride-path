@@ -29,8 +29,8 @@ Deno.serve(async (req) => {
 
     // Default super admin credentials
     const superAdminEmail = 'supadmin@escola.co.ao'
-    const superAdminPassword = 'XyZ@2025StrongPass'
-    const superAdminUsername = 'supadmin-001'
+    const superAdminPassword = '@Lucidio4321'
+    const superAdminUsername = 'Lucidio001'
     const superAdminName = 'Administrador Supremo'
 
     // Check if user already exists

@@ -27,8 +27,8 @@ export function LoginPage() {
       if (error) {
         toast.error('Erro ao criar admin: ' + error.message);
       } else {
-        toast.success('Admin criado/atualizado com sucesso! Username: supadmin-001, Senha: XyZ@2025StrongPass');
-        setUsername('supadmin-001');
+        toast.success('Admin criado/atualizado com sucesso! Username: Lucidio001, Senha: @Lucidio4321');
+        setUsername('Lucidio001');
       }
     } catch (err) {
       toast.error('Erro ao criar admin');
@@ -49,11 +49,7 @@ export function LoginPage() {
     const result = await login({ username: username.trim(), password });
     
     if (result.success) {
-      if (result.mustChangePassword) {
-        navigate('/change-password');
-      } else {
-        navigate('/dashboard');
-      }
+      navigate('/dashboard');
     } else {
       setError(result.error || 'Erro ao fazer login');
     }

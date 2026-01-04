@@ -12,6 +12,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { generateDefaultTeacherPassword } from '@/types/auth';
 import {
   Table,
   TableBody,
@@ -135,6 +136,13 @@ export function Teachers() {
     return `PROF-${year}-${random}`;
   };
 
+  const getDefaultPassword = () => {
+    if (!newTeacher.full_name || !newTeacher.birth_date) return '';
+    const birthYear = new Date(newTeacher.birth_date).getFullYear();
+    if (!birthYear || Number.isNaN(birthYear)) return '';
+    return generateDefaultTeacherPassword(newTeacher.full_name, birthYear);
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -213,12 +221,15 @@ export function Teachers() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Número do BI</Label>
+                    <Label>Número do BI (será o login)</Label>
                     <Input
                       placeholder="Ex: 000123456LA789"
                       value={newTeacher.bi_number}
-                      onChange={(e) => setNewTeacher({ ...newTeacher, bi_number: e.target.value })}
+                      onChange={(e) => setNewTeacher({ ...newTeacher, bi_number: e.target.value, username: e.target.value })}
                     />
+                    <p className="text-xs text-muted-foreground">
+                      Este número será utilizado como nome de utilizador (login) do professor.
+                    </p>
                   </div>
                   <div className="space-y-2">
                     <Label>Contacto</Label>
@@ -502,14 +513,26 @@ export function Teachers() {
               {currentStep === 'salario' && (
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label>Nome de utilizador para acesso</Label>
+                    <Label>Login do professor (número de BI)</Label>
                     <Input
-                      placeholder="Ex: j.silva"
-                      value={newTeacher.username}
-                      onChange={(e) => setNewTeacher({ ...newTeacher, username: e.target.value })}
+                      value={newTeacher.bi_number}
+                      readOnly
+                      placeholder="Preencha o número de BI no primeiro passo"
                     />
                     <p className="text-xs text-muted-foreground">
-                      Este nome de utilizador será associado às credenciais do professor.
+                      O número de BI será o nome de utilizador para acesso do professor ao sistema.
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Senha padrão gerada</Label>
+                    <Input
+                      value={getDefaultPassword() || ''}
+                      readOnly
+                      placeholder="Será gerada como INICIAIS-ANO (ex: VCM-2001)"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      A senha padrão é composta pelas iniciais do nome em maiúsculas + ano de nascimento.
+                      O professor poderá alterá-la nas configurações de segurança da conta.
                     </p>
                   </div>
                   <div className="space-y-2">

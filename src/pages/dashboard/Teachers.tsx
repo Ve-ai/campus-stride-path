@@ -403,9 +403,10 @@ export function Teachers() {
                               <SelectContent>
                                 {classesForCourse.map((cls: any) => (
                                   <SelectItem key={cls.id} value={cls.id}>
-                                    {cls.grade_level}ª {cls.section} ({cls.period})
+                                    {cls.grade_level}ª
                                   </SelectItem>
                                 ))}
+
                               </SelectContent>
                             </Select>
                           </div>

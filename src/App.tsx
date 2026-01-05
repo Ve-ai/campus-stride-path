@@ -61,6 +61,9 @@ function AppRoutes() {
         <Route path="professores/:teacherId" element={<TeacherDetails />} />
         <Route path="financas" element={<Finance />} />
         <Route path="financas/estudante/:studentId" element={<StudentFinanceDetails />} />
+        {/* Rotas específicas para o Gestor Financeiro apontando para o mesmo painel */}
+        <Route path="turmas-pagamentos" element={<Finance />} />
+        <Route path="relatorios" element={<Finance />} />
         <Route path="perfil" element={<Profile />} />
         <Route path="configuracoes" element={<Settings />} />
         <Route path="notas" element={<Grades />} />

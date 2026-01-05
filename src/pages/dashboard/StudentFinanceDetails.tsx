@@ -42,6 +42,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useStudents, usePayments, useClasses, useCourses, useCreatePayment } from '@/hooks/useDatabase';
+import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
 const MONTHS = [
@@ -52,6 +53,7 @@ const MONTHS = [
 export function StudentFinanceDetails() {
   const { studentId } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
 
   const { data: students } = useStudents();
@@ -59,6 +61,27 @@ export function StudentFinanceDetails() {
   const { data: classes } = useClasses();
   const { data: courses } = useCourses();
   const createPayment = useCreatePayment();
+
+  if (!user || (user.role !== 'finance' && user.role !== 'super_admin')) {
+    return (
+      <div className="p-6">
+        <Card className="max-w-md">
+          <CardHeader>
+            <CardTitle>Acesso restrito</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-muted-foreground mb-4">
+              Apenas o Gestor Financeiro ou o Administrador Supremo podem visualizar detalhes financeiros dos estudantes.
+            </p>
+            <Button variant="outline" onClick={() => navigate('/dashboard/financas')}>
+              Voltar ao painel financeiro
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
 
   const student = students?.find(s => s.id === studentId);
   const studentClass = classes?.find(c => c.id === student?.class_id);

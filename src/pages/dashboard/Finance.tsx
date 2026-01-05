@@ -13,6 +13,7 @@ import {
   Loader2,
   Plus,
 } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -59,11 +60,13 @@ import {
   Pie,
   Cell,
 } from 'recharts';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { usePayments, useClasses, useStudents, useCourses, useStatistics, useCreatePayment } from '@/hooks/useDatabase';
 import { toast } from 'sonner';
 
 export function Finance() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCourse, setSelectedCourse] = useState('Todos');
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);

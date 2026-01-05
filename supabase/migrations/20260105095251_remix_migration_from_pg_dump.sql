@@ -814,10 +814,10 @@ ALTER TABLE ONLY public.user_roles
 
 
 --
--- Name: students Admins and professors can view students; Type: POLICY; Schema: public; Owner: -
+-- Name: user_roles Admins can assign professor role; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY "Admins and professors can view students" ON public.students FOR SELECT USING ((public.has_role(auth.uid(), 'super_admin'::public.app_role) OR public.has_role(auth.uid(), 'admin'::public.app_role) OR public.has_role(auth.uid(), 'professor'::public.app_role)));
+CREATE POLICY "Admins can assign professor role" ON public.user_roles FOR INSERT TO authenticated WITH CHECK ((public.has_role(auth.uid(), 'admin'::public.app_role) AND (role = 'professor'::public.app_role)));
 
 
 --
@@ -832,6 +832,13 @@ CREATE POLICY "Admins can manage assignments" ON public.teacher_class_assignment
 --
 
 CREATE POLICY "Admins can manage classes" ON public.classes USING (public.has_role(auth.uid(), 'admin'::public.app_role));
+
+
+--
+-- Name: profiles Admins can manage profiles; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Admins can manage profiles" ON public.profiles TO authenticated USING (public.has_role(auth.uid(), 'admin'::public.app_role)) WITH CHECK (public.has_role(auth.uid(), 'admin'::public.app_role));
 
 
 --
@@ -870,6 +877,13 @@ CREATE POLICY "Admins can view all profiles" ON public.profiles FOR SELECT USING
 
 
 --
+-- Name: students Admins can view students; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Admins can view students" ON public.students FOR SELECT USING ((public.has_role(auth.uid(), 'super_admin'::public.app_role) OR public.has_role(auth.uid(), 'admin'::public.app_role)));
+
+
+--
 -- Name: teacher_class_assignments Authenticated users can view assignments; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -902,13 +916,6 @@ CREATE POLICY "Authenticated users can view school nuclei" ON public.school_nucl
 --
 
 CREATE POLICY "Authenticated users can view subjects" ON public.subjects FOR SELECT TO authenticated USING (true);
-
-
---
--- Name: teachers Authenticated users can view teachers; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY "Authenticated users can view teachers" ON public.teachers FOR SELECT TO authenticated USING (true);
 
 
 --

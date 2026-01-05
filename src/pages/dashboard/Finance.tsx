@@ -295,35 +295,132 @@ export function Finance() {
       .sort((a, b) => b.delinquentPercentage - a.delinquentPercentage);
   }, [paymentsByClass]);
 
-  const paymentsByCourse = useMemo(() => {
-    const map = new Map<string, {
-      course: string;
-      totalStudents: number;
-      paidStudents: number;
-      pendingStudents: number;
-    }>();
+  const financialByCourse = useMemo(() => {
+    if (!courses || !classes || !students || !payments) return [];
 
-    paymentsByClass.forEach((item) => {
-      const existing = map.get(item.course) || {
-        course: item.course,
-        totalStudents: 0,
-        paidStudents: 0,
-        pendingStudents: 0,
-      };
+    const currentYear = new Date().getFullYear();
+    const currentMonth = new Date().getMonth() + 1;
+    const monthsSoFar = currentMonth;
+    const avgMonthlyFee = 5000;
 
-      existing.totalStudents += item.totalStudents;
-      existing.paidStudents += item.paidStudents;
-      existing.pendingStudents += item.pendingStudents;
+    const studentsById = new Map(students.map((s) => [s.id, s] as const));
+    const classesById = new Map(classes.map((c) => [c.id, c] as const));
 
-      map.set(item.course, existing);
+    const courseMap = new Map<
+      string,
+      {
+        courseId: string;
+        courseName: string;
+        activeStudents: number;
+      }
+    >();
+
+    classes.forEach((cls) => {
+      const courseId = cls.course_id;
+      const courseName = cls.course?.name || courses.find((c) => c.id === courseId)?.name || 'Curso';
+      const classStudents = students.filter(
+        (s) => s.class_id === cls.id && s.status === 'active'
+      );
+
+      if (classStudents.length === 0) return;
+
+      const existing =
+        courseMap.get(courseId) ||
+        {
+          courseId,
+          courseName,
+          activeStudents: 0,
+        };
+
+      existing.activeStudents += classStudents.length;
+      courseMap.set(courseId, existing);
     });
 
-    return Array.from(map.values()).map((item) => ({
-      ...item,
-      paidPercentage:
-        item.totalStudents > 0 ? (item.paidStudents / item.totalStudents) * 100 : 0,
-    }));
-  }, [paymentsByClass]);
+    const revenueByCourse = new Map<string, number>();
+
+    payments
+      .filter((p) => p.year_reference === currentYear)
+      .forEach((payment) => {
+        const student = studentsById.get(payment.student_id);
+        if (!student || !student.class_id) return;
+        const cls = classesById.get(student.class_id);
+        if (!cls) return;
+
+        const courseId = cls.course_id;
+        revenueByCourse.set(
+          courseId,
+          (revenueByCourse.get(courseId) || 0) + Number(payment.amount)
+        );
+      });
+
+    return Array.from(courseMap.values()).map((item) => {
+      const revenue = revenueByCourse.get(item.courseId) || 0;
+      const potential = item.activeStudents * avgMonthlyFee * monthsSoFar;
+      const percentageRevenue = potential > 0 ? (revenue / potential) * 100 : 0;
+
+      return {
+        ...item,
+        revenue,
+        potential,
+        percentageRevenue,
+      };
+    });
+  }, [courses, classes, students, payments]);
+
+  const trimesterBestClasses = useMemo(() => {
+    if (!classes || !students || !payments) return [];
+
+    const currentYear = new Date().getFullYear();
+    const currentMonth = new Date().getMonth() + 1;
+    const trimesterIndex = Math.floor((currentMonth - 1) / 3);
+    const startMonth = trimesterIndex * 3 + 1;
+    const endMonth = Math.min(startMonth + 2, 12);
+    const monthsInTrimester = endMonth - startMonth + 1;
+    const avgMonthlyFee = 5000;
+
+    const studentsById = new Map(students.map((s) => [s.id, s] as const));
+
+    const revenueByClass = new Map<string, number>();
+
+    payments
+      .filter(
+        (p) =>
+          p.year_reference === currentYear &&
+          p.month_reference >= startMonth &&
+          p.month_reference <= endMonth
+      )
+      .forEach((payment) => {
+        const student = studentsById.get(payment.student_id);
+        if (!student || !student.class_id) return;
+        revenueByClass.set(
+          student.class_id,
+          (revenueByClass.get(student.class_id) || 0) + Number(payment.amount)
+        );
+      });
+
+    return classes
+      .map((cls) => {
+        const classStudents = students.filter(
+          (s) => s.class_id === cls.id && s.status === 'active'
+        );
+        if (classStudents.length === 0) return null;
+
+        const revenue = revenueByClass.get(cls.id) || 0;
+        const potential = classStudents.length * avgMonthlyFee * monthsInTrimester;
+        const percentageRevenue = potential > 0 ? (revenue / potential) * 100 : 0;
+
+        return {
+          id: cls.id,
+          label: `${cls.grade_level}ª ${cls.section}`,
+          course: cls.course?.name || '-',
+          revenue,
+          potential,
+          percentageRevenue,
+        };
+      })
+      .filter((item): item is NonNullable<typeof item> => item !== null)
+      .sort((a, b) => b.percentageRevenue - a.percentageRevenue);
+  }, [classes, students, payments]);
 
   const recentPayments = useMemo(() => {
     if (!payments || !students || !classes) return [];
@@ -569,7 +666,9 @@ export function Finance() {
                     <p className="text-sm font-medium text-muted-foreground">Estudantes Pagos</p>
                     <p className="text-2xl font-bold text-foreground mt-2">{financialStats.paidStudents}</p>
                     <Progress value={financialStats.paidPercentage} className="mt-3 h-2" />
-                    <p className="text-sm text-muted-foreground mt-1">{financialStats.paidPercentage.toFixed(1)}% do total</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {financialStats.paidPercentage.toFixed(1)}% do total
+                    </p>
                   </div>
                   <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
                     <CheckCircle className="w-6 h-6 text-primary" />
@@ -585,7 +684,9 @@ export function Finance() {
                     <p className="text-sm font-medium text-muted-foreground">Estudantes Pendentes</p>
                     <p className="text-2xl font-bold text-foreground mt-2">{financialStats.pendingStudents}</p>
                     <div className="flex items-center gap-1 mt-2 text-sm">
-                      <span className="text-warning font-medium">{financialStats.pendingStudents} estudantes</span>
+                      <span className="text-warning font-medium">
+                        {financialStats.pendingStudents} estudantes
+                      </span>
                       <span className="text-muted-foreground">requerem atenção</span>
                     </div>
                   </div>
@@ -597,7 +698,7 @@ export function Finance() {
             </Card>
           </div>
 
-          {/* Charts */}
+          {/* Charts financeiros */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card className="card-elevated">
               <CardHeader>
@@ -609,7 +710,11 @@ export function Finance() {
                     <BarChart data={monthlyData}>
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                       <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                      <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickFormatter={(v) => `${v / 1000000}M`} />
+                      <YAxis
+                        stroke="hsl(var(--muted-foreground))"
+                        fontSize={12}
+                        tickFormatter={(v) => `${v / 1000000}M`}
+                      />
                       <Tooltip
                         contentStyle={{
                           backgroundColor: 'hsl(var(--card))',
@@ -618,7 +723,12 @@ export function Finance() {
                         }}
                         formatter={(value: number) => formatCurrency(value)}
                       />
-                      <Bar dataKey="receita" name="Receita" fill="hsl(142, 76%, 36%)" radius={[4, 4, 0, 0]} />
+                      <Bar
+                        dataKey="receita"
+                        name="Receita"
+                        fill="hsl(142, 76%, 36%)"
+                        radius={[4, 4, 0, 0]}
+                      />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -660,6 +770,90 @@ export function Finance() {
               </CardContent>
             </Card>
           </div>
+
+          {/* Melhores turmas do trimestre (dados financeiros) */}
+          <Card className="card-elevated">
+            <CardHeader>
+              <CardTitle className="text-lg font-semibold">
+                Melhores turmas do trimestre (desempenho financeiro)
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow className="table-header">
+                    <TableHead>Turma</TableHead>
+                    <TableHead>Curso</TableHead>
+                    <TableHead className="text-right">Receita realizada</TableHead>
+                    <TableHead className="text-right">Potencial do trimestre</TableHead>
+                    <TableHead className="text-right">% realizado</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {trimesterBestClasses.slice(0, 5).map((item) => (
+                    <TableRow key={item.id}>
+                      <TableCell>{item.label}</TableCell>
+                      <TableCell>{item.course}</TableCell>
+                      <TableCell className="text-right font-medium">
+                        {formatCurrency(item.revenue)}
+                      </TableCell>
+                      <TableCell className="text-right text-muted-foreground">
+                        {formatCurrency(item.potential)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Badge
+                          variant="outline"
+                          className="bg-primary/5 text-primary border-primary/20"
+                        >
+                          {item.percentageRevenue.toFixed(1)}%
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+
+          {/* Potencial de receita por curso */}
+          <Card className="card-elevated">
+            <CardHeader>
+              <CardTitle className="text-lg font-semibold">
+                Potencial de receita acumulada por curso (ano corrente)
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {financialByCourse.map((course) => (
+                <div
+                  key={course.courseId}
+                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
+                >
+                  <div className="flex flex-col">
+                    <span className="text-sm font-medium">{course.courseName}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {course.activeStudents} estudantes activos
+                    </span>
+                  </div>
+                  <div className="flex flex-col sm:items-end gap-1 min-w-[220px]">
+                    <div className="flex items-center justify-between w-full text-xs">
+                      <span className="text-muted-foreground">Realizado</span>
+                      <span className="font-medium">{formatCurrency(course.revenue)}</span>
+                    </div>
+                    <div className="flex items-center justify-between w-full text-xs">
+                      <span className="text-muted-foreground">Potencial</span>
+                      <span>{formatCurrency(course.potential)}</span>
+                    </div>
+                    <div className="flex items-center gap-2 w-full mt-1">
+                      <Progress value={course.percentageRevenue} className="h-2 flex-1" />
+                      <span className="text-xs font-medium w-12 text-right">
+                        {course.percentageRevenue.toFixed(0)}%
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* Turmas e Pagamentos */}
@@ -874,13 +1068,13 @@ export function Finance() {
               <CardContent className="space-y-4">
                 <div className="h-[220px]">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={paymentsByCourse}>
+                    <BarChart data={financialByCourse}>
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                      <XAxis dataKey="course" stroke="hsl(var(--muted-foreground))" fontSize={11} hide />
+                      <XAxis dataKey="courseName" stroke="hsl(var(--muted-foreground))" fontSize={11} hide />
                       <YAxis
                         stroke="hsl(var(--muted-foreground))"
                         fontSize={12}
-                        tickFormatter={(v) => `${v.toFixed(0)}%`}
+                        tickFormatter={(v) => `${(v / 1000000).toFixed(1)}M`}
                       />
                       <Tooltip
                         contentStyle={{
@@ -888,11 +1082,14 @@ export function Finance() {
                           border: '1px solid hsl(var(--border))',
                           borderRadius: '8px',
                         }}
-                        formatter={(value: number) => `${value.toFixed(1)}%`}
+                        formatter={(value: number, name, props) => [
+                          formatCurrency(value as number),
+                          'Receita realizada',
+                        ]}
                       />
                       <Bar
-                        dataKey="paidPercentage"
-                        name="% Pagamento"
+                        dataKey="revenue"
+                        name="Receita realizada"
                         fill="hsl(142, 76%, 36%)"
                         radius={[4, 4, 0, 0]}
                       />
@@ -901,19 +1098,37 @@ export function Finance() {
                 </div>
 
                 <div className="space-y-2">
-                  {paymentsByCourse.map((course) => (
-                    <div key={course.course} className="flex items-center justify-between gap-3">
+                  {financialByCourse.map((course) => (
+                    <div
+                      key={course.courseId}
+                      className="flex items-center justify-between gap-3"
+                    >
                       <div className="flex flex-col">
-                        <span className="text-sm font-medium">{course.course}</span>
+                        <span className="text-sm font-medium">{course.courseName}</span>
                         <span className="text-xs text-muted-foreground">
-                          {course.paidStudents}/{course.totalStudents} estudantes pagos
+                          {course.activeStudents} estudantes activos
                         </span>
                       </div>
-                      <div className="flex items-center gap-2 min-w-[120px]">
-                        <Progress value={course.paidPercentage} className="h-2 flex-1" />
-                        <span className="text-xs font-medium w-10 text-right">
-                          {course.paidPercentage.toFixed(0)}%
-                        </span>
+                      <div className="flex flex-col items-end gap-1 min-w-[160px]">
+                        <div className="flex items-center justify-between w-full text-[11px]">
+                          <span className="text-muted-foreground">Realizado</span>
+                          <span className="font-medium">
+                            {formatCurrency(course.revenue)}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between w-full text-[11px]">
+                          <span className="text-muted-foreground">Potencial</span>
+                          <span>{formatCurrency(course.potential)}</span>
+                        </div>
+                        <div className="flex items-center gap-2 w-full mt-1">
+                          <Progress
+                            value={course.percentageRevenue}
+                            className="h-2 flex-1"
+                          />
+                          <span className="text-xs font-medium w-10 text-right">
+                            {course.percentageRevenue.toFixed(0)}%
+                          </span>
+                        </div>
                       </div>
                     </div>
                   ))}

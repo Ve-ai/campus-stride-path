@@ -431,260 +431,317 @@ export function Finance() {
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="stat-card">
-          <CardContent className="p-6">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Receita Mensal</p>
-                <p className="text-2xl font-bold text-foreground mt-2">
-                  {formatCurrency(financialStats.totalRevenue)}
-                </p>
-                <div className="flex items-center gap-1 mt-2 text-sm">
-                  <span className="flex items-center text-success">
-                    <TrendingUp className="w-4 h-4 mr-1" />
-                    {financialStats.paidPercentage.toFixed(1)}%
-                  </span>
-                  <span className="text-muted-foreground">estudantes pagos</span>
+      <Tabs defaultValue="overview" className="space-y-6">
+        <TabsList className="w-full sm:w-auto">
+          <TabsTrigger value="overview">Visão Geral</TabsTrigger>
+          <TabsTrigger value="classes">Turmas e Pagamentos</TabsTrigger>
+          <TabsTrigger value="reports">Relatórios</TabsTrigger>
+          <TabsTrigger value="settings">Configurações</TabsTrigger>
+        </TabsList>
+
+        {/* Visão Geral */}
+        <TabsContent value="overview" className="space-y-6">
+          {/* Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <Card className="stat-card">
+              <CardContent className="p-6">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Receita Mensal</p>
+                    <p className="text-2xl font-bold text-foreground mt-2">
+                      {formatCurrency(financialStats.totalRevenue)}
+                    </p>
+                    <div className="flex items-center gap-1 mt-2 text-sm">
+                      <span className="flex items-center text-success">
+                        <TrendingUp className="w-4 h-4 mr-1" />
+                        {financialStats.paidPercentage.toFixed(1)}%
+                      </span>
+                      <span className="text-muted-foreground">estudantes pagos</span>
+                    </div>
+                  </div>
+                  <div className="w-12 h-12 rounded-xl bg-success/10 flex items-center justify-center">
+                    <Wallet className="w-6 h-6 text-success" />
+                  </div>
                 </div>
-              </div>
-              <div className="w-12 h-12 rounded-xl bg-success/10 flex items-center justify-center">
-                <Wallet className="w-6 h-6 text-success" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
 
-        <Card className="stat-card">
-          <CardContent className="p-6">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Pagamentos Pendentes</p>
-                <p className="text-2xl font-bold text-foreground mt-2">
-                  {formatCurrency(financialStats.pendingPayments)}
-                </p>
-                <div className="flex items-center gap-1 mt-2 text-sm">
-                  <span className="flex items-center text-destructive">
-                    <TrendingDown className="w-4 h-4 mr-1" />
-                    {financialStats.pendingStudents}
-                  </span>
-                  <span className="text-muted-foreground">estudantes pendentes</span>
+            <Card className="stat-card">
+              <CardContent className="p-6">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Pagamentos Pendentes</p>
+                    <p className="text-2xl font-bold text-foreground mt-2">
+                      {formatCurrency(financialStats.pendingPayments)}
+                    </p>
+                    <div className="flex items-center gap-1 mt-2 text-sm">
+                      <span className="flex items-center text-destructive">
+                        <TrendingDown className="w-4 h-4 mr-1" />
+                        {financialStats.pendingStudents}
+                      </span>
+                      <span className="text-muted-foreground">estudantes pendentes</span>
+                    </div>
+                  </div>
+                  <div className="w-12 h-12 rounded-xl bg-destructive/10 flex items-center justify-center">
+                    <AlertTriangle className="w-6 h-6 text-destructive" />
+                  </div>
                 </div>
-              </div>
-              <div className="w-12 h-12 rounded-xl bg-destructive/10 flex items-center justify-center">
-                <AlertTriangle className="w-6 h-6 text-destructive" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
 
-        <Card className="stat-card">
-          <CardContent className="p-6">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Estudantes Pagos</p>
-                <p className="text-2xl font-bold text-foreground mt-2">{financialStats.paidStudents}</p>
-                <Progress value={financialStats.paidPercentage} className="mt-3 h-2" />
-                <p className="text-sm text-muted-foreground mt-1">{financialStats.paidPercentage.toFixed(1)}% do total</p>
-              </div>
-              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                <CheckCircle className="w-6 h-6 text-primary" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="stat-card">
-          <CardContent className="p-6">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Estudantes Pendentes</p>
-                <p className="text-2xl font-bold text-foreground mt-2">{financialStats.pendingStudents}</p>
-                <div className="flex items-center gap-1 mt-2 text-sm">
-                  <span className="text-warning font-medium">{financialStats.pendingStudents} estudantes</span>
-                  <span className="text-muted-foreground">requerem atenção</span>
+            <Card className="stat-card">
+              <CardContent className="p-6">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Estudantes Pagos</p>
+                    <p className="text-2xl font-bold text-foreground mt-2">{financialStats.paidStudents}</p>
+                    <Progress value={financialStats.paidPercentage} className="mt-3 h-2" />
+                    <p className="text-sm text-muted-foreground mt-1">{financialStats.paidPercentage.toFixed(1)}% do total</p>
+                  </div>
+                  <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                    <CheckCircle className="w-6 h-6 text-primary" />
+                  </div>
                 </div>
-              </div>
-              <div className="w-12 h-12 rounded-xl bg-warning/10 flex items-center justify-center">
-                <XCircle className="w-6 h-6 text-warning" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+              </CardContent>
+            </Card>
 
-      {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="card-elevated">
-          <CardHeader>
-            <CardTitle className="text-lg font-semibold">Receitas Mensais</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={monthlyData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                  <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickFormatter={(v) => `${v / 1000000}M`} />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'hsl(var(--card))',
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '8px',
-                    }}
-                    formatter={(value: number) => formatCurrency(value)}
-                  />
-                  <Bar dataKey="receita" name="Receita" fill="hsl(142, 76%, 36%)" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
+            <Card className="stat-card">
+              <CardContent className="p-6">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Estudantes Pendentes</p>
+                    <p className="text-2xl font-bold text-foreground mt-2">{financialStats.pendingStudents}</p>
+                    <div className="flex items-center gap-1 mt-2 text-sm">
+                      <span className="text-warning font-medium">{financialStats.pendingStudents} estudantes</span>
+                      <span className="text-muted-foreground">requerem atenção</span>
+                    </div>
+                  </div>
+                  <div className="w-12 h-12 rounded-xl bg-warning/10 flex items-center justify-center">
+                    <XCircle className="w-6 h-6 text-warning" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
 
-        <Card className="card-elevated">
-          <CardHeader>
-            <CardTitle className="text-lg font-semibold">Distribuição de Pagamentos</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={paymentDistribution}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={70}
-                    outerRadius={100}
-                    paddingAngle={5}
-                    dataKey="value"
-                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                  >
-                    {paymentDistribution.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'hsl(var(--card))',
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '8px',
-                    }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+          {/* Charts */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card className="card-elevated">
+              <CardHeader>
+                <CardTitle className="text-lg font-semibold">Receitas Mensais</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[300px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={monthlyData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                      <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickFormatter={(v) => `${v / 1000000}M`} />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'hsl(var(--card))',
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '8px',
+                        }}
+                        formatter={(value: number) => formatCurrency(value)}
+                      />
+                      <Bar dataKey="receita" name="Receita" fill="hsl(142, 76%, 36%)" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
 
-      {/* Filters */}
-      <div className="flex flex-col md:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-          <Input
-            placeholder="Pesquisar por curso..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 input-field"
-          />
-        </div>
-        <Select value={selectedCourse} onValueChange={setSelectedCourse}>
-          <SelectTrigger className="w-full md:w-48">
-            <SelectValue placeholder="Filtrar por curso" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="Todos">Todos os Cursos</SelectItem>
-            {courses?.map((course) => (
-              <SelectItem key={course.id} value={course.name}>
-                {course.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Payments by Class Table */}
-      <Card className="card-elevated">
-        <CardHeader>
-          <CardTitle>Pagamentos por Turma</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow className="table-header">
-                <TableHead>Curso</TableHead>
-                <TableHead>Classe</TableHead>
-                <TableHead>Turma</TableHead>
-                <TableHead className="text-center">Total Estudantes</TableHead>
-                <TableHead className="text-center">Estudantes Pagos</TableHead>
-                <TableHead className="text-center">Estudantes Pendentes</TableHead>
-                <TableHead className="text-center">Percentual</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredPayments.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                    Nenhum dado encontrado
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filteredPayments.map((item) => (
-                  <TableRow key={item.id} className="table-row-hover cursor-pointer" onClick={() => navigate(`/dashboard/turmas/${item.id}`)}>
-                    <TableCell className="font-medium">{item.course}</TableCell>
-                    <TableCell>{item.class}</TableCell>
-                    <TableCell>{item.section}</TableCell>
-                    <TableCell className="text-center">{item.totalStudents}</TableCell>
-                    <TableCell className="text-center">
-                      <span className="text-success font-medium">{item.paidStudents}</span>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <span className="text-destructive font-medium">{item.pendingStudents}</span>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Badge
-                        variant="outline"
-                        className={
-                          item.percentage >= 90
-                            ? 'bg-success/10 text-success border-success/20'
-                            : item.percentage >= 80
-                            ? 'bg-warning/10 text-warning border-warning/20'
-                            : 'bg-destructive/10 text-destructive border-destructive/20'
-                        }
+            <Card className="card-elevated">
+              <CardHeader>
+                <CardTitle className="text-lg font-semibold">Distribuição de Pagamentos</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[300px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={paymentDistribution}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={70}
+                        outerRadius={100}
+                        paddingAngle={5}
+                        dataKey="value"
+                        label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
                       >
-                        {item.percentage}%
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}>
-                            <MoreHorizontal className="w-4 h-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={(e) => {
-                            e.stopPropagation();
-                            navigate(`/dashboard/turmas/${item.id}`);
-                          }}>Ver Estudantes</DropdownMenuItem>
-                          <DropdownMenuItem onClick={(e) => {
-                            e.stopPropagation();
-                            setIsPaymentDialogOpen(true);
-                          }}>Registar Pagamento</DropdownMenuItem>
-                          <DropdownMenuItem>Enviar Lembretes</DropdownMenuItem>
-                          <DropdownMenuItem>Exportar Lista</DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
+                        {paymentDistribution.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'hsl(var(--card))',
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '8px',
+                        }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        {/* Turmas e Pagamentos */}
+        <TabsContent value="classes" className="space-y-6">
+          {/* Filters */}
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+              <Input
+                placeholder="Pesquisar por curso..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 input-field"
+              />
+            </div>
+            <Select value={selectedCourse} onValueChange={setSelectedCourse}>
+              <SelectTrigger className="w-full md:w-48">
+                <SelectValue placeholder="Filtrar por curso" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Todos">Todos os Cursos</SelectItem>
+                {courses?.map((course) => (
+                  <SelectItem key={course.id} value={course.name}>
+                    {course.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Payments by Class Table */}
+          <Card className="card-elevated">
+            <CardHeader>
+              <CardTitle>Pagamentos por Turma</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow className="table-header">
+                    <TableHead>Curso</TableHead>
+                    <TableHead>Classe</TableHead>
+                    <TableHead>Turma</TableHead>
+                    <TableHead className="text-center">Total Estudantes</TableHead>
+                    <TableHead className="text-center">Estudantes Pagos</TableHead>
+                    <TableHead className="text-center">Estudantes Pendentes</TableHead>
+                    <TableHead className="text-center">Percentual</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+                </TableHeader>
+                <TableBody>
+                  {filteredPayments.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                        Nenhum dado encontrado
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredPayments.map((item) => (
+                      <TableRow
+                        key={item.id}
+                        className="table-row-hover cursor-pointer"
+                        onClick={() => navigate(`/dashboard/turmas/${item.id}`)}
+                      >
+                        <TableCell className="font-medium">{item.course}</TableCell>
+                        <TableCell>{item.class}</TableCell>
+                        <TableCell>{item.section}</TableCell>
+                        <TableCell className="text-center">{item.totalStudents}</TableCell>
+                        <TableCell className="text-center">
+                          <span className="text-success font-medium">{item.paidStudents}</span>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <span className="text-destructive font-medium">{item.pendingStudents}</span>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Badge
+                            variant="outline"
+                            className={
+                              item.percentage >= 90
+                                ? 'bg-success/10 text-success border-success/20'
+                                : item.percentage >= 80
+                                ? 'bg-warning/10 text-warning border-warning/20'
+                                : 'bg-destructive/10 text-destructive border-destructive/20'
+                            }
+                          >
+                            {item.percentage}%
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}>
+                                <MoreHorizontal className="w-4 h-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(`/dashboard/turmas/${item.id}`);
+                                }}
+                              >
+                                Ver Estudantes
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setIsPaymentDialogOpen(true);
+                                }}
+                              >
+                                Registar Pagamento
+                              </DropdownMenuItem>
+                              <DropdownMenuItem>Enviar Lembretes</DropdownMenuItem>
+                              <DropdownMenuItem>Exportar Lista</DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Relatórios */}
+        <TabsContent value="reports" className="space-y-4">
+          <Card className="card-elevated">
+            <CardHeader>
+              <CardTitle>Relatórios Financeiros</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground text-sm">
+                Utilize os relatórios existentes (exportação CSV e tabela de turmas) através das abas "Visão Geral" e
+                "Turmas e Pagamentos". Relatórios avançados serão adicionados nesta secção.
+              </p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Configurações */}
+        <TabsContent value="settings" className="space-y-4">
+          <Card className="card-elevated">
+            <CardHeader>
+              <CardTitle>Configurações do Módulo Financeiro</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground text-sm">
+                As configurações detalhadas de propinas, multas e métodos de pagamento serão configuradas aqui em
+                próximas iterações.
+              </p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

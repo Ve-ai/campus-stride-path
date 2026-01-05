@@ -285,6 +285,71 @@ export function Finance() {
 
   const monthNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 
+  const delinquencyByClass = useMemo(() => {
+    return paymentsByClass
+      .map((item) => ({
+        ...item,
+        delinquentPercentage:
+          item.totalStudents > 0 ? (item.pendingStudents / item.totalStudents) * 100 : 0,
+      }))
+      .sort((a, b) => b.delinquentPercentage - a.delinquentPercentage);
+  }, [paymentsByClass]);
+
+  const paymentsByCourse = useMemo(() => {
+    const map = new Map<string, {
+      course: string;
+      totalStudents: number;
+      paidStudents: number;
+      pendingStudents: number;
+    }>();
+
+    paymentsByClass.forEach((item) => {
+      const existing = map.get(item.course) || {
+        course: item.course,
+        totalStudents: 0,
+        paidStudents: 0,
+        pendingStudents: 0,
+      };
+
+      existing.totalStudents += item.totalStudents;
+      existing.paidStudents += item.paidStudents;
+      existing.pendingStudents += item.pendingStudents;
+
+      map.set(item.course, existing);
+    });
+
+    return Array.from(map.values()).map((item) => ({
+      ...item,
+      paidPercentage:
+        item.totalStudents > 0 ? (item.paidStudents / item.totalStudents) * 100 : 0,
+    }));
+  }, [paymentsByClass]);
+
+  const recentPayments = useMemo(() => {
+    if (!payments || !students || !classes) return [];
+
+    const studentsById = new Map(students.map((s) => [s.id, s] as const));
+    const classesById = new Map(classes.map((c) => [c.id, c] as const));
+
+    return [...payments]
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .slice(0, 20)
+      .map((payment) => {
+        const student = studentsById.get(payment.student_id);
+        const classItem = student?.class_id ? classesById.get(student.class_id) : undefined;
+
+        return {
+          id: payment.id,
+          date: new Date(payment.created_at).toLocaleString('pt-AO'),
+          studentName: student?.full_name || 'Estudante desconhecido',
+          enrollment: student?.enrollment_number || '-',
+          classLabel: classItem ? `${classItem.grade_level}ª ${classItem.section}` : '-',
+          amount: Number(payment.amount),
+          method: payment.payment_method || 'N/A',
+        };
+      });
+  }, [payments, students, classes]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -713,16 +778,189 @@ export function Finance() {
         </TabsContent>
 
         {/* Relatórios */}
-        <TabsContent value="reports" className="space-y-4">
+        <TabsContent value="reports" className="space-y-6">
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+            {/* Inadimplência por turma */}
+            <Card className="card-elevated xl:col-span-2">
+              <CardHeader>
+                <CardTitle>Inadimplência por Turma</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="h-[260px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={delinquencyByClass.slice(0, 10)} layout="vertical">
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis
+                        type="number"
+                        stroke="hsl(var(--muted-foreground))"
+                        fontSize={12}
+                        tickFormatter={(v) => `${v.toFixed(0)}%`}
+                      />
+                      <YAxis
+                        type="category"
+                        dataKey={(item) => `${item.class} ${item.section}`}
+                        stroke="hsl(var(--muted-foreground))"
+                        fontSize={12}
+                        width={80}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'hsl(var(--card))',
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '8px',
+                        }}
+                        formatter={(value: number) => `${value.toFixed(1)}%`}
+                        labelFormatter={(label) => `Turma ${label}`}
+                      />
+                      <Bar
+                        dataKey="delinquentPercentage"
+                        name="Inadimplência"
+                        fill="hsl(0, 84%, 60%)"
+                        radius={[0, 4, 4, 0]}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+
+                <Table>
+                  <TableHeader>
+                    <TableRow className="table-header">
+                      <TableHead>Turma</TableHead>
+                      <TableHead className="text-center">Total</TableHead>
+                      <TableHead className="text-center">Pendentes</TableHead>
+                      <TableHead className="text-center">Inadimplência</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {delinquencyByClass.slice(0, 8).map((item) => (
+                      <TableRow key={item.id}>
+                        <TableCell>
+                          <div className="flex flex-col">
+                            <span className="font-medium">{item.course}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {item.class} - Turma {item.section}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-center">{item.totalStudents}</TableCell>
+                        <TableCell className="text-center text-destructive font-medium">
+                          {item.pendingStudents}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Badge className="bg-destructive/10 text-destructive border-destructive/20">
+                            {item.delinquentPercentage.toFixed(1)}%
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+
+            {/* Análise por curso */}
+            <Card className="card-elevated">
+              <CardHeader>
+                <CardTitle>Análise por Curso</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="h-[220px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={paymentsByCourse}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis dataKey="course" stroke="hsl(var(--muted-foreground))" fontSize={11} hide />
+                      <YAxis
+                        stroke="hsl(var(--muted-foreground))"
+                        fontSize={12}
+                        tickFormatter={(v) => `${v.toFixed(0)}%`}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'hsl(var(--card))',
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '8px',
+                        }}
+                        formatter={(value: number) => `${value.toFixed(1)}%`}
+                      />
+                      <Bar
+                        dataKey="paidPercentage"
+                        name="% Pagamento"
+                        fill="hsl(142, 76%, 36%)"
+                        radius={[4, 4, 0, 0]}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+
+                <div className="space-y-2">
+                  {paymentsByCourse.map((course) => (
+                    <div key={course.course} className="flex items-center justify-between gap-3">
+                      <div className="flex flex-col">
+                        <span className="text-sm font-medium">{course.course}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {course.paidStudents}/{course.totalStudents} estudantes pagos
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 min-w-[120px]">
+                        <Progress value={course.paidPercentage} className="h-2 flex-1" />
+                        <span className="text-xs font-medium w-10 text-right">
+                          {course.paidPercentage.toFixed(0)}%
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Auditoria de transações */}
           <Card className="card-elevated">
             <CardHeader>
-              <CardTitle>Relatórios Financeiros</CardTitle>
+              <CardTitle>Auditoria de Transações Recentes</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-muted-foreground text-sm">
-                Utilize os relatórios existentes (exportação CSV e tabela de turmas) através das abas "Visão Geral" e
-                "Turmas e Pagamentos". Relatórios avançados serão adicionados nesta secção.
-              </p>
+              <Table>
+                <TableHeader>
+                  <TableRow className="table-header">
+                    <TableHead>Data</TableHead>
+                    <TableHead>Estudante</TableHead>
+                    <TableHead>Turma</TableHead>
+                    <TableHead className="text-right">Valor</TableHead>
+                    <TableHead>Método</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {recentPayments.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                        Nenhuma transação registada.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    recentPayments.map((item) => (
+                      <TableRow key={item.id}>
+                        <TableCell className="whitespace-nowrap text-xs md:text-sm">{item.date}</TableCell>
+                        <TableCell>
+                          <div className="flex flex-col">
+                            <span className="text-sm font-medium">{item.studentName}</span>
+                            <span className="text-xs text-muted-foreground">{item.enrollment}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{item.classLabel}</TableCell>
+                        <TableCell className="text-right text-sm font-medium">
+                          {formatCurrency(item.amount)}
+                        </TableCell>
+                        <TableCell className="text-sm">
+                          <Badge variant="outline" className="px-2 py-0.5 text-xs">
+                            {item.method}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
             </CardContent>
           </Card>
         </TabsContent>

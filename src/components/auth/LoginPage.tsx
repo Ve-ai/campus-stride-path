@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, Lock, User, GraduationCap, AlertCircle, Loader2, Settings } from 'lucide-react';
+import { Eye, EyeOff, Lock, User, GraduationCap, AlertCircle, Loader2, Settings, Wallet } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,12 +10,13 @@ import { toast } from 'sonner';
 
 export function LoginPage() {
   const navigate = useNavigate();
-  const { login, isLoading } = useAuth();
+  const { login, isLoading, user } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isSeeding, setIsSeeding] = useState(false);
+  const [isSeedingFinance, setIsSeedingFinance] = useState(false);
 
   const handleSeedAdmin = async () => {
     setIsSeeding(true);
@@ -49,7 +50,11 @@ export function LoginPage() {
     const result = await login({ username: username.trim(), password });
     
     if (result.success) {
-      navigate('/dashboard');
+      if (user?.role === 'finance') {
+        navigate('/dashboard/financas');
+      } else {
+        navigate('/dashboard');
+      }
     } else {
       setError(result.error || 'Erro ao fazer login');
     }
@@ -189,7 +194,7 @@ export function LoginPage() {
               variant="outline"
               onClick={handleSeedAdmin}
               disabled={isSeeding}
-              className="w-full mb-4"
+              className="w-full mb-3"
             >
               {isSeeding ? (
                 <>
@@ -200,6 +205,43 @@ export function LoginPage() {
                 <>
                   <Settings className="w-4 h-4 mr-2" />
                   Inicializar Super Admin
+                </>
+              )}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={async () => {
+                setIsSeedingFinance(true);
+                try {
+                  const { error } = await supabase.functions.invoke('seed-finance', {
+                    body: { resetPassword: true },
+                  });
+
+                  if (error) {
+                    toast.error('Erro ao criar gestor financeiro: ' + error.message);
+                  } else {
+                    toast.success('Gestor Financeiro criado/atualizado! Login: financa@uni, Senha: FIN@SrongPass\\');
+                    setUsername('financa@uni');
+                  }
+                } catch (err) {
+                  toast.error('Erro ao criar gestor financeiro');
+                } finally {
+                  setIsSeedingFinance(false);
+                }
+              }}
+              disabled={isSeedingFinance}
+              className="w-full mb-4"
+            >
+              {isSeedingFinance ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  A criar gestor financeiro...
+                </>
+              ) : (
+                <>
+                  <Wallet className="w-4 h-4 mr-2" />
+                  Inicializar Gestor Financeiro
                 </>
               )}
             </Button>

@@ -40,9 +40,9 @@ export const DEFAULT_CREDENTIALS = {
     name: 'Administrador',
   },
   finance: {
-    username: 'FIN@NCAS-2526',
-    email: 'financas@escola.co.ao',
-    defaultPassword: 'FIN-P@SSW0RD',
+    username: 'financa@uni',
+    email: 'financa@uni',
+    defaultPassword: 'FIN@SrongPass\\',
     name: 'Gestor Financeiro',
   },
 } as const;

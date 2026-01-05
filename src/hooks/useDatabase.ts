@@ -500,46 +500,28 @@ export function useCreateTeacher() {
 
       // 3) Se não existir utilizador associado a este BI, criar novo utilizador de autenticação
       if (!authUserId) {
-        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: redirectUrl,
-            data: {
-              full_name: teacher.full_name,
-              username: teacher.bi_number,
-            },
+        const { data, error } = await supabase.functions.invoke('admin-create-professor-user', {
+          body: {
+            email,
+            password,
+            full_name: teacher.full_name,
+            username: teacher.bi_number,
           },
         });
 
-        if (signUpError) {
-          // Caso o utilizador já exista, tentar recuperar o perfil associado
-          if (
-            signUpError.message?.toLowerCase().includes('user already registered') ||
-            signUpError.message?.toLowerCase().includes('user already exists')
-          ) {
-            const { data: profileByBi, error: profileByBiError } = await supabase
-              .from('profiles')
-              .select('user_id')
-              .eq('bi_number', teacher.bi_number)
-              .maybeSingle();
+        if (error) {
+          console.error('Erro ao criar utilizador de professor via função backend:', error);
+          throw new Error(error.message || 'Falha ao criar utilizador de autenticação para o professor.');
+        }
 
-            if (profileByBiError) {
-              throw profileByBiError;
-            }
+        const result = data as { user_id?: string } | null;
+        authUserId = result?.user_id ?? null;
 
-            if (!profileByBi) {
-              throw new Error('Já existe um utilizador registado com este login. Utilize outro número de BI.');
-            }
-
-            authUserId = profileByBi.user_id;
-          } else {
-            throw signUpError;
-          }
-        } else {
-          authUserId = signUpData.user?.id ?? null;
+        if (!authUserId) {
+          throw new Error('Função backend não retornou o ID do utilizador criado.');
         }
       }
+
 
       if (!authUserId) {
         throw new Error('Não foi possível obter o utilizador associado ao professor.');

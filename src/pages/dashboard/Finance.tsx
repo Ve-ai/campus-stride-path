@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Search,
   Wallet,
@@ -350,6 +350,14 @@ export function Finance() {
       });
   }, [payments, students, classes]);
 
+  const location = useLocation();
+
+  const [activeTab, setActiveTab] = useState(() => {
+    if (location.pathname.endsWith('turmas-pagamentos')) return 'classes';
+    if (location.pathname.endsWith('relatorios')) return 'reports';
+    return 'overview';
+  });
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -496,8 +504,8 @@ export function Finance() {
         </div>
       </div>
 
-      <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList className="w-full sm:w-auto">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <TabsList className="w-full sm:w-auto flex flex-wrap gap-2">
           <TabsTrigger value="overview">Visão Geral</TabsTrigger>
           <TabsTrigger value="classes">Turmas e Pagamentos</TabsTrigger>
           <TabsTrigger value="reports">Relatórios</TabsTrigger>

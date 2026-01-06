@@ -7,6 +7,8 @@ import {
   useRegistrarFaltaProfessor,
   useSubmeterJustificativaFalta,
   useActualizarStatusFaltaProfessor,
+  useConfiguracaoFaltasAtiva,
+  useGuardarConfiguracaoFaltas,
 } from '@/hooks/useFaltasProfessores';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -75,6 +77,8 @@ export function FaltasProfessoresPage() {
 
   const registrarFaltaMutation = useRegistrarFaltaProfessor();
   const actualizarStatusMutation = useActualizarStatusFaltaProfessor();
+  const { data: configuracaoFaltas } = useConfiguracaoFaltasAtiva();
+  const guardarConfiguracaoFaltasMutation = useGuardarConfiguracaoFaltas();
 
   const [novaFalta, setNovaFalta] = useState({
     professorId: '',
@@ -89,6 +93,10 @@ export function FaltasProfessoresPage() {
   const [observacoesAdmin, setObservacoesAdmin] = useState('');
   const [acaoStatus, setAcaoStatus] = useState<'justificada' | 'rejeitada'>('justificada');
   const [isDialogStatusOpen, setIsDialogStatusOpen] = useState(false);
+
+  const [isDialogConfiguracoesOpen, setIsDialogConfiguracoesOpen] = useState(false);
+  const [descontoNaoJustificada, setDescontoNaoJustificada] = useState<string>('');
+  const [descontoJustificada, setDescontoJustificada] = useState<string>('');
 
   const faltasAdminOrdenadas = useMemo(() => {
     return (faltasAdmin || []).slice().sort((a, b) => b.data_falta.localeCompare(a.data_falta));
@@ -224,6 +232,7 @@ export function FaltasProfessoresPage() {
                     <TableHead>Status</TableHead>
                     <TableHead>Motivo</TableHead>
                     <TableHead>Justificativa</TableHead>
+                    <TableHead>Valor desconto</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -243,6 +252,14 @@ export function FaltasProfessoresPage() {
                         </TableCell>
                         <TableCell className="max-w-xs truncate" title={falta.justificativa_texto || ''}>
                           {falta.justificativa_texto || '-'}
+                        </TableCell>
+                        <TableCell>
+                          {falta.valor_descontado != null
+                            ? new Intl.NumberFormat('pt-PT', {
+                                style: 'currency',
+                                currency: 'AOA',
+                              }).format(falta.valor_descontado)
+                            : '-'}
                         </TableCell>
                         <TableCell className="text-right">
                           <Button
@@ -324,10 +341,23 @@ export function FaltasProfessoresPage() {
           <h1 className="text-2xl font-bold text-foreground">Faltas de Professores</h1>
           <p className="text-muted-foreground">Registo e gestão de faltas com justificativas.</p>
         </div>
-        <Button onClick={() => setIsDialogNovaFaltaOpen(true)}>
-          <CalendarIcon className="w-4 h-4 mr-2" />
-          Registar falta
-        </Button>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <Button variant="outline" onClick={() => {
+            setDescontoNaoJustificada(
+              configuracaoFaltas?.desconto_falta_nao_justificada?.toString() ?? ''
+            );
+            setDescontoJustificada(
+              configuracaoFaltas?.desconto_falta_justificada?.toString() ?? ''
+            );
+            setIsDialogConfiguracoesOpen(true);
+          }}>
+            Configurações de Faltas
+          </Button>
+          <Button onClick={() => setIsDialogNovaFaltaOpen(true)}>
+            <CalendarIcon className="w-4 h-4 mr-2" />
+            Registar falta
+          </Button>
+        </div>
       </div>
 
       <Card className="card-elevated">
@@ -406,6 +436,7 @@ export function FaltasProfessoresPage() {
                   <TableHead>Motivo</TableHead>
                   <TableHead>Justificativa</TableHead>
                   <TableHead>Observações</TableHead>
+                  <TableHead>Valor desconto</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
@@ -430,6 +461,14 @@ export function FaltasProfessoresPage() {
                       </TableCell>
                       <TableCell className="max-w-xs truncate" title={falta.observacoes_admin || ''}>
                         {falta.observacoes_admin || '-'}
+                      </TableCell>
+                      <TableCell>
+                        {falta.valor_descontado != null
+                          ? new Intl.NumberFormat('pt-PT', {
+                              style: 'currency',
+                              currency: 'AOA',
+                            }).format(falta.valor_descontado)
+                          : '-'}
                       </TableCell>
                       <TableCell className="text-right space-x-2">
                         {falta.status === 'justificativa_pendente' && (
@@ -571,6 +610,78 @@ export function FaltasProfessoresPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={isDialogConfiguracoesOpen} onOpenChange={setIsDialogConfiguracoesOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Configurações de Faltas</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Defina o percentual de desconto aplicado sobre o salário bruto por falta.
+            </p>
+            <div className="space-y-2">
+              <Label>Desconto por falta não justificada (%)</Label>
+              <Input
+                type="number"
+                min={0}
+                step={0.01}
+                value={descontoNaoJustificada}
+                onChange={(e) => setDescontoNaoJustificada(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Desconto por falta justificada (%)</Label>
+              <Input
+                type="number"
+                min={0}
+                step={0.01}
+                value={descontoJustificada}
+                onChange={(e) => setDescontoJustificada(e.target.value)}
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setIsDialogConfiguracoesOpen(false)}>
+                Cancelar
+              </Button>
+              <Button
+                onClick={() => {
+                  const naoJustificada = parseFloat(descontoNaoJustificada || '0');
+                  const justificada = parseFloat(descontoJustificada || '0');
+
+                  if (Number.isNaN(naoJustificada) || Number.isNaN(justificada)) {
+                    toast.error('Valores de desconto inválidos');
+                    return;
+                  }
+
+                  guardarConfiguracaoFaltasMutation.mutate(
+                    {
+                      descontoFaltaNaoJustificada: naoJustificada,
+                      descontoFaltaJustificada: justificada,
+                    },
+                    {
+                      onSuccess: () => {
+                        toast.success('Configurações de faltas actualizadas');
+                        setIsDialogConfiguracoesOpen(false);
+                      },
+                      onError: (err: any) => {
+                        toast.error(err?.message || 'Erro ao guardar configurações');
+                      },
+                    },
+                  );
+                }}
+                disabled={guardarConfiguracaoFaltasMutation.isPending}
+             >
+                {guardarConfiguracaoFaltasMutation.isPending && (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                )}
+                Guardar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
+

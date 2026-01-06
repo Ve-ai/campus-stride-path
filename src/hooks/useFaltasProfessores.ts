@@ -10,6 +10,10 @@ import {
   RegistrarFaltaInput,
   SubmeterJustificativaInput,
   AtualizarStatusFaltaInput,
+  obterConfiguracaoFaltasAtiva,
+  guardarConfiguracaoFaltas,
+  ConfiguracaoFaltas,
+  GuardarConfiguracaoFaltasInput,
 } from '@/services/faltasProfessores.service';
 
 // Lista de faltas (admin)
@@ -64,6 +68,24 @@ export function useActualizarStatusFaltaProfessor() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['faltas_professores'] });
       queryClient.invalidateQueries({ queryKey: ['minhas_faltas_professores'] });
+    },
+  });
+}
+
+// Configuração de faltas (admin)
+export function useConfiguracaoFaltasAtiva() {
+  return useQuery<ConfiguracaoFaltas | null, any>({
+    queryKey: ['configuracoes_faltas_ativa'],
+    queryFn: () => obterConfiguracaoFaltasAtiva(),
+  });
+}
+
+export function useGuardarConfiguracaoFaltas() {
+  const queryClient = useQueryClient();
+  return useMutation<ConfiguracaoFaltas, any, GuardarConfiguracaoFaltasInput>({
+    mutationFn: (input) => guardarConfiguracaoFaltas(input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['configuracoes_faltas_ativa'] });
     },
   });
 }

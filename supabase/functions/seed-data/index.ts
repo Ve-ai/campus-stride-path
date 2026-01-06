@@ -320,7 +320,7 @@ serve(async (req) => {
     const genders = ['Masculino', 'Feminino']
 
     let studentCount = 0
-    const classesToPopulate = (classes || []).slice(0, 42) // garantir 42 turmas
+    const classesToPopulate = (classes || []) // popular todas as turmas existentes (de todos os cursos)
 
     const totalStudentsTarget = 1000
     const numClasses = classesToPopulate.length

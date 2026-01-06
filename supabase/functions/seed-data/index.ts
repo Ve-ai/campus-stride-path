@@ -310,8 +310,48 @@ serve(async (req) => {
     }
 
     // Get teachers
-    const { data: teachers } = await supabase.from('teachers').select('id, employee_number')
+    const { data: teachers } = await supabase.from('teachers').select('id, employee_number, functions')
     console.log('Teachers created:', teachers?.length)
+
+    // 6.1 Atribuir coordenadores de curso
+    if (teachers && teachers.length > 0 && courses && courses.length > 0) {
+      const coordinatorRole = 'Coordenador de Curso'
+
+      for (let i = 0; i < courses.length; i++) {
+        const course = courses[i]
+        const teacher = teachers[i % teachers.length]
+
+        const currentFunctions = Array.isArray((teacher as any).functions)
+          ? ([...(teacher as any).functions] as string[])
+          : ['Professor']
+
+        if (!currentFunctions.includes(coordinatorRole)) {
+          currentFunctions.push(coordinatorRole)
+        }
+
+        const { error: courseUpdateError } = await supabase
+          .from('courses')
+          .update({ coordinator_id: teacher.id })
+          .eq('id', course.id)
+
+        if (courseUpdateError && !courseUpdateError.message.includes('duplicate')) {
+          console.log('Course coordinator update error:', courseUpdateError)
+        }
+
+        const { error: teacherUpdateError } = await supabase
+          .from('teachers')
+          .update({ functions: currentFunctions })
+          .eq('id', teacher.id)
+
+        if (teacherUpdateError && !teacherUpdateError.message.includes('duplicate')) {
+          console.log('Teacher coordinator role update error:', teacherUpdateError)
+        }
+
+        ;(teacher as any).functions = currentFunctions
+      }
+
+      console.log('Course coordinators assigned')
+    }
 
     // 6. Create Students (target: 1000 estudantes divididos nas turmas)
     const firstNames = ['Pedro', 'Maria', 'João', 'Ana', 'Carlos', 'Sofia', 'Manuel', 'Catarina', 'António', 'Isabel', 'Miguel', 'Francisca', 'José', 'Beatriz', 'Paulo']
@@ -372,17 +412,41 @@ serve(async (req) => {
     // 7. Assign class directors
     if (teachers && teachers.length > 0 && classes && classes.length > 0) {
       const classesForDirectors = classes.slice(0, Math.min(teachers.length, classes.length))
-      
+      const directorRole = 'Director de Turma'
+
       for (let i = 0; i < classesForDirectors.length; i++) {
-        const { error } = await supabase
+        const classItem = classesForDirectors[i]
+        const teacher = teachers[i % teachers.length]
+
+        const { error: classUpdateError } = await supabase
           .from('classes')
-          .update({ class_director_id: teachers[i % teachers.length].id })
-          .eq('id', classesForDirectors[i].id)
-        
-        if (error) {
-          console.log('Director assignment error:', error)
+          .update({ class_director_id: teacher.id })
+          .eq('id', classItem.id)
+
+        if (classUpdateError) {
+          console.log('Director assignment error:', classUpdateError)
         }
+
+        const currentFunctions = Array.isArray((teacher as any).functions)
+          ? ([...(teacher as any).functions] as string[])
+          : ['Professor']
+
+        if (!currentFunctions.includes(directorRole)) {
+          currentFunctions.push(directorRole)
+        }
+
+        const { error: teacherUpdateError } = await supabase
+          .from('teachers')
+          .update({ functions: currentFunctions })
+          .eq('id', teacher.id)
+
+        if (teacherUpdateError && !teacherUpdateError.message.includes('duplicate')) {
+          console.log('Teacher director role update error:', teacherUpdateError)
+        }
+
+        ;(teacher as any).functions = currentFunctions
       }
+
       console.log('Class directors assigned')
     }
 

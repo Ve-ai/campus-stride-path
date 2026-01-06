@@ -21,10 +21,21 @@ import { Textarea } from '@/components/ui/textarea';
 import { CalendarIcon, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 import { toast } from '@/lib/notifications';
 
-function getStatusLabel(status: 'pendente' | 'justificada' | 'rejeitada') {
+function getStatusLabel(
+  status:
+    | 'registada'
+    | 'nao_justificada'
+    | 'justificativa_pendente'
+    | 'justificada'
+    | 'rejeitada',
+) {
   switch (status) {
-    case 'pendente':
-      return { label: 'Pendente', variant: 'outline' as const };
+    case 'registada':
+      return { label: 'Registada', variant: 'outline' as const };
+    case 'nao_justificada':
+      return { label: 'Não justificada', variant: 'destructive' as const };
+    case 'justificativa_pendente':
+      return { label: 'Justificativa pendente', variant: 'outline' as const };
     case 'justificada':
       return { label: 'Justificada', variant: 'success' as const };
     case 'rejeitada':
@@ -44,7 +55,14 @@ export function FaltasProfessoresPage() {
 
   // Admin state
   const [filtroProfessorId, setFiltroProfessorId] = useState<string | undefined>();
-  const [filtroStatus, setFiltroStatus] = useState<'pendente' | 'justificada' | 'rejeitada' | 'todos'>('todos');
+  const [filtroStatus, setFiltroStatus] = useState<
+    | 'registada'
+    | 'nao_justificada'
+    | 'justificativa_pendente'
+    | 'justificada'
+    | 'rejeitada'
+    | 'todos'
+  >('todos');
   const [filtroDataInicio, setFiltroDataInicio] = useState<string>('');
   const [filtroDataFim, setFiltroDataFim] = useState<string>('');
 
@@ -212,7 +230,7 @@ export function FaltasProfessoresPage() {
                 <TableBody>
                   {minhasFaltasOrdenadas.map((falta) => {
                     const statusInfo = getStatusLabel(falta.status as any);
-                    const podeJustificar = falta.status === 'pendente';
+                    const podeJustificar = falta.status === 'nao_justificada';
                     return (
                       <TableRow key={falta.id}>
                         <TableCell>{new Date(falta.data_falta).toLocaleDateString('pt-PT')}</TableCell>
@@ -347,7 +365,9 @@ export function FaltasProfessoresPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="todos">Todos</SelectItem>
-                <SelectItem value="pendente">Pendente</SelectItem>
+                <SelectItem value="registada">Registada</SelectItem>
+                <SelectItem value="nao_justificada">Não justificada</SelectItem>
+                <SelectItem value="justificativa_pendente">Justificativa pendente</SelectItem>
                 <SelectItem value="justificada">Justificada</SelectItem>
                 <SelectItem value="rejeitada">Rejeitada</SelectItem>
               </SelectContent>
@@ -412,32 +432,36 @@ export function FaltasProfessoresPage() {
                         {falta.observacoes_admin || '-'}
                       </TableCell>
                       <TableCell className="text-right space-x-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setFaltaSelecionadaId(falta.id);
-                            setObservacoesAdmin(falta.observacoes_admin || '');
-                            setAcaoStatus('justificada');
-                            setIsDialogStatusOpen(true);
-                          }}
-                        >
-                          <CheckCircle2 className="w-4 h-4 mr-1" />
-                          Aprovar
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setFaltaSelecionadaId(falta.id);
-                            setObservacoesAdmin(falta.observacoes_admin || '');
-                            setAcaoStatus('rejeitada');
-                            setIsDialogStatusOpen(true);
-                          }}
-                        >
-                          <XCircle className="w-4 h-4 mr-1" />
-                          Rejeitar
-                        </Button>
+                        {falta.status === 'justificativa_pendente' && (
+                          <>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setFaltaSelecionadaId(falta.id);
+                                setObservacoesAdmin(falta.observacoes_admin || '');
+                                setAcaoStatus('justificada');
+                                setIsDialogStatusOpen(true);
+                              }}
+                            >
+                              <CheckCircle2 className="w-4 h-4 mr-1" />
+                              Aprovar
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setFaltaSelecionadaId(falta.id);
+                                setObservacoesAdmin(falta.observacoes_admin || '');
+                                setAcaoStatus('rejeitada');
+                                setIsDialogStatusOpen(true);
+                              }}
+                            >
+                              <XCircle className="w-4 h-4 mr-1" />
+                              Rejeitar
+                            </Button>
+                          </>
+                        )}
                       </TableCell>
                     </TableRow>
                   );

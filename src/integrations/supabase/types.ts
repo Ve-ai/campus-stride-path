@@ -104,6 +104,30 @@ export type Database = {
           },
         ]
       }
+      configuracoes_faltas: {
+        Row: {
+          ativo: boolean
+          criado_em: string
+          desconto_falta_justificada: number
+          desconto_falta_nao_justificada: number
+          id: string
+        }
+        Insert: {
+          ativo?: boolean
+          criado_em?: string
+          desconto_falta_justificada: number
+          desconto_falta_nao_justificada: number
+          id?: string
+        }
+        Update: {
+          ativo?: boolean
+          criado_em?: string
+          desconto_falta_justificada?: number
+          desconto_falta_nao_justificada?: number
+          id?: string
+        }
+        Relationships: []
+      }
       courses: {
         Row: {
           coordinator_id: string | null
@@ -183,6 +207,10 @@ export type Database = {
           observacoes_admin: string | null
           professor_id: string
           status: Database["public"]["Enums"]["professor_absence_status"]
+          tipo_desconto:
+            | Database["public"]["Enums"]["professor_absence_discount_type"]
+            | null
+          valor_descontado: number | null
         }
         Insert: {
           atualizado_em?: string
@@ -196,6 +224,10 @@ export type Database = {
           observacoes_admin?: string | null
           professor_id: string
           status?: Database["public"]["Enums"]["professor_absence_status"]
+          tipo_desconto?:
+            | Database["public"]["Enums"]["professor_absence_discount_type"]
+            | null
+          valor_descontado?: number | null
         }
         Update: {
           atualizado_em?: string
@@ -209,6 +241,10 @@ export type Database = {
           observacoes_admin?: string | null
           professor_id?: string
           status?: Database["public"]["Enums"]["professor_absence_status"]
+          tipo_desconto?:
+            | Database["public"]["Enums"]["professor_absence_discount_type"]
+            | null
+          valor_descontado?: number | null
         }
         Relationships: [
           {
@@ -750,6 +786,7 @@ export type Database = {
     }
     Enums: {
       app_role: "super_admin" | "admin" | "finance" | "professor"
+      professor_absence_discount_type: "justificada" | "nao_justificada"
       professor_absence_status:
         | "registada"
         | "nao_justificada"
@@ -884,6 +921,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["super_admin", "admin", "finance", "professor"],
+      professor_absence_discount_type: ["justificada", "nao_justificada"],
       professor_absence_status: [
         "registada",
         "nao_justificada",

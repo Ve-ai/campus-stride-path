@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from "@/lib/notifications";
+import { useStatistics } from '@/hooks/useDatabase';
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -17,6 +18,11 @@ export function LoginPage() {
   const [error, setError] = useState('');
   const [isSeeding, setIsSeeding] = useState(false);
   const [isSeedingFinance, setIsSeedingFinance] = useState(false);
+
+  const { data: stats } = useStatistics();
+  const totalStudents = stats?.students?.total ?? 0;
+  const totalTeachers = stats?.teachers ?? 0;
+  const totalCourses = stats?.courses ?? 0;
 
   const handleSeedAdmin = async () => {
     setIsSeeding(true);
@@ -83,18 +89,19 @@ export function LoginPage() {
 
           <div className="mt-12 grid grid-cols-3 gap-8 text-center">
             <div>
-              <div className="text-3xl font-bold text-primary-foreground">500+</div>
+              <div className="text-3xl font-bold text-primary-foreground">{totalStudents}+</div>
               <div className="text-primary-foreground/60 text-sm">Estudantes</div>
             </div>
             <div>
-              <div className="text-3xl font-bold text-primary-foreground">25+</div>
+              <div className="text-3xl font-bold text-primary-foreground">{totalTeachers}+</div>
               <div className="text-primary-foreground/60 text-sm">Professores</div>
             </div>
             <div>
-              <div className="text-3xl font-bold text-primary-foreground">8</div>
+              <div className="text-3xl font-bold text-primary-foreground">{totalCourses}</div>
               <div className="text-primary-foreground/60 text-sm">Cursos</div>
             </div>
           </div>
+
         </div>
       </div>
 

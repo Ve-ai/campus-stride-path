@@ -30,6 +30,8 @@ import {
   UpdateTeacherInput,
   UpdateTeacherAssignmentScheduleInput,
   CreateTeacherAssignmentInput,
+  deleteCourse,
+  DeleteCourseInput,
 } from '@/services/database';
 
 // Courses
@@ -167,6 +169,19 @@ export function useUpdateCourse() {
     mutationFn: (payload) => updateCourse(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['courses'] });
+    },
+  });
+}
+
+// Delete Course
+export function useDeleteCourse() {
+  const queryClient = useQueryClient();
+
+  return useMutation<any, any, DeleteCourseInput>({
+    mutationFn: (payload) => deleteCourse(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['courses'] });
+      queryClient.invalidateQueries({ queryKey: ['statistics'] });
     },
   });
 }

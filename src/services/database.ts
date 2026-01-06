@@ -359,6 +359,20 @@ export async function updateCourse({ id, ...updates }: UpdateCourseInput) {
   return data;
 }
 
+export interface DeleteCourseInput {
+  id: string;
+}
+
+export async function deleteCourse({ id }: DeleteCourseInput) {
+  const { error } = await supabase
+    .from('courses')
+    .delete()
+    .eq('id', id);
+
+  if (error) throw error;
+}
+
+
 export interface CreateTeacherInput {
   employee_number: string;
   full_name: string;

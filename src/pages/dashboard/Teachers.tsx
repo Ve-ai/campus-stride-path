@@ -440,9 +440,9 @@ export function Teachers() {
                         ? (classes || []).filter((cls: any) => cls.course_id === a.courseId)
                         : [];
 
-                      const availableGradesForCourse = Array.from(
+                      const availableGradesForCourse = (Array.from(
                         new Set(classesForCourse.map((cls: any) => cls.grade_level)),
-                      ).sort();
+                      ).sort() as number[]);
 
                       const selectedGrades = assignments
                         .filter((_, i) => i !== index)

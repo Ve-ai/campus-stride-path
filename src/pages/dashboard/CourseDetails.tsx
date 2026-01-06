@@ -52,18 +52,17 @@ export function CourseDetails() {
   const { data: subjects } = useSubjects();
 
   const course = courses?.find(c => c.id === courseId);
-  const courseClasses = classes?.filter(c => c.course_id === courseId) || [];
-  const courseSubjects = subjects?.filter(s => s.course_id === courseId) || [];
-  
+  const courseClasses = (classes?.filter((c: any) => c.course_id === courseId) || []) as any[];
+  const courseSubjects = (subjects?.filter((s: any) => s.course_id === courseId) || []) as any[];
   const coordinator = teachers?.find(t => t.id === course?.coordinator_id);
 
   // Group classes by grade level
-  const classesByGrade = courseClasses.reduce((acc, cls) => {
-    const grade = cls.grade_level;
+  const classesByGrade = courseClasses.reduce((acc: Record<number, any[]>, cls: any) => {
+    const grade = cls.grade_level as number;
     if (!acc[grade]) acc[grade] = [];
     acc[grade].push(cls);
     return acc;
-  }, {} as Record<number, typeof courseClasses>);
+  }, {} as Record<number, any[]>);
 
   if (!course) {
     return (
@@ -216,7 +215,7 @@ export function CourseDetails() {
       </div>
 
       {/* Classes by Grade Level */}
-      {Object.entries(classesByGrade)
+      {Object.entries(classesByGrade as Record<string, any[]>)
         .filter(([grade]) => selectedClass === 'all' || grade === selectedClass)
         .sort(([a], [b]) => Number(a) - Number(b))
         .map(([grade, gradeClasses]) => (
@@ -279,7 +278,7 @@ export function CourseDetails() {
                       </TableRow>
                     );
                   })}
-                  {gradeClasses.length === 0 && (
+                  {(gradeClasses as any[]).length === 0 && (
                     <TableRow>
                       <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
                         Nenhuma turma cadastrada para esta classe

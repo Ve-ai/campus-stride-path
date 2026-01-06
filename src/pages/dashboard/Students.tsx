@@ -188,7 +188,7 @@ export function Students() {
             enrollment_date: undefined,
           });
         },
-        onError: (error) => {
+        onError: (error: any) => {
           toast.error('Erro ao criar estudante: ' + error.message);
         },
       },

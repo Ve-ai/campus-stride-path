@@ -49,7 +49,7 @@ import { cn } from '@/lib/utils';
 import { useClasses, useCourses, useTeachers, useSubjects, useCreateStudent } from '@/hooks/useDatabase';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
-import { toast } from 'sonner';
+import { toast } from "@/lib/notifications";
 export function ClassDetails() {
   const { classId } = useParams();
   const navigate = useNavigate();

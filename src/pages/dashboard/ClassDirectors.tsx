@@ -43,7 +43,7 @@ import {
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { useClasses, useTeachers } from '@/hooks/useDatabase';
-import { toast } from 'sonner';
+import { toast } from "@/lib/notifications";
 import { supabase } from '@/integrations/supabase/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 

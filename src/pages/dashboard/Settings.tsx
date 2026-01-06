@@ -47,7 +47,7 @@ import {
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { useCourses, useSchoolNuclei, useTeachers } from '@/hooks/useDatabase';
-import { toast } from 'sonner';
+import { toast } from "@/lib/notifications";
 
 export function Settings() {
   const { user, updatePassword } = useAuth();

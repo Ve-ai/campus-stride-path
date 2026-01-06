@@ -37,7 +37,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useClasses, useCreateStudent, useStudents } from '@/hooks/useDatabase';
-import { toast } from 'sonner';
+import { toast } from "@/lib/notifications";
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';

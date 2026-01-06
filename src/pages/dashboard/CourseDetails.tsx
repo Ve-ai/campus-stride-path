@@ -38,7 +38,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useCourses, useClasses, useTeachers, useSubjects } from '@/hooks/useDatabase';
-import { toast } from 'sonner';
+import { toast } from "@/lib/notifications";
 import { CourseEditForm } from './CourseEditForm';
 
 export function CourseDetails() {

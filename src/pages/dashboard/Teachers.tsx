@@ -47,7 +47,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useTeachers, useCourses, useCreateTeacher, useUpdateTeacher, useClasses, useSubjects, useCreateTeacherAssignments } from '@/hooks/useDatabase';
-import { toast } from 'sonner';
+import { toast } from "@/lib/notifications";
 
 export function Teachers() {
   const navigate = useNavigate();

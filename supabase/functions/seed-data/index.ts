@@ -50,7 +50,7 @@ serve(async (req) => {
 
     console.log('Nucleus ID:', nucleusId)
 
-    // 2. Create Courses
+    // 2. Create Courses (target: 6 cursos)
     const coursesData = [
       { 
         name: 'Enfermagem Geral', 
@@ -100,6 +100,30 @@ serve(async (req) => {
         defense_entry_fee: 18000,
         tutor_fee: 35000
       },
+      {
+        name: 'Farmácia',
+        school_nucleus_id: nucleusId,
+        monthly_fee_10: 17000,
+        monthly_fee_11: 20000,
+        monthly_fee_12: 23000,
+        monthly_fee_13: 26000,
+        internship_fee: 32000,
+        credential_fee: 7000,
+        defense_entry_fee: 19000,
+        tutor_fee: 36000,
+      },
+      {
+        name: 'Administração Hospitalar',
+        school_nucleus_id: nucleusId,
+        monthly_fee_10: 14000,
+        monthly_fee_11: 17000,
+        monthly_fee_12: 20000,
+        monthly_fee_13: 22000,
+        internship_fee: 24000,
+        credential_fee: 5000,
+        defense_entry_fee: 15000,
+        tutor_fee: 28000,
+      },
     ]
 
     for (const course of coursesData) {
@@ -127,12 +151,18 @@ serve(async (req) => {
     const contabilidadeSubjects = ['Contabilidade Geral', 'Economia', 'Gestão', 'Matemática', 'Português', 'Inglês', 'Direito Comercial', 'Estatística']
     // Análises subjects
     const analisesSubjects = ['Bioquímica', 'Microbiologia', 'Hematologia', 'Matemática', 'Português', 'Inglês', 'Parasitologia', 'Imunologia']
+    // Farmácia subjects
+    const farmaciaSubjects = ['Farmacologia', 'Toxicologia', 'Química Orgânica', 'Matemática', 'Português', 'Inglês', 'Tecnologia Farmacêutica', 'Legislação Farmacêutica']
+    // Administração Hospitalar subjects
+    const administracaoSubjects = ['Gestão Hospitalar', 'Administração', 'Economia da Saúde', 'Matemática', 'Português', 'Inglês', 'Direito da Saúde', 'Estatística Aplicada']
 
     const courseSubjectsMap: { [key: string]: string[] } = {
       'Enfermagem Geral': enfermagemSubjects,
       'Informática': informaticaSubjects,
       'Contabilidade e Gestão': contabilidadeSubjects,
       'Análises Clínicas': analisesSubjects,
+      'Farmácia': farmaciaSubjects,
+      'Administração Hospitalar': administracaoSubjects,
     }
 
     for (const course of courses || []) {
@@ -167,31 +197,44 @@ serve(async (req) => {
 
     console.log('Subjects created')
 
-    // 4. Create Classes for each course
+    // 4. Create Classes for each course (target: 42 turmas)
     const periods = ['Manhã', 'Tarde']
     const sections = ['A', 'B']
     const academicYear = 2025
+
+    const classConfigs: { course_id: string; grade_level: number; section: string; period: string }[] = []
 
     for (const course of courses || []) {
       for (const gradeLevel of [10, 11, 12, 13]) {
         for (const period of periods) {
           for (const section of sections) {
-            const { error } = await supabase
-              .from('classes')
-              .upsert({
-                course_id: course.id,
-                grade_level: gradeLevel,
-                section: section,
-                period: period,
-                academic_year: academicYear,
-                max_students: 40
-              }, { onConflict: 'course_id,grade_level,section,period,academic_year' })
-            
-            if (error && !error.message.includes('duplicate')) {
-              console.log('Class error:', error)
-            }
+            classConfigs.push({
+              course_id: course.id,
+              grade_level: gradeLevel,
+              section,
+              period,
+            })
           }
         }
+      }
+    }
+
+    const selectedClassConfigs = classConfigs.slice(0, 42) // exactly 42 classes
+
+    for (const cfg of selectedClassConfigs) {
+      const { error } = await supabase
+        .from('classes')
+        .upsert({
+          course_id: cfg.course_id,
+          grade_level: cfg.grade_level,
+          section: cfg.section,
+          period: cfg.period,
+          academic_year: academicYear,
+          max_students: 40
+        }, { onConflict: 'course_id,grade_level,section,period,academic_year' })
+      
+      if (error && !error.message.includes('duplicate')) {
+        console.log('Class error:', error)
       }
     }
 
@@ -199,7 +242,7 @@ serve(async (req) => {
     const { data: classes } = await supabase.from('classes').select('id, course_id, grade_level, section, period')
     console.log('Classes created:', classes?.length)
 
-    // 5. Create Teachers with profiles
+    // 5. Create Teachers with profiles (target: 50 professores)
     const teachersData = [
       { name: 'Carlos Alberto Mendes', employeeNumber: 'PROF001', degree: 'Licenciatura', degreeArea: 'Matemática', salary: 85000, phone: '925654254' },
       { name: 'Sofia Maria Lima', employeeNumber: 'PROF002', degree: 'Mestrado', degreeArea: 'Engenharia Informática', salary: 95000, phone: '923456789' },
@@ -210,6 +253,34 @@ serve(async (req) => {
       { name: 'Teresa Isabel Nunes', employeeNumber: 'PROF007', degree: 'Licenciatura', degreeArea: 'Português', salary: 75000, phone: '929012345' },
       { name: 'António Fernando Silva', employeeNumber: 'PROF008', degree: 'Doutoramento', degreeArea: 'Bioquímica', salary: 110000, phone: '921123456' },
     ]
+
+    const extraDegreeAreas = [
+      'Física',
+      'História',
+      'Geografia',
+      'Educação Física',
+      'Informática',
+      'Gestão',
+      'Economia',
+      'Farmácia',
+      'Administração',
+      'Psicologia',
+    ]
+
+    const totalTeachersTarget = 50
+
+    for (let i = teachersData.length + 1; i <= totalTeachersTarget; i++) {
+      const index = i - 1
+      const degreeArea = extraDegreeAreas[index % extraDegreeAreas.length]
+      teachersData.push({
+        name: `Professor ${i.toString().padStart(2, '0')}`,
+        employeeNumber: `PROF${i.toString().padStart(3, '0')}`,
+        degree: index % 3 === 0 ? 'Licenciatura' : index % 3 === 1 ? 'Mestrado' : 'Doutoramento',
+        degreeArea,
+        salary: 75000 + (index % 10) * 5000,
+        phone: `92${String(1000000 + index * 1234).slice(0, 7)}`,
+      })
+    }
 
     for (const teacher of teachersData) {
       // Check if teacher already exists
@@ -242,17 +313,24 @@ serve(async (req) => {
     const { data: teachers } = await supabase.from('teachers').select('id, employee_number')
     console.log('Teachers created:', teachers?.length)
 
-    // 6. Create Students
+    // 6. Create Students (target: 1000 estudantes divididos nas turmas)
     const firstNames = ['Pedro', 'Maria', 'João', 'Ana', 'Carlos', 'Sofia', 'Manuel', 'Catarina', 'António', 'Isabel', 'Miguel', 'Francisca', 'José', 'Beatriz', 'Paulo']
     const lastNames = ['Alves', 'Santos', 'Ferreira', 'Costa', 'Silva', 'Oliveira', 'Mendes', 'Nunes', 'Pereira', 'Rodrigues', 'Martins', 'Sousa', 'Fernandes', 'Gonçalves', 'Gomes']
     const provinces = ['Luanda', 'Benguela', 'Huambo', 'Huíla', 'Bié', 'Malanje', 'Kwanza Norte', 'Kwanza Sul']
     const genders = ['Masculino', 'Feminino']
 
     let studentCount = 0
-    const classesToPopulate = classes?.slice(0, 16) || [] // First 16 classes
+    const classesToPopulate = (classes || []).slice(0, 42) // garantir 42 turmas
 
-    for (const classItem of classesToPopulate) {
-      const numStudents = Math.floor(Math.random() * 15) + 25 // 25-40 students per class
+    const totalStudentsTarget = 1000
+    const numClasses = classesToPopulate.length
+    const basePerClass = Math.floor(totalStudentsTarget / Math.max(numClasses, 1))
+    const remainder = totalStudentsTarget - basePerClass * numClasses
+
+    for (let classIndex = 0; classIndex < classesToPopulate.length; classIndex++) {
+      const classItem = classesToPopulate[classIndex]
+      const extra = classIndex < remainder ? 1 : 0
+      const numStudents = basePerClass + extra
 
       for (let i = 0; i < numStudents; i++) {
         const firstName = firstNames[Math.floor(Math.random() * firstNames.length)]
@@ -334,6 +412,39 @@ serve(async (req) => {
         }
       }
       console.log('Payments created')
+    }
+
+    // 9. Distribute subjects between teachers via teacher_class_assignments
+    const { data: allSubjects } = await supabase
+      .from('subjects')
+      .select('id, course_id, grade_level')
+
+    if (teachers && teachers.length > 0 && classes && classes.length > 0 && allSubjects) {
+      for (let classIndex = 0; classIndex < classes.length; classIndex++) {
+        const classItem = classes[classIndex]
+        const classSubjects = allSubjects.filter(
+          (s) => s.course_id === classItem.course_id && s.grade_level === classItem.grade_level,
+        )
+
+        for (let subjIndex = 0; subjIndex < classSubjects.length; subjIndex++) {
+          const subject = classSubjects[subjIndex]
+          const teacher = teachers[(classIndex + subjIndex) % teachers.length]
+
+          const { error } = await supabase
+            .from('teacher_class_assignments')
+            .insert({
+              class_id: classItem.id,
+              subject_id: subject.id,
+              teacher_id: teacher.id,
+              periods: [classItem.period],
+            })
+
+          if (error && !error.message.includes('duplicate')) {
+            console.log('Teacher assignment error:', error)
+          }
+        }
+      }
+      console.log('Teacher-class assignments created')
     }
 
     return new Response(

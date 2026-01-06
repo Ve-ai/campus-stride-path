@@ -1,6 +1,11 @@
 import { supabase } from '@/integrations/supabase/client';
 
-export type FaltasStatus = 'pendente' | 'justificada' | 'rejeitada';
+export type FaltasStatus =
+  | 'registada'
+  | 'nao_justificada'
+  | 'justificativa_pendente'
+  | 'justificada'
+  | 'rejeitada';
 
 export interface FaltaProfessor {
   id: string;
@@ -40,7 +45,7 @@ export interface SubmeterJustificativaInput {
 
 export interface AtualizarStatusFaltaInput {
   faltaId: string;
-  status: Exclude<FaltasStatus, 'pendente'>;
+  status: 'justificada' | 'rejeitada';
   observacoesAdmin?: string;
 }
 
@@ -128,6 +133,7 @@ export async function submeterJustificativa(
     .update({
       justificativa_texto: input.justificativaTexto,
       justificativa_arquivo_url: input.justificativaArquivoUrl ?? null,
+      status: 'justificativa_pendente',
     })
     .eq('id', input.faltaId)
     .select('*')

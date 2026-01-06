@@ -42,7 +42,7 @@ import {
   Line,
 } from 'recharts';
 import { useTeachers, useGrades, useStudents, useClasses, useUpdateTeacher, useUpdateTeacherAssignmentSchedule } from '@/hooks/useDatabase';
-import { toast } from 'sonner';
+import { toast } from "@/lib/notifications";
 
 export function TeacherDetails() {
   const { teacherId } = useParams();

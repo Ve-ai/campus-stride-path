@@ -44,7 +44,7 @@ import {
 import { useStatistics, useCourses, useClasses, useStudents, usePayments } from '@/hooks/useDatabase';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { toast } from 'sonner';
+import { toast } from "@/lib/notifications";
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 

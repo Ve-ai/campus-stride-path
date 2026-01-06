@@ -43,7 +43,7 @@ import {
 } from '@/components/ui/select';
 import { useStudents, usePayments, useClasses, useCourses, useCreatePayment } from '@/hooks/useDatabase';
 import { useAuth } from '@/contexts/AuthContext';
-import { toast } from 'sonner';
+import { toast } from "@/lib/notifications";
 
 const MONTHS = [
   'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',

@@ -35,7 +35,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { toast } from 'sonner';
+import { toast } from "@/lib/notifications";
 import { Loader2, BarChart3, FileText, Search, AlertTriangle } from 'lucide-react';
 import {
   BarChart,

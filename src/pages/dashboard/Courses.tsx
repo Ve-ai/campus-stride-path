@@ -49,7 +49,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useCourses, useTeachers, useSchoolNuclei, useClasses, useStudents, useSubjects } from '@/hooks/useDatabase';
-import { toast } from 'sonner';
+import { toast } from "@/lib/notifications";
 
 export function Courses() {
   const navigate = useNavigate();

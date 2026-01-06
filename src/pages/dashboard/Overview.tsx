@@ -41,7 +41,7 @@ import {
   Line,
   Legend,
 } from 'recharts';
-import { useStatistics, useCourses, useClasses, useStudents, usePayments } from '@/hooks/useDatabase';
+import { useStatistics, useCourses, useClasses, useStudents, usePayments, useGrades } from '@/hooks/useDatabase';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { toast } from "@/lib/notifications";
@@ -60,6 +60,7 @@ export function Overview() {
   const { data: classes } = useClasses();
   const { data: students } = useStudents();
   const { data: payments } = usePayments();
+  const { data: grades } = useGrades();
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-AO', {
@@ -164,48 +165,127 @@ export function Overview() {
     return alertsList;
   }, [classes, students, studentStats, paidStudentIds]);
 
-  // Top classes (mock for now - would need grades data)
+  // Top classes based on real grades data
   const topClasses = React.useMemo(() => {
-    if (!classes || !students) return [];
-    
-    return classes
-      .map(cls => {
-        const classStudents = students.filter(s => s.class_id === cls.id && s.status === 'active');
+    if (!classes || !students || !grades) return [];
+
+    // Aggregate MT1 (average of MAC and NPT) per class
+    const gradesByClass = new Map<string, number[]>();
+
+    (grades as any[]).forEach((g) => {
+      if (!g.class_id) return;
+      const mt1 = g.mac != null && g.npt != null ? (g.mac + g.npt) / 2 : null;
+      if (mt1 == null) return;
+
+      const arr = gradesByClass.get(g.class_id) ?? [];
+      arr.push(mt1);
+      gradesByClass.set(g.class_id, arr);
+    });
+
+    return (classes as any[])
+      .map((cls) => {
+        const scores = gradesByClass.get(cls.id) || [];
+        if (scores.length === 0) return null; // Sem notas, sem ranking para esta turma
+
+        const average =
+          scores.reduce((sum, value) => sum + value, 0) / scores.length;
+        const classStudents = (students as any[]).filter(
+          (s) => s.class_id === cls.id && s.status === 'active',
+        );
+
         return {
           id: cls.id,
           course: cls.course?.name || '-',
           grade: `${cls.grade_level}ª`,
           section: cls.section,
           students: classStudents.length,
-          average: (14 + Math.random() * 4).toFixed(1), // Mock average
+          average: average.toFixed(1),
         };
       })
-      .filter(c => c.students > 0)
+      .filter((c): c is {
+        id: string;
+        course: string;
+        grade: string;
+        section: string;
+        students: number;
+        average: string;
+      } => c !== null)
       .sort((a, b) => parseFloat(b.average) - parseFloat(a.average))
       .slice(0, 5);
-  }, [classes, students]);
+  }, [classes, students, grades]);
 
-  // Top students (mock for now - would need grades data)
+  // Top students based on real grades data
   const topStudents = React.useMemo(() => {
-    if (!students || !classes) return [];
-    
-    return students
-      .filter(s => s.status === 'active' && s.class_id)
-      .slice(0, 10)
-      .map((student, index) => {
-        const cls = classes.find(c => c.id === student.class_id);
+    if (!grades || !students || !classes) return [];
+
+    type StudentAgg = {
+      total: number;
+      count: number;
+      studentId: string;
+      name: string;
+      enrollment: string;
+    };
+
+    const aggByStudent = new Map<string, StudentAgg>();
+
+    (grades as any[]).forEach((g) => {
+      const studentId = g.student?.id as string | undefined;
+      if (!studentId) return;
+
+      const mt1 = g.mac != null && g.npt != null ? (g.mac + g.npt) / 2 : null;
+      if (mt1 == null) return;
+
+      const current = aggByStudent.get(studentId) || {
+        total: 0,
+        count: 0,
+        studentId,
+        name: g.student?.full_name as string,
+        enrollment: g.student?.enrollment_number as string,
+      };
+
+      current.total += mt1;
+      current.count += 1;
+      aggByStudent.set(studentId, current);
+    });
+
+    const rows = Array.from(aggByStudent.values())
+      .map((item) => {
+        const studentRecord = (students as any[]).find((s) => s.id === item.studentId);
+        if (!studentRecord || studentRecord.status !== 'active' || !studentRecord.class_id) {
+          return null;
+        }
+
+        const cls = (classes as any[]).find((c) => c.id === studentRecord.class_id);
+        if (!cls) return null;
+
+        const average = item.total / item.count;
+
         return {
-          rank: index + 1,
-          name: student.full_name,
-          enrollment: student.enrollment_number,
-          course: cls?.course?.name || '-',
-          grade: cls ? `${cls.grade_level}ª` : '-',
-          section: cls?.section || '-',
-          average: (16 + Math.random() * 3).toFixed(1), // Mock average
+          name: item.name,
+          enrollment: item.enrollment,
+          course: cls.course?.name || '-',
+          grade: `${cls.grade_level}ª`,
+          section: cls.section,
+          average: average.toFixed(1),
         };
       })
-      .sort((a, b) => parseFloat(b.average) - parseFloat(a.average));
-  }, [students, classes]);
+      .filter((r): r is {
+        name: string;
+        enrollment: string;
+        course: string;
+        grade: string;
+        section: string;
+        average: string;
+      } => r !== null)
+      .sort((a, b) => parseFloat(b.average) - parseFloat(a.average))
+      .slice(0, 10)
+      .map((student, index) => ({
+        rank: index + 1,
+        ...student,
+      }));
+
+    return rows;
+  }, [grades, students, classes]);
 
   const handleGenerateReport = () => {
     toast.info('Geração de relatório PDF em desenvolvimento');

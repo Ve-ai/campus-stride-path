@@ -277,7 +277,7 @@ export function Finance() {
           observations: '',
         });
       },
-      onError: (error) => {
+      onError: (error: any) => {
         toast.error('Erro ao registar pagamento: ' + error.message);
       }
     });
@@ -303,8 +303,8 @@ export function Finance() {
     const monthsSoFar = currentMonth;
     const avgMonthlyFee = 5000;
 
-    const studentsById = new Map(students.map((s) => [s.id, s] as const));
-    const classesById = new Map(classes.map((c) => [c.id, c] as const));
+    const studentsById = new Map<string, any>(students.map((s: any) => [s.id, s] as const));
+    const classesById = new Map<string, any>(classes.map((c: any) => [c.id, c] as const));
 
     const courseMap = new Map<
       string,
@@ -341,9 +341,9 @@ export function Finance() {
     payments
       .filter((p) => p.year_reference === currentYear)
       .forEach((payment) => {
-        const student = studentsById.get(payment.student_id);
+        const student = studentsById.get(payment.student_id) as any;
         if (!student || !student.class_id) return;
-        const cls = classesById.get(student.class_id);
+        const cls = classesById.get(student.class_id) as any;
         if (!cls) return;
 
         const courseId = cls.course_id;
@@ -378,7 +378,7 @@ export function Finance() {
     const monthsInTrimester = endMonth - startMonth + 1;
     const avgMonthlyFee = 5000;
 
-    const studentsById = new Map(students.map((s) => [s.id, s] as const));
+    const studentsById = new Map<string, any>(students.map((s: any) => [s.id, s] as const));
 
     const revenueByClass = new Map<string, number>();
 
@@ -390,7 +390,7 @@ export function Finance() {
           p.month_reference <= endMonth
       )
       .forEach((payment) => {
-        const student = studentsById.get(payment.student_id);
+        const student = studentsById.get(payment.student_id) as any;
         if (!student || !student.class_id) return;
         revenueByClass.set(
           student.class_id,
@@ -425,8 +425,8 @@ export function Finance() {
   const recentPayments = useMemo(() => {
     if (!payments || !students || !classes) return [];
 
-    const studentsById = new Map(students.map((s) => [s.id, s] as const));
-    const classesById = new Map(classes.map((c) => [c.id, c] as const));
+    const studentsById = new Map<string, any>(students.map((s: any) => [s.id, s] as const));
+    const classesById = new Map<string, any>(classes.map((c: any) => [c.id, c] as const));
 
     return [...payments]
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())

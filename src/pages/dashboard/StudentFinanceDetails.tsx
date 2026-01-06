@@ -276,7 +276,7 @@ export function StudentFinanceDetails() {
         });
         handlePrintInvoice(createdPayment);
       },
-      onError: (error) => {
+      onError: (error: any) => {
         toast.error('Erro ao registar pagamento: ' + error.message);
       },
     });

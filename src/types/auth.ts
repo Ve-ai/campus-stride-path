@@ -1,4 +1,6 @@
-export type UserRole = 'super_admin' | 'admin' | 'finance' | 'professor';
+import type { Enums } from "@/integrations/supabase/types";
+
+export type UserRole = Enums<"app_role">;
 
 export interface User {
   id: string;

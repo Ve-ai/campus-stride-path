@@ -170,6 +170,63 @@ export type Database = {
           },
         ]
       }
+      faltas_professores: {
+        Row: {
+          atualizado_em: string
+          criado_em: string
+          data_falta: string
+          disciplina_id: string
+          id: string
+          justificativa_arquivo_url: string | null
+          justificativa_texto: string | null
+          motivo: string | null
+          observacoes_admin: string | null
+          professor_id: string
+          status: Database["public"]["Enums"]["professor_absence_status"]
+        }
+        Insert: {
+          atualizado_em?: string
+          criado_em?: string
+          data_falta: string
+          disciplina_id: string
+          id?: string
+          justificativa_arquivo_url?: string | null
+          justificativa_texto?: string | null
+          motivo?: string | null
+          observacoes_admin?: string | null
+          professor_id: string
+          status?: Database["public"]["Enums"]["professor_absence_status"]
+        }
+        Update: {
+          atualizado_em?: string
+          criado_em?: string
+          data_falta?: string
+          disciplina_id?: string
+          id?: string
+          justificativa_arquivo_url?: string | null
+          justificativa_texto?: string | null
+          motivo?: string | null
+          observacoes_admin?: string | null
+          professor_id?: string
+          status?: Database["public"]["Enums"]["professor_absence_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "faltas_professores_disciplina_id_fkey"
+            columns: ["disciplina_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "faltas_professores_professor_id_fkey"
+            columns: ["professor_id"]
+            isOneToOne: false
+            referencedRelation: "teachers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       grade_change_requests: {
         Row: {
           created_at: string
@@ -693,6 +750,7 @@ export type Database = {
     }
     Enums: {
       app_role: "super_admin" | "admin" | "finance" | "professor"
+      professor_absence_status: "pendente" | "justificada" | "rejeitada"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -821,6 +879,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["super_admin", "admin", "finance", "professor"],
+      professor_absence_status: ["pendente", "justificada", "rejeitada"],
     },
   },
 } as const

@@ -48,8 +48,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useCourses, useTeachers, useSchoolNuclei, useClasses, useStudents, useSubjects } from '@/hooks/useDatabase';
+import { useCourses, useTeachers, useSchoolNuclei, useClasses, useStudents, useSubjects, useDeleteCourse } from '@/hooks/useDatabase';
 import { toast } from "@/lib/notifications";
+import { CourseEditForm } from './CourseEditForm';
 
 export function Courses() {
   const navigate = useNavigate();
@@ -57,6 +58,8 @@ export function Courses() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [wizardStep, setWizardStep] = useState<1 | 2 | 3 | 4 | 5>(1);
+  const [editingCourse, setEditingCourse] = useState<any | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   type GradeConfig = {
     subjects: string[];
@@ -118,6 +121,7 @@ export function Courses() {
   const { data: classes } = useClasses();
   const { data: students } = useStudents();
   const { data: subjects } = useSubjects();
+  const deleteCourse = useDeleteCourse();
 
   // Calculate statistics for each course
   const coursesWithStats = React.useMemo(() => {
@@ -782,9 +786,36 @@ export function Courses() {
                         }}>
                           Ver Detalhes
                         </DropdownMenuItem>
-                        <DropdownMenuItem>Editar Curso</DropdownMenuItem>
-                        <DropdownMenuItem>Gerir Turmas</DropdownMenuItem>
-                        <DropdownMenuItem>Exportar Dados</DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingCourse(course);
+                            setIsEditDialogOpen(true);
+                          }}
+                        >
+                          Editar Curso
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/dashboard/cursos/${course.id}?tab=classes`);
+                        }}>
+                          Gerir Turmas
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (!window.confirm('Tem a certeza que deseja eliminar este curso?')) return;
+                            deleteCourse.mutate(
+                              { id: course.id },
+                              {
+                                onSuccess: () => toast.success('Curso eliminado com sucesso'),
+                                onError: (err: any) => toast.error(err.message || 'Erro ao eliminar curso'),
+                              },
+                            );
+                          }}
+                        >
+                          Eliminar Curso
+                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -808,6 +839,31 @@ export function Courses() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Edit course dialog */}
+      <Dialog
+        open={isEditDialogOpen}
+        onOpenChange={(open) => {
+          setIsEditDialogOpen(open);
+          if (!open) setEditingCourse(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Editar Curso</DialogTitle>
+          </DialogHeader>
+          {editingCourse && (
+            <CourseEditForm
+              course={editingCourse}
+              onClose={() => {
+                setIsEditDialogOpen(false);
+                setEditingCourse(null);
+              }}
+              onUpdated={() => toast.success('Curso atualizado com sucesso')}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

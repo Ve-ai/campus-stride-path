@@ -10,7 +10,6 @@ import {
   Lock,
   Check,
   Plus,
-  Upload,
   Trash2,
   Edit,
   Loader2,
@@ -29,7 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Separator } from '@/components/ui/separator';
+
 import {
   Table,
   TableBody,
@@ -46,8 +45,9 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { useCourses, useSchoolNuclei, useTeachers } from '@/hooks/useDatabase';
+import { useCourses, useTeachers, useDeleteCourse } from '@/hooks/useDatabase';
 import { toast } from "@/lib/notifications";
+import { CourseEditForm } from './CourseEditForm';
 
 export function Settings() {
   const { user, updatePassword } = useAuth();
@@ -58,8 +58,9 @@ export function Settings() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isChangingPassword, setIsChangingPassword] = useState(false);
-  const [isAddCourseOpen, setIsAddCourseOpen] = useState(false);
   const [isAddAdminOpen, setIsAddAdminOpen] = useState(false);
+  const [editingCourse, setEditingCourse] = useState<any | null>(null);
+  const [isEditCourseOpen, setIsEditCourseOpen] = useState(false);
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     if (typeof window === 'undefined') return 'light';
     const stored = localStorage.getItem('theme');
@@ -67,8 +68,8 @@ export function Settings() {
   });
 
   const { data: courses, isLoading: loadingCourses } = useCourses();
-  const { data: schoolNuclei } = useSchoolNuclei();
   const { data: teachers } = useTeachers();
+  const deleteCourse = useDeleteCourse();
 
   const isSuperAdmin = user?.role === 'super_admin';
 
@@ -140,10 +141,6 @@ export function Settings() {
           </TabsTrigger>
           {isSuperAdmin && (
             <>
-              <TabsTrigger value="school" className="data-[state=active]:bg-background">
-                <Building className="w-4 h-4 mr-2" />
-                Escola
-              </TabsTrigger>
               <TabsTrigger value="courses" className="data-[state=active]:bg-background">
                 <Building className="w-4 h-4 mr-2" />
                 Cursos
@@ -314,137 +311,23 @@ export function Settings() {
           </Card>
         </TabsContent>
 
-        {/* School Tab (Super Admin Only) */}
-        {isSuperAdmin && (
-          <TabsContent value="school" className="space-y-6">
-            <Card className="card-elevated">
-              <CardHeader>
-                <CardTitle>Perfil da Escola</CardTitle>
-                <CardDescription>Configure as informações da instituição</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="flex items-center gap-6">
-                  <div className="w-24 h-24 rounded-xl bg-muted flex items-center justify-center border-2 border-dashed border-border">
-                    <Upload className="w-8 h-8 text-muted-foreground" />
-                  </div>
-                  <div>
-                    <Button variant="outline" onClick={() => toast.info('Upload em desenvolvimento')}>
-                      Carregar Logotipo
-                    </Button>
-                    <p className="text-sm text-muted-foreground mt-2">PNG, JPG ou SVG. Máx. 2MB</p>
-                  </div>
-                </div>
-
-                <Separator />
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label>Nome da Instituição</Label>
-                    <Input 
-                      placeholder="Ex: Instituto Técnico de Saúde" 
-                      className="input-field"
-                      defaultValue={schoolNuclei?.[0]?.name || ''}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Sigla</Label>
-                    <Input placeholder="Ex: ITS" className="input-field" />
-                  </div>
-                  <div className="col-span-2 space-y-2">
-                    <Label>Endereço</Label>
-                    <Input placeholder="Rua, Bairro, Município, Província" className="input-field" />
-                  </div>
-                </div>
-
-                <div className="flex justify-end">
-                  <Button className="btn-primary" onClick={() => toast.success('Dados salvos!')}>
-                    Guardar Alterações
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        )}
 
         {/* Courses Tab (Super Admin Only) */}
         {isSuperAdmin && (
           <TabsContent value="courses" className="space-y-6">
             <Card className="card-elevated">
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle>Gestão de Cursos</CardTitle>
-                  <CardDescription>Adicione e configure os cursos da instituição</CardDescription>
-                </div>
-                <Dialog open={isAddCourseOpen} onOpenChange={setIsAddCourseOpen}>
-                  <DialogTrigger asChild>
-                    <Button className="btn-primary">
-                      <Plus className="w-4 h-4 mr-2" />
-                      Adicionar Curso
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-lg">
-                    <DialogHeader>
-                      <DialogTitle>Adicionar Novo Curso</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                      <div className="space-y-2">
-                        <Label>Nome do Curso</Label>
-                        <Input placeholder="Ex: Enfermagem Geral" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Coordenador</Label>
-                        <Select>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione o coordenador" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {teachers?.map((teacher) => (
-                              <SelectItem key={teacher.id} value={teacher.id}>
-                                {teacher.profiles?.full_name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label>Mensalidade 10ª (AOA)</Label>
-                          <Input type="number" placeholder="5000" />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Mensalidade 11ª (AOA)</Label>
-                          <Input type="number" placeholder="5500" />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Mensalidade 12ª (AOA)</Label>
-                          <Input type="number" placeholder="6000" />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Mensalidade 13ª (AOA)</Label>
-                          <Input type="number" placeholder="6500" />
-                        </div>
-                      </div>
-                      <div className="flex justify-end gap-3 pt-4">
-                        <Button variant="outline" onClick={() => setIsAddCourseOpen(false)}>
-                          Cancelar
-                        </Button>
-                        <Button className="btn-primary" onClick={() => {
-                          toast.success('Curso adicionado!');
-                          setIsAddCourseOpen(false);
-                        }}>
-                          Adicionar Curso
-                        </Button>
-                      </div>
-                    </div>
-                  </DialogContent>
-                </Dialog>
-              </CardHeader>
-              <CardContent>
-                {loadingCourses ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle>Gestão de Cursos</CardTitle>
+                    <CardDescription>Visualize e atualize os cursos da instituição</CardDescription>
                   </div>
-                ) : (
+                </CardHeader>
+                <CardContent>
+                  {loadingCourses ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                    </div>
+                  ) : (
                   <Table>
                     <TableHeader>
                       <TableRow className="table-header">
@@ -468,10 +351,31 @@ export function Settings() {
                           <TableCell>{formatCurrency(course.monthly_fee_13 || 0)}</TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-2">
-                              <Button variant="ghost" size="icon">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => {
+                                  setEditingCourse(course);
+                                  setIsEditCourseOpen(true);
+                                }}
+                              >
                                 <Edit className="w-4 h-4" />
                               </Button>
-                              <Button variant="ghost" size="icon" className="text-destructive">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="text-destructive"
+                                onClick={() => {
+                                  if (!window.confirm('Tem a certeza que deseja eliminar este curso?')) return;
+                                  deleteCourse.mutate(
+                                    { id: course.id },
+                                    {
+                                      onSuccess: () => toast.success('Curso eliminado com sucesso'),
+                                      onError: (err: any) => toast.error(err.message || 'Erro ao eliminar curso'),
+                                    },
+                                  );
+                                }}
+                              >
                                 <Trash2 className="w-4 h-4" />
                               </Button>
                             </div>
@@ -483,8 +387,31 @@ export function Settings() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Edit course dialog */}
+            <Dialog open={isEditCourseOpen} onOpenChange={(open) => {
+              setIsEditCourseOpen(open);
+              if (!open) setEditingCourse(null);
+            }}>
+              <DialogContent className="sm:max-w-lg">
+                <DialogHeader>
+                  <DialogTitle>Editar Curso</DialogTitle>
+                </DialogHeader>
+                {editingCourse && (
+                  <CourseEditForm
+                    course={editingCourse}
+                    onClose={() => {
+                      setIsEditCourseOpen(false);
+                      setEditingCourse(null);
+                    }}
+                    onUpdated={() => toast.success('Curso atualizado com sucesso')}
+                  />
+                )}
+              </DialogContent>
+            </Dialog>
           </TabsContent>
         )}
+
 
         {/* Admins Tab (Super Admin Only) */}
         {isSuperAdmin && (

@@ -54,6 +54,7 @@ const navigationItems = {
     { name: 'Visão Geral', path: '/dashboard', icon: LayoutDashboard },
     { name: 'Turmas e Pagamentos', path: '/dashboard/turmas-pagamentos', icon: Users },
     { name: 'Relatórios', path: '/dashboard/relatorios', icon: BookOpen },
+    { name: 'Faltas de Professores', path: '/dashboard/faltas-professores', icon: Bell },
     { name: 'Configurações', path: '/dashboard/configuracoes', icon: Settings },
   ],
   professor: [

@@ -252,25 +252,7 @@ export function LoginPage() {
               )}
             </Button>
 
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleSeedFinance}
-              disabled={isSeedingFinance}
-              className="w-full"
-            >
-              {isSeedingFinance ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  A criar Gestor Financeiro...
-                </>
-              ) : (
-                <>
-                  <Wallet className="w-4 h-4 mr-2" />
-                  Inicializar Gestor Financeiro
-                </>
-              )}
-            </Button>
+            {/* Botão de inicialização do Gestor Financeiro foi movido para Configurações do administrador */}
 
             <p className="text-xs text-muted-foreground text-center">
               Nota: A inicialização de contas requer autenticação após a criação do primeiro super admin.

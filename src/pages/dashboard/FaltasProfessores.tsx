@@ -49,7 +49,7 @@ function getStatusLabel(
 
 export function FaltasProfessoresPage() {
   const { user } = useAuth();
-  const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
+  const isAdmin = user?.role === 'admin' || user?.role === 'super_admin' || user?.role === 'finance';
   const isProfessor = user?.role === 'professor';
 
   const { data: teachers } = useTeachers();

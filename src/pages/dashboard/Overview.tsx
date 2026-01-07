@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Users,
   UserCheck,
@@ -50,6 +51,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 export function Overview() {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   if (user?.role === 'professor') {
     return <ProfessorOverview />;
@@ -128,6 +130,17 @@ export function Overview() {
     ? ((paidStudentIds.size / studentStats.active) * 100).toFixed(1) 
     : '0';
 
+  const totalLateFeesCurrentMonth = (payments || []).reduce((sum, p) => {
+    if (!p.payment_date || !p.late_fee) return sum;
+    const date = new Date(p.payment_date);
+    const month = date.getMonth() + 1;
+    const year = date.getFullYear();
+    if (month === currentMonth && year === currentYear) {
+      return sum + Number(p.late_fee || 0);
+    }
+    return sum;
+  }, 0);
+
   // Alerts based on real data
   const alerts = React.useMemo(() => {
     const alertsList = [];
@@ -195,6 +208,7 @@ export function Overview() {
 
         return {
           id: cls.id,
+          courseId: cls.course_id,
           course: cls.course?.name || '-',
           grade: `${cls.grade_level}ª`,
           section: cls.section,
@@ -204,6 +218,7 @@ export function Overview() {
       })
       .filter((c): c is {
         id: string;
+        courseId: string;
         course: string;
         grade: string;
         section: string;
@@ -261,6 +276,7 @@ export function Overview() {
         const average = item.total / item.count;
 
         return {
+          id: studentRecord.id,
           name: item.name,
           enrollment: item.enrollment,
           course: cls.course?.name || '-',
@@ -270,6 +286,7 @@ export function Overview() {
         };
       })
       .filter((r): r is {
+        id: string;
         name: string;
         enrollment: string;
         course: string;
@@ -287,9 +304,6 @@ export function Overview() {
     return rows;
   }, [grades, students, classes]);
 
-  const handleGenerateReport = () => {
-    toast.info('Geração de relatório PDF em desenvolvimento');
-  };
 
   if (isLoading) {
     return (
@@ -385,6 +399,9 @@ export function Overview() {
                   <span className="text-success font-medium">{paidPercentage}%</span>
                   <span className="text-muted-foreground">pagos</span>
                 </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Multas no mês: <span className="font-semibold text-accent">{formatCurrency(totalLateFeesCurrentMonth)}</span>
+                </p>
               </div>
               <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center">
                 <Wallet className="w-6 h-6 text-accent" />
@@ -394,13 +411,6 @@ export function Overview() {
         </Card>
       </div>
 
-      {/* Action Button */}
-      <div className="flex justify-end">
-        <Button onClick={handleGenerateReport} className="btn-primary">
-          <Download className="w-4 h-4 mr-2" />
-          Gerar Relatório Geral
-        </Button>
-      </div>
 
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -543,7 +553,11 @@ export function Overview() {
                 </TableRow>
               ) : (
                 courseData.map((course) => (
-                  <TableRow key={course.id} className="table-row-hover">
+                  <TableRow
+                    key={course.id}
+                    className="table-row-hover cursor-pointer"
+                    onClick={() => navigate(`/dashboard/cursos/${course.id}`)}
+                  >
                     <TableCell className="font-medium">{course.name}</TableCell>
                     <TableCell>{course.coordinator}</TableCell>
                     <TableCell className="text-center font-semibold">{course.total}</TableCell>
@@ -603,7 +617,11 @@ export function Overview() {
                 </TableRow>
               ) : (
                 topClasses.map((cls, index) => (
-                  <TableRow key={cls.id}>
+                  <TableRow
+                    key={cls.id}
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => navigate(`/dashboard/cursos/${cls.courseId}`)}
+                  >
                     <TableCell>
                       <div className="flex items-center gap-2">
                         {index === 0 ? (
@@ -662,7 +680,11 @@ export function Overview() {
                 </TableRow>
               ) : (
                 topStudents.map((student) => (
-                  <TableRow key={student.rank}>
+                  <TableRow
+                    key={student.id}
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => navigate(`/dashboard/financas/estudante/${student.id}`)}
+                  >
                     <TableCell>
                       <div className="flex items-center gap-2">
                         {student.rank === 1 ? (

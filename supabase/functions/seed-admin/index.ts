@@ -182,14 +182,14 @@ Deno.serve(async (req) => {
     console.log('User created:', newUser.user.id)
 
     // Assign super_admin role
-    const { error: roleError } = await supabaseAdmin.from('user_roles').insert({
+    const { error: roleInsertError } = await supabaseAdmin.from('user_roles').insert({
       user_id: newUser.user.id,
       role: 'super_admin',
     })
 
-    if (roleError) {
-      console.error('Role assignment error:', roleError)
-      throw roleError
+    if (roleInsertError) {
+      console.error('Role assignment error:', roleInsertError)
+      throw roleInsertError
     }
 
     console.log('Role assigned')

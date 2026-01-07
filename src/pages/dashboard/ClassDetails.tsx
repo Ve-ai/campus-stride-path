@@ -71,6 +71,53 @@ export function ClassDetails() {
     enrollment_date: undefined as Date | undefined,
   });
 
+  const formatDateInput = (date: Date | undefined) => {
+    if (!date) return '';
+    return date.toLocaleDateString('pt-PT');
+  };
+
+  const parseDateInput = (value: string): Date | undefined => {
+    const trimmed = value.trim();
+    if (!trimmed) return undefined;
+
+    const [dd, mm, yyyy] = trimmed.split('/');
+    if (!dd || !mm || !yyyy) return undefined;
+
+    const day = Number(dd);
+    const month = Number(mm) - 1;
+    const year = Number(yyyy);
+
+    const date = new Date(year, month, day);
+    if (
+      Number.isNaN(date.getTime()) ||
+      date.getDate() !== day ||
+      date.getMonth() !== month ||
+      date.getFullYear() !== year
+    ) {
+      return undefined;
+    }
+    return date;
+  };
+
+  const handleBirthDateInputChange = (value: string) => {
+    const parsed = parseDateInput(value);
+    if (!parsed && value.trim()) {
+      toast.error('Data de nascimento inválida. Use o formato dd/mm/aaaa.');
+      return;
+    }
+    setNewStudent((prev) => ({ ...prev, birth_date: parsed }));
+  };
+
+  const handleEnrollmentDateInputChange = (value: string) => {
+    const parsed = parseDateInput(value);
+    if (!parsed && value.trim()) {
+      toast.error('Data de matrícula inválida. Use o formato dd/mm/aaaa.');
+      return;
+    }
+    setNewStudent((prev) => ({ ...prev, enrollment_date: parsed }));
+  };
+
+
   const createStudent = useCreateStudent();
   
   const generateEnrollmentNumber = () => {
@@ -332,36 +379,58 @@ export function ClassDetails() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Data de Nascimento</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant={"outline"}
-                      className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !newStudent.birth_date && "text-muted-foreground",
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {newStudent.birth_date ? (
-                        newStudent.birth_date.toLocaleDateString()
-                      ) : (
-                        <span>Selecionar data</span>
-                      )}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={newStudent.birth_date}
-                      onSelect={(date) =>
-                        setNewStudent({ ...newStudent, birth_date: date || undefined })
-                      }
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
+                <Label>Data de Nascimento *</Label>
+                <div className="space-y-1">
+                  <Input
+                    placeholder="dd/mm/aaaa"
+                    value={formatDateInput(newStudent.birth_date)}
+                    onChange={(e) => handleBirthDateInputChange(e.target.value)}
+                  />
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant={"outline"}
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !newStudent.birth_date && "text-muted-foreground",
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {newStudent.birth_date ? (
+                          newStudent.birth_date.toLocaleDateString('pt-PT')
+                        ) : (
+                          <span>Selecionar data</span>
+                        )}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={newStudent.birth_date}
+                        onSelect={(date) =>
+                          setNewStudent({ ...newStudent, birth_date: date || undefined })
+                        }
+                        disabled={(date) => {
+                          const today = new Date();
+                          const tenYearsAgo = new Date(
+                            today.getFullYear() - 10,
+                            today.getMonth(),
+                            today.getDate(),
+                          );
+                          return (
+                            date > tenYearsAgo ||
+                            date > today ||
+                            date < new Date('1900-01-01')
+                          );
+                        }}
+                        initialFocus
+                        className={cn("p-3 pointer-events-auto")}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
               </div>
+
               <div className="space-y-2">
                 <Label>Naturalidade</Label>
                 <Input
@@ -413,46 +482,64 @@ export function ClassDetails() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Contacto do Encarregado</Label>
+                <Label>Contacto do Encarregado (opcional)</Label>
                 <Input
-                  placeholder="Telefone do encarregado"
+                  placeholder="9xx xxx xxx"
                   value={newStudent.guardian_contact}
-                  onChange={(e) =>
-                    setNewStudent({ ...newStudent, guardian_contact: e.target.value })
-                  }
+                  onChange={(e) => {
+                    const digits = e.target.value.replace(/\D/g, '').slice(0, 9);
+                    const formatted = digits
+                      .replace(/(\d{3})(\d{0,3})(\d{0,3})/, (match, p1, p2, p3) => {
+                        if (p3) return `${p1} ${p2} ${p3}`.trim();
+                        if (p2) return `${p1} ${p2}`.trim();
+                        return p1;
+                      });
+                    setNewStudent({ ...newStudent, guardian_contact: formatted });
+                  }}
                 />
               </div>
+
               <div className="space-y-2">
-                <Label>Data de Matrícula</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant={"outline"}
-                      className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !newStudent.enrollment_date && "text-muted-foreground",
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {newStudent.enrollment_date ? (
-                        newStudent.enrollment_date.toLocaleDateString()
-                      ) : (
-                        <span>Selecionar data</span>
-                      )}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={newStudent.enrollment_date}
-                      onSelect={(date) =>
-                        setNewStudent({ ...newStudent, enrollment_date: date || undefined })
-                      }
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
+                <Label>Data de Matrícula *</Label>
+                <div className="space-y-1">
+                  <Input
+                    placeholder="dd/mm/aaaa"
+                    value={formatDateInput(newStudent.enrollment_date)}
+                    onChange={(e) => handleEnrollmentDateInputChange(e.target.value)}
+                  />
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant={"outline"}
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !newStudent.enrollment_date && "text-muted-foreground",
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {newStudent.enrollment_date ? (
+                          newStudent.enrollment_date.toLocaleDateString('pt-PT')
+                        ) : (
+                          <span>Selecionar data</span>
+                        )}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={newStudent.enrollment_date}
+                        onSelect={(date) =>
+                          setNewStudent({ ...newStudent, enrollment_date: date || undefined })
+                        }
+                        disabled={(date) => date > new Date()}
+                        initialFocus
+                        className={cn("p-3 pointer-events-auto")}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
               </div>
+
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="outline" onClick={() => setIsDialogOpen(false)}>

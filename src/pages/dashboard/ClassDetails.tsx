@@ -274,11 +274,8 @@ export function ClassDetails() {
         return;
       }
 
-      const publicUrl = supabase.storage
-        .from('student-photos')
-        .getPublicUrl(data.path).data.publicUrl;
-
-      photoUrl = publicUrl;
+      // Store only the storage path in the database; URLs will be generated via signed URLs when needed
+      photoUrl = data.path;
     }
 
     createStudent.mutate(

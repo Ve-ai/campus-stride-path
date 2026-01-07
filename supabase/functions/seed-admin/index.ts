@@ -20,11 +20,71 @@ Deno.serve(async (req) => {
 
     // Parse request body
     let resetPassword = false
+    let isInitialSetup = false
     try {
       const body = await req.json()
       resetPassword = body?.resetPassword === true
+      isInitialSetup = body?.initialSetup === true
     } catch {
       // No body or invalid JSON, proceed with default
+    }
+
+    // Check if any super_admin exists
+    const { data: existingRoles } = await supabaseAdmin
+      .from('user_roles')
+      .select('user_id')
+      .eq('role', 'super_admin')
+      .limit(1)
+
+    const hasSuperAdmin = existingRoles && existingRoles.length > 0
+
+    // If super admin exists, require authentication (except for initial setup when no admin exists)
+    if (hasSuperAdmin && !isInitialSetup) {
+      const authHeader = req.headers.get('Authorization')
+
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return new Response(
+          JSON.stringify({ error: 'Não autorizado. Token de autenticação em falta.' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      const supabaseAuth = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+        {
+          global: {
+            headers: { Authorization: authHeader },
+          },
+          auth: { autoRefreshToken: false, persistSession: false },
+        }
+      )
+
+      const token = authHeader.replace('Bearer ', '')
+      const { data: claims, error: claimsError } = await supabaseAuth.auth.getClaims(token)
+
+      if (claimsError || !claims?.claims?.sub) {
+        console.error('Erro ao validar token na função seed-admin:', claimsError)
+        return new Response(
+          JSON.stringify({ error: 'Não autorizado. Token inválido.' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      const userId = claims.claims.sub as string
+
+      const { data: hasRole, error: roleError } = await supabaseAuth.rpc('has_role', {
+        _user_id: userId,
+        _role: 'super_admin',
+      })
+
+      if (roleError || !hasRole) {
+        console.error('Utilizador sem permissão de super_admin para executar seed-admin:', roleError)
+        return new Response(
+          JSON.stringify({ error: 'Proibido. Apenas super administradores podem executar esta ação.' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
     }
 
     // Default super admin credentials (email/username only)

@@ -27,14 +27,18 @@ export function LoginPage() {
   const handleSeedAdmin = async () => {
     setIsSeeding(true);
     try {
+      // Initial setup does not require authentication (only works if no super_admin exists)
       const { data, error } = await supabase.functions.invoke('seed-admin', {
-        body: { resetPassword: true }
+        body: { resetPassword: true, initialSetup: true }
       });
       
       if (error) {
         toast.error('Erro ao criar admin: ' + error.message);
+      } else if (data?.password) {
+        toast.success(`Admin criado/atualizado com sucesso! A senha foi gerada automaticamente.`);
+        setUsername(data.username || 'Lucidio001');
       } else {
-        toast.success('Admin criado/atualizado com sucesso! Username: Lucidio001, Senha: @Lucidio4321');
+        toast.info('Super admin já existe. Faça login para redefinir a senha.');
         setUsername('Lucidio001');
       }
     } catch (err) {
@@ -215,43 +219,9 @@ export function LoginPage() {
                 </>
               )}
             </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={async () => {
-                setIsSeedingFinance(true);
-                try {
-                  const { error } = await supabase.functions.invoke('seed-finance', {
-                    body: { resetPassword: true },
-                  });
-
-                  if (error) {
-                    toast.error('Erro ao criar gestor financeiro: ' + error.message);
-                  } else {
-                    toast.success('Gestor Financeiro criado/atualizado! Login: financa@uni, Senha: FIN@SrongPass\\');
-                    setUsername('financa@uni');
-                  }
-                } catch (err) {
-                  toast.error('Erro ao criar gestor financeiro');
-                } finally {
-                  setIsSeedingFinance(false);
-                }
-              }}
-              disabled={isSeedingFinance}
-              className="w-full mb-4"
-            >
-              {isSeedingFinance ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  A criar gestor financeiro...
-                </>
-              ) : (
-                <>
-                  <Wallet className="w-4 h-4 mr-2" />
-                  Inicializar Gestor Financeiro
-                </>
-              )}
-            </Button>
+            <p className="text-xs text-muted-foreground text-center mb-2">
+              Nota: A inicialização de contas requer autenticação após a criação do primeiro super admin.
+            </p>
             <p className="text-center text-sm text-muted-foreground">
               Sistema de Gestão Escolar v1.0
             </p>

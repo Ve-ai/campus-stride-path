@@ -9,6 +9,7 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Overview } from "@/pages/dashboard/Overview";
 import { Courses } from "@/pages/dashboard/Courses";
 import { CourseDetails } from "@/pages/dashboard/CourseDetails";
+import { SubjectDetails } from "@/pages/dashboard/SubjectDetails";
 import { Classes } from "@/pages/dashboard/Classes";
 import { ClassDetails } from "@/pages/dashboard/ClassDetails";
 import { ClassDirectors } from "@/pages/dashboard/ClassDirectors";
@@ -54,6 +55,7 @@ function AppRoutes() {
         <Route index element={<Overview />} />
         <Route path="cursos" element={<Courses />} />
         <Route path="cursos/:courseId" element={<CourseDetails />} />
+        <Route path="disciplinas/:subjectId" element={<SubjectDetails />} />
         <Route path="turmas" element={<Classes />} />
         <Route path="turmas/:classId" element={<ClassDetails />} />
         <Route path="estudantes" element={<Students />} />

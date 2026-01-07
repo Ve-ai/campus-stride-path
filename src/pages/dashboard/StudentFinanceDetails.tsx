@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -45,6 +45,7 @@ import { useStudents, usePayments, useClasses, useCourses, useCreatePayment } fr
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from "@/lib/notifications";
 import instituteLogo from "@/assets/logo-instituto-amor-de-deus.png";
+import { supabase } from "@/integrations/supabase/client";
 
 const MONTHS = [
   'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -56,6 +57,7 @@ export function StudentFinanceDetails() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
+  const [photoUrl, setPhotoUrl] = useState<string | undefined>(undefined);
 
   const { data: students } = useStudents();
   const { data: payments } = usePayments();
@@ -87,6 +89,29 @@ export function StudentFinanceDetails() {
   const student = students?.find(s => s.id === studentId);
   const studentClass = classes?.find(c => c.id === student?.class_id);
   const course = courses?.find(c => c.id === studentClass?.course_id);
+
+  useEffect(() => {
+    const loadPhoto = async () => {
+      if (!student || !student.photo_url) {
+        setPhotoUrl(undefined);
+        return;
+      }
+
+      const { data, error } = await supabase.storage
+        .from('student-photos')
+        .createSignedUrl(student.photo_url, 3600);
+
+      if (error) {
+        console.error('Erro ao carregar foto do estudante:', error.message);
+        setPhotoUrl(undefined);
+        return;
+      }
+
+      setPhotoUrl(data?.signedUrl);
+    };
+
+    loadPhoto();
+  }, [student]);
 
   // Get monthly fee based on course and grade level
   const getMonthlyFee = () => {
@@ -419,7 +444,7 @@ export function StudentFinanceDetails() {
           <div className="flex flex-col md:flex-row gap-6">
             <div className="flex items-start gap-4">
               <Avatar className="w-20 h-20">
-                <AvatarImage src={student.photo_url || undefined} />
+                <AvatarImage src={photoUrl || undefined} />
                 <AvatarFallback className="text-xl bg-primary/10 text-primary">
                   {getInitials(student.full_name)}
                 </AvatarFallback>

@@ -11,6 +11,52 @@ Deno.serve(async (req) => {
   }
 
   try {
+    const authHeader = req.headers.get('Authorization')
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return new Response(
+        JSON.stringify({ error: 'Não autorizado. Token de autenticação em falta.' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    const supabaseAuth = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      {
+        global: {
+          headers: { Authorization: authHeader },
+        },
+        auth: { autoRefreshToken: false, persistSession: false },
+      }
+    )
+
+    const token = authHeader.replace('Bearer ', '')
+    const { data: claims, error: claimsError } = await supabaseAuth.auth.getClaims(token)
+
+    if (claimsError || !claims?.claims?.sub) {
+      console.error('Erro ao validar token na função seed-finance:', claimsError)
+      return new Response(
+        JSON.stringify({ error: 'Não autorizado. Token inválido.' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    const userId = claims.claims.sub as string
+
+    const { data: hasRole, error: hasRoleError } = await supabaseAuth.rpc('has_role', {
+      _user_id: userId,
+      _role: 'super_admin',
+    })
+
+    if (hasRoleError || !hasRole) {
+      console.error('Utilizador sem permissão de super_admin para executar seed-finance:', hasRoleError)
+      return new Response(
+        JSON.stringify({ error: 'Proibido. Apenas super administradores podem executar esta ação.' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
@@ -26,20 +72,24 @@ Deno.serve(async (req) => {
     }
 
     const financeEmail = 'financa@uni'
-    const financePassword = 'FIN@SrongPass\\'
     const financeUsername = 'financa@uni'
     const financeName = 'Gestor Financeiro'
+
+    let generatedPasswordForResponse: string | undefined
 
     const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers()
     const existingUser = existingUsers?.users?.find((u) => u.email === financeEmail)
 
     if (existingUser) {
       if (resetPassword) {
+        const newPassword = crypto.randomUUID() + '!As1'
         const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(existingUser.id, {
-          password: financePassword,
+          password: newPassword,
         })
         if (updateError) {
           console.error('Erro ao redefinir senha do gestor financeiro:', updateError)
+        } else {
+          generatedPasswordForResponse = newPassword
         }
       }
 
@@ -89,14 +139,17 @@ Deno.serve(async (req) => {
             : 'Gestor Financeiro já existe',
           email: financeEmail,
           username: financeUsername,
+          password: generatedPasswordForResponse,
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
+    const initialPassword = crypto.randomUUID() + '!As1'
+
     const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
       email: financeEmail,
-      password: financePassword,
+      password: initialPassword,
       email_confirm: true,
       user_metadata: {
         full_name: financeName,
@@ -109,14 +162,14 @@ Deno.serve(async (req) => {
       throw createError
     }
 
-    const { error: roleError } = await supabaseAdmin.from('user_roles').insert({
+    const { error: roleInsertError } = await supabaseAdmin.from('user_roles').insert({
       user_id: newUser.user.id,
       role: 'finance',
     })
 
-    if (roleError) {
-      console.error('Erro ao atribuir papel ao Gestor Financeiro:', roleError)
-      throw roleError
+    if (roleInsertError) {
+      console.error('Erro ao atribuir papel ao Gestor Financeiro:', roleInsertError)
+      throw roleInsertError
     }
 
     const { error: profileError } = await supabaseAdmin.from('profiles').insert({
@@ -144,7 +197,7 @@ Deno.serve(async (req) => {
         message: 'Gestor Financeiro criado com sucesso',
         email: financeEmail,
         username: financeUsername,
-        password: financePassword,
+        password: initialPassword,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )

@@ -93,6 +93,7 @@ export function Finance() {
     if (!payments || !students) {
       return {
         totalRevenue: 0,
+        totalFines: 0,
         pendingPayments: 0,
         paidPercentage: 0,
         totalStudents: 0,
@@ -115,20 +116,26 @@ export function Finance() {
     const paidStudents = activeStudents.filter(s => paidStudentIds.has(s.id)).length;
     const pendingStudents = activeStudents.length - paidStudents;
 
-    const totalRevenue = payments
-      .filter(p => p.year_reference === currentYear)
-      .reduce((sum, p) => sum + Number(p.amount), 0);
+    const monthlyPayments = payments.filter(
+      p => p.month_reference === currentMonth && p.year_reference === currentYear,
+    );
 
-    const monthlyRevenue = payments
-      .filter(p => p.month_reference === currentMonth && p.year_reference === currentYear)
-      .reduce((sum, p) => sum + Number(p.amount), 0);
+    const totalBase = monthlyPayments.reduce(
+      (sum, p) => sum + Number(p.base_amount ?? p.amount ?? 0),
+      0,
+    );
+    const totalFines = monthlyPayments.reduce(
+      (sum, p) => sum + Number(p.late_fee ?? 0),
+      0,
+    );
 
-    // Estimate pending (assuming 5000 AOA per student)
+    // Estimate pending (assumindo 5000 AOA por estudante)
     const avgMonthlyFee = 5000;
     const pendingPayments = pendingStudents * avgMonthlyFee;
 
     return {
-      totalRevenue: monthlyRevenue,
+      totalRevenue: totalBase,
+      totalFines,
       pendingPayments,
       paidPercentage: activeStudents.length > 0 ? (paidStudents / activeStudents.length) * 100 : 0,
       totalStudents: activeStudents.length,
@@ -181,12 +188,20 @@ export function Finance() {
       const monthPayments = payments.filter(
         p => p.month_reference === index + 1 && p.year_reference === currentYear
       );
-      const receita = monthPayments.reduce((sum, p) => sum + Number(p.amount), 0);
+      const base = monthPayments.reduce(
+        (sum, p) => sum + Number(p.base_amount ?? p.amount ?? 0),
+        0,
+      );
+      const fines = monthPayments.reduce(
+        (sum, p) => sum + Number(p.late_fee ?? 0),
+        0,
+      );
 
       return {
         month,
-        receita,
-        pendente: Math.max(0, (financialStats.totalStudents * 5000) - receita),
+        receita: base,
+        multas: fines,
+        pendente: Math.max(0, (financialStats.totalStudents * 5000) - base),
       };
     });
   }, [payments, financialStats.totalStudents]);
@@ -681,17 +696,16 @@ export function Finance() {
               <CardContent className="p-6">
                 <div className="flex items-start justify-between">
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground">Estudantes Pendentes</p>
-                    <p className="text-2xl font-bold text-foreground mt-2">{financialStats.pendingStudents}</p>
-                    <div className="flex items-center gap-1 mt-2 text-sm">
-                      <span className="text-warning font-medium">
-                        {financialStats.pendingStudents} estudantes
-                      </span>
-                      <span className="text-muted-foreground">requerem atenção</span>
-                    </div>
+                    <p className="text-sm font-medium text-muted-foreground">Multas do Mês</p>
+                    <p className="text-2xl font-bold text-foreground mt-2">
+                      {formatCurrency(financialStats.totalFines)}
+                    </p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Valor adicional cobrado por pagamentos em atraso
+                    </p>
                   </div>
                   <div className="w-12 h-12 rounded-xl bg-warning/10 flex items-center justify-center">
-                    <XCircle className="w-6 h-6 text-warning" />
+                    <AlertTriangle className="w-6 h-6 text-warning" />
                   </div>
                 </div>
               </CardContent>
@@ -725,8 +739,14 @@ export function Finance() {
                       />
                       <Bar
                         dataKey="receita"
-                        name="Receita"
+                        name="Receita (Mensalidades)"
                         fill="hsl(142, 76%, 36%)"
+                        radius={[4, 4, 0, 0]}
+                      />
+                      <Bar
+                        dataKey="multas"
+                        name="Multas"
+                        fill="hsl(38, 92%, 50%)"
                         radius={[4, 4, 0, 0]}
                       />
                     </BarChart>

@@ -13,6 +13,7 @@ import {
   Trash2,
   Edit,
   Loader2,
+  RefreshCw,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -48,6 +49,7 @@ import { Badge } from '@/components/ui/badge';
 import { useCourses, useTeachers, useDeleteCourse } from '@/hooks/useDatabase';
 import { toast } from "@/lib/notifications";
 import { CourseEditForm } from './CourseEditForm';
+import { supabase } from '@/integrations/supabase/client';
 
 export function Settings() {
   const { user, updatePassword } = useAuth();
@@ -70,6 +72,7 @@ export function Settings() {
   const { data: courses, isLoading: loadingCourses } = useCourses();
   const { data: teachers } = useTeachers();
   const deleteCourse = useDeleteCourse();
+  const [isSeedingData, setIsSeedingData] = useState(false);
 
   const isSuperAdmin = user?.role === 'super_admin';
 
@@ -113,14 +116,33 @@ export function Settings() {
     }
   };
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-AO', {
-      style: 'currency',
-      currency: 'AOA',
-      minimumFractionDigits: 0,
-    }).format(value);
-  };
+  const handleSeedDemoData = async () => {
+    if (!isSuperAdmin) {
+      toast.error('Apenas o administrador supremo pode reinicializar os dados.');
+      return;
+    }
 
+    if (!confirm('Tem a certeza que pretende reinicializar todos os dados de exemplo? Esta ação não pode ser desfeita.')) {
+      return;
+    }
+
+    try {
+      setIsSeedingData(true);
+      const { data, error } = await supabase.functions.invoke('seed-data');
+
+      if (error) {
+        console.error('Seed error:', error);
+        toast.error('Erro ao reinicializar dados de exemplo.');
+        return;
+      }
+
+      toast.success(data?.message || 'Dados de exemplo reinicializados com sucesso.');
+    } catch (err) {
+      console.error('Seed error:', err);
+      toast.error('Erro inesperado ao reinicializar dados de exemplo.');
+    } finally {
+      setIsSeedingData(false);
+    }
   return (
     <div className="max-w-5xl mx-auto space-y-6 animate-fade-in">
       {/* Header */}
@@ -170,6 +192,53 @@ export function Settings() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+            </CardContent>
+          </Card>
+
+          {isSuperAdmin && (
+            <Card className="card-elevated border-destructive/40 bg-destructive/5">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-destructive">
+                  <RefreshCw className="w-5 h-5" />
+                  Reinicializar base de dados de exemplo
+                </CardTitle>
+                <CardDescription>
+                  Apaga todos os dados atuais de exemplo (alunos, cursos, turmas, professores, pagamentos) e recria o cenário padrão
+                  com 8 cursos, 48 turmas, 50 professores e 700 alunos. Use apenas em ambiente de testes.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="flex items-center justify-between gap-4 flex-wrap">
+                <p className="text-sm text-muted-foreground max-w-xl">
+                  Esta ação é destrutiva e não pode ser desfeita. Os dados reais inseridos manualmente também serão removidos.
+                </p>
+                <Button
+                  variant="destructive"
+                  onClick={handleSeedDemoData}
+                  disabled={isSeedingData}
+                  className="shrink-0"
+                >
+                  {isSeedingData ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      A reinicializar...
+                    </>
+                  ) : (
+                    'Reinicializar base de dados de exemplo'
+                  )}
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* ... restante conteúdo da tab de segurança (notificações, etc.) ... */}
+        </TabsContent>
+
+        {/* As outras Tabs (appearance, courses, admins, notifications) permanecem inalteradas abaixo */}
+        {/* ... */}
+      </Tabs>
+    </div>
+  );
+
               <div className="space-y-2">
                 <Label>Senha Actual</Label>
                 <div className="relative">

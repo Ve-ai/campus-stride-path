@@ -159,11 +159,50 @@ export function Courses() {
     });
   }, [courses, classes, students, subjects, nuclei]);
 
-  const filteredCourses = coursesWithStats.filter(
-    (course) =>
-      course.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      course.coordinatorName.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const normalizedSearch = searchTerm.trim().toLowerCase();
+
+  const filteredCourses = React.useMemo(() => {
+    if (!coursesWithStats) return [];
+
+    if (!normalizedSearch) return coursesWithStats;
+
+    // Quando há alunos e turmas, tentar filtrar pelo aluno (nome / matrícula / BI)
+    if (students && classes) {
+      const matchedStudents = students.filter((s) => {
+        const fullName = s.full_name?.toLowerCase() || '';
+        const enrollment = s.enrollment_number?.toLowerCase() || '';
+        const bi = (s.bi_number as string | null)?.toLowerCase() || '';
+        return (
+          fullName.includes(normalizedSearch) ||
+          enrollment.includes(normalizedSearch) ||
+          bi.includes(normalizedSearch)
+        );
+      });
+
+      if (matchedStudents.length > 0) {
+        const classIds = new Set(
+          matchedStudents
+            .map((s) => s.class_id || '')
+            .filter((id): id is string => !!id),
+        );
+
+        const courseIds = new Set(
+          classes
+            ?.filter((c) => classIds.has(c.id))
+            .map((c) => c.course_id) || [],
+        );
+
+        return coursesWithStats.filter((course) => courseIds.has(course.id));
+      }
+    }
+
+    // Fallback: pesquisa normal por nome de curso ou coordenador
+    return coursesWithStats.filter(
+      (course) =>
+        course.name.toLowerCase().includes(normalizedSearch) ||
+        course.coordinatorName.toLowerCase().includes(normalizedSearch),
+    );
+  }, [coursesWithStats, normalizedSearch, students, classes]);
 
   // Summary stats
   const totalStudents = filteredCourses.reduce((sum, c) => sum + c.totalStudents, 0);
@@ -335,6 +374,34 @@ export function Courses() {
       </div>
     );
   }
+
+  const handleCourseRowClick = (courseId: string) => {
+    if (normalizedSearch && students && classes) {
+      const matchedStudents = students.filter((s) => {
+        const fullName = s.full_name?.toLowerCase() || '';
+        const enrollment = s.enrollment_number?.toLowerCase() || '';
+        const bi = (s.bi_number as string | null)?.toLowerCase() || '';
+        return (
+          fullName.includes(normalizedSearch) ||
+          enrollment.includes(normalizedSearch) ||
+          bi.includes(normalizedSearch)
+        );
+      });
+
+      const matchingForCourse = matchedStudents.filter((s) => {
+        if (!s.class_id) return false;
+        const cls = classes.find((c) => c.id === s.class_id);
+        return cls?.course_id === courseId;
+      });
+
+      if (matchingForCourse.length > 0 && matchingForCourse[0].class_id) {
+        navigate(`/dashboard/turmas/${matchingForCourse[0].class_id}`);
+        return;
+      }
+    }
+
+    navigate(`/dashboard/cursos/${courseId}`);
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -874,7 +941,7 @@ export function Courses() {
                 <TableRow
                   key={course.id}
                   className="table-row-hover cursor-pointer"
-                  onClick={() => navigate(`/dashboard/cursos/${course.id}`)}
+                  onClick={() => handleCourseRowClick(course.id)}
                 >
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-2">

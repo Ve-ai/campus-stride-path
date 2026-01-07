@@ -84,6 +84,10 @@ export function Finance() {
     observations: '',
   });
 
+  // Filtro de período para relatório detalhado
+  const [reportMonth, setReportMonth] = useState(new Date().getMonth() + 1);
+  const [reportYear, setReportYear] = useState(new Date().getFullYear());
+
   const { data: payments, isLoading: loadingPayments } = usePayments();
   const { data: classes, isLoading: loadingClasses } = useClasses();
   const { data: students, isLoading: loadingStudents } = useStudents();
@@ -764,20 +768,21 @@ export function Finance() {
   // Relatório detalhado de entradas: passados, corrente, adiantados
   const paymentBreakdown = useMemo(() => {
     if (!payments || !students || !classes || !courses) {
-      return { general: null, byCourse: [] };
+      return { general: null, byCourse: [], pendingInfo: null };
     }
 
-    const currentMonth = new Date().getMonth() + 1;
-    const currentYear = new Date().getFullYear();
+    const selectedMonth = reportMonth;
+    const selectedYear = reportYear;
     const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+    const fullMonthNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 
     const studentsById = new Map<string, any>(students.map((s: any) => [s.id, s]));
     const classesById = new Map<string, any>(classes.map((c: any) => [c.id, c]));
 
-    // Pagamentos feitos neste mês (por data de criação)
+    // Pagamentos feitos no mês selecionado (por data de pagamento)
     const paymentsThisMonth = payments.filter((p) => {
-      const createdAt = new Date(p.created_at);
-      return createdAt.getMonth() + 1 === currentMonth && createdAt.getFullYear() === currentYear;
+      const paymentDate = new Date(p.payment_date || p.created_at);
+      return paymentDate.getMonth() + 1 === selectedMonth && paymentDate.getFullYear() === selectedYear;
     });
 
     interface MonthlyBreakdown {
@@ -809,9 +814,9 @@ export function Finance() {
 
         // Calcular se é passado, corrente ou adiantado
         const refDate = new Date(refYear, refMonth - 1, 1);
-        const currentDate = new Date(currentYear, currentMonth - 1, 1);
+        const currentDate = new Date(selectedYear, selectedMonth - 1, 1);
 
-        if (refYear < currentYear || (refYear === currentYear && refMonth < currentMonth)) {
+        if (refYear < selectedYear || (refYear === selectedYear && refMonth < selectedMonth)) {
           // Mês passado
           const key = `${refYear}-${refMonth}`;
           const existing = pastMonths.get(key);
@@ -825,7 +830,7 @@ export function Finance() {
               amount,
             });
           }
-        } else if (refYear === currentYear && refMonth === currentMonth) {
+        } else if (refYear === selectedYear && refMonth === selectedMonth) {
           // Mês corrente
           currentMonthTotal += amount;
         } else {
@@ -869,6 +874,61 @@ export function Finance() {
       };
     };
 
+    // Calcular pendências - estudantes que não pagaram o mês selecionado
+    const paidStudentIdsForSelectedMonth = new Set(
+      payments
+        .filter(p => p.month_reference === selectedMonth && p.year_reference === selectedYear)
+        .map(p => p.student_id)
+    );
+
+    const activeStudents = students.filter((s: any) => s.status === 'active');
+    const unpaidStudents = activeStudents.filter((s: any) => !paidStudentIdsForSelectedMonth.has(s.id));
+    
+    // Calcular valor pendente por curso
+    const pendingByCourse = new Map<string, { courseId: string; courseName: string; totalPending: number; unpaidCount: number; studentList: any[] }>();
+    
+    unpaidStudents.forEach((student: any) => {
+      if (!student.class_id) return;
+      const cls = classesById.get(student.class_id);
+      if (!cls) return;
+      
+      const courseId = cls.course_id;
+      const courseName = cls.course?.name || courses.find((c: any) => c.id === courseId)?.name || 'Curso';
+      const course = courses.find((c: any) => c.id === courseId);
+      
+      // Obter mensalidade do curso baseado na classe
+      const gradeLevel = cls.grade_level;
+      let monthlyFee = 5000; // default
+      if (course) {
+        if (gradeLevel === 10) monthlyFee = Number(course.monthly_fee_10) || 5000;
+        else if (gradeLevel === 11) monthlyFee = Number(course.monthly_fee_11) || 5000;
+        else if (gradeLevel === 12) monthlyFee = Number(course.monthly_fee_12) || 5000;
+        else if (gradeLevel === 13) monthlyFee = Number(course.monthly_fee_13) || 5000;
+      }
+      
+      const existing = pendingByCourse.get(courseId);
+      if (existing) {
+        existing.totalPending += monthlyFee;
+        existing.unpaidCount += 1;
+        existing.studentList.push({ ...student, monthlyFee, className: `${gradeLevel}ª ${cls.section}` });
+      } else {
+        pendingByCourse.set(courseId, {
+          courseId,
+          courseName,
+          totalPending: monthlyFee,
+          unpaidCount: 1,
+          studentList: [{ ...student, monthlyFee, className: `${gradeLevel}ª ${cls.section}` }]
+        });
+      }
+    });
+
+    const pendingInfo = {
+      totalUnpaidStudents: unpaidStudents.length,
+      totalPendingAmount: Array.from(pendingByCourse.values()).reduce((sum, c) => sum + c.totalPending, 0),
+      byCourse: Array.from(pendingByCourse.values()).sort((a, b) => b.totalPending - a.totalPending),
+      monthLabel: `${fullMonthNames[selectedMonth - 1]} ${selectedYear}`
+    };
+
     // Calcular dados gerais
     const generalBreakdown = calculateBreakdown(paymentsThisMonth);
 
@@ -901,9 +961,40 @@ export function Finance() {
     return {
       general: generalBreakdown,
       byCourse,
-      currentMonthLabel: `${monthNames[currentMonth - 1]} ${currentYear}`,
+      currentMonthLabel: `${monthNames[selectedMonth - 1]} ${selectedYear}`,
+      pendingInfo,
     };
-  }, [payments, students, classes, courses]);
+  }, [payments, students, classes, courses, reportMonth, reportYear]);
+
+  // Turmas com alta taxa de pendência para o mês selecionado
+  const highPendencyClasses = useMemo(() => {
+    if (!classes || !students || !payments) return [];
+
+    const paidStudentIds = new Set(
+      payments
+        .filter(p => p.month_reference === reportMonth && p.year_reference === reportYear)
+        .map(p => p.student_id)
+    );
+
+    return classes.map((classItem: any) => {
+      const classStudents = students.filter((s: any) => s.class_id === classItem.id && s.status === 'active');
+      const unpaidStudents = classStudents.filter((s: any) => !paidStudentIds.has(s.id));
+      const pendencyRate = classStudents.length > 0 ? (unpaidStudents.length / classStudents.length) * 100 : 0;
+
+      return {
+        id: classItem.id,
+        course: classItem.course?.name || '-',
+        gradeLevel: classItem.grade_level,
+        section: classItem.section,
+        totalStudents: classStudents.length,
+        unpaidStudents: unpaidStudents.length,
+        paidStudents: classStudents.length - unpaidStudents.length,
+        pendencyRate,
+      };
+    })
+    .filter((c: any) => c.totalStudents > 0 && c.pendencyRate >= 30) // Turmas com >= 30% pendência
+    .sort((a: any, b: any) => b.pendencyRate - a.pendencyRate);
+  }, [classes, students, payments, reportMonth, reportYear]);
 
   const location = useLocation();
 
@@ -1604,20 +1695,46 @@ export function Finance() {
 
           {/* Relatório Detalhado de Entradas do Mês */}
           <Card className="card-elevated">
-            <CardHeader className="flex flex-row items-start justify-between">
+            <CardHeader className="flex flex-col sm:flex-row items-start justify-between gap-4">
               <div>
                 <CardTitle className="flex items-center gap-2">
                   <Wallet className="w-5 h-5" />
                   Detalhes de Entradas do Mês ({paymentBreakdown.currentMonthLabel})
                 </CardTitle>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Classificação dos pagamentos recebidos este mês: mensalidades passadas, corrente e adiantadas
+                  Classificação dos pagamentos recebidos: mensalidades passadas, corrente e adiantadas
                 </p>
               </div>
-              <Button variant="outline" size="sm" onClick={handleExportDetailedReport}>
-                <Download className="w-4 h-4 mr-2" />
-                Exportar PDF
-              </Button>
+              <div className="flex flex-wrap items-center gap-3">
+                {/* Filtro de Período */}
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm whitespace-nowrap">Período:</Label>
+                  <Select value={reportMonth.toString()} onValueChange={(v) => setReportMonth(parseInt(v))}>
+                    <SelectTrigger className="w-[130px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'].map((month, index) => (
+                        <SelectItem key={index + 1} value={(index + 1).toString()}>{month}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select value={reportYear.toString()} onValueChange={(v) => setReportYear(parseInt(v))}>
+                    <SelectTrigger className="w-[90px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[2024, 2025, 2026, 2027].map((year) => (
+                        <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button variant="outline" size="sm" onClick={handleExportDetailedReport}>
+                  <Download className="w-4 h-4 mr-2" />
+                  Exportar PDF
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Resumo Geral */}
@@ -1754,6 +1871,133 @@ export function Finance() {
               )}
             </CardContent>
           </Card>
+
+          {/* Pagamentos Pendentes */}
+          {paymentBreakdown.pendingInfo && (
+            <Card className="card-elevated border-l-4 border-l-destructive">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <AlertTriangle className="w-5 h-5 text-destructive" />
+                  Pagamentos Pendentes - {paymentBreakdown.pendingInfo.monthLabel}
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Estudantes que ainda não pagaram a mensalidade do mês selecionado
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Resumo de Pendências */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Card className="bg-destructive/5 border-destructive/20">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium text-muted-foreground">Estudantes Pendentes</span>
+                        <XCircle className="w-4 h-4 text-destructive" />
+                      </div>
+                      <p className="text-3xl font-bold text-destructive">{paymentBreakdown.pendingInfo.totalUnpaidStudents}</p>
+                    </CardContent>
+                  </Card>
+                  <Card className="bg-destructive/5 border-destructive/20">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium text-muted-foreground">Valor Total Pendente</span>
+                        <TrendingDown className="w-4 h-4 text-destructive" />
+                      </div>
+                      <p className="text-3xl font-bold text-destructive">{formatCurrency(paymentBreakdown.pendingInfo.totalPendingAmount)}</p>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Pendências por Curso */}
+                {paymentBreakdown.pendingInfo.byCourse.length > 0 && (
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold">Pendências por Curso</h3>
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="table-header">
+                          <TableHead>Curso</TableHead>
+                          <TableHead className="text-center">Estudantes Pendentes</TableHead>
+                          <TableHead className="text-right">Valor Pendente</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {paymentBreakdown.pendingInfo.byCourse.map((course: any) => (
+                          <TableRow key={course.courseId}>
+                            <TableCell className="font-medium">{course.courseName}</TableCell>
+                            <TableCell className="text-center">
+                              <Badge variant="destructive" className="px-2">
+                                {course.unpaidCount}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right font-bold text-destructive">
+                              {formatCurrency(course.totalPending)}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Turmas com Alta Taxa de Pendência */}
+          {highPendencyClasses.length > 0 && (
+            <Card className="card-elevated">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <AlertTriangle className="w-5 h-5 text-warning" />
+                  Turmas com Alta Taxa de Pendência (≥30%)
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Turmas que requerem atenção especial para cobrança - {paymentBreakdown.pendingInfo?.monthLabel}
+                </p>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow className="table-header">
+                      <TableHead>Turma</TableHead>
+                      <TableHead className="text-center">Total Estudantes</TableHead>
+                      <TableHead className="text-center">Pagos</TableHead>
+                      <TableHead className="text-center">Pendentes</TableHead>
+                      <TableHead className="text-center">Taxa de Pendência</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {highPendencyClasses.map((classItem: any) => (
+                      <TableRow key={classItem.id}>
+                        <TableCell>
+                          <div className="flex flex-col">
+                            <span className="font-medium">{classItem.course}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {classItem.gradeLevel}ª - Turma {classItem.section}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-center">{classItem.totalStudents}</TableCell>
+                        <TableCell className="text-center text-success font-medium">{classItem.paidStudents}</TableCell>
+                        <TableCell className="text-center text-destructive font-medium">{classItem.unpaidStudents}</TableCell>
+                        <TableCell className="text-center">
+                          <Badge 
+                            className={`${
+                              classItem.pendencyRate >= 70 
+                                ? 'bg-destructive text-destructive-foreground' 
+                                : classItem.pendencyRate >= 50 
+                                  ? 'bg-warning text-warning-foreground'
+                                  : 'bg-warning/60 text-warning-foreground'
+                            }`}
+                          >
+                            {classItem.pendencyRate.toFixed(1)}%
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Auditoria de transações */}
           <Card className="card-elevated">

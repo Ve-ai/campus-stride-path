@@ -45,6 +45,29 @@ CREATE TYPE public.app_role AS ENUM (
 
 
 --
+-- Name: professor_absence_discount_type; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public.professor_absence_discount_type AS ENUM (
+    'justificada',
+    'nao_justificada'
+);
+
+
+--
+-- Name: professor_absence_status; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public.professor_absence_status AS ENUM (
+    'registada',
+    'nao_justificada',
+    'justificativa_pendente',
+    'justificada',
+    'rejeitada'
+);
+
+
+--
 -- Name: handle_new_user(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -78,6 +101,21 @@ CREATE FUNCTION public.has_role(_user_id uuid, _role public.app_role) RETURNS bo
     WHERE user_id = _user_id
       AND role = _role
   )
+$$;
+
+
+--
+-- Name: update_faltas_professores_updated_at(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.update_faltas_professores_updated_at() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'public'
+    AS $$
+BEGIN
+  NEW.atualizado_em = now();
+  RETURN NEW;
+END;
 $$;
 
 
@@ -136,6 +174,19 @@ CREATE TABLE public.classes (
 
 
 --
+-- Name: configuracoes_faltas; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.configuracoes_faltas (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    desconto_falta_nao_justificada numeric NOT NULL,
+    desconto_falta_justificada numeric NOT NULL,
+    ativo boolean DEFAULT true NOT NULL,
+    criado_em timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
 -- Name: courses; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -154,6 +205,27 @@ CREATE TABLE public.courses (
     tutor_fee numeric(10,2) DEFAULT 0,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: faltas_professores; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.faltas_professores (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    professor_id uuid NOT NULL,
+    disciplina_id uuid NOT NULL,
+    data_falta date NOT NULL,
+    motivo text,
+    justificativa_texto text,
+    justificativa_arquivo_url text,
+    status public.professor_absence_status DEFAULT 'nao_justificada'::public.professor_absence_status NOT NULL,
+    observacoes_admin text,
+    criado_em timestamp with time zone DEFAULT now() NOT NULL,
+    atualizado_em timestamp with time zone DEFAULT now() NOT NULL,
+    valor_descontado numeric,
+    tipo_desconto public.professor_absence_discount_type
 );
 
 
@@ -224,6 +296,8 @@ CREATE TABLE public.payments (
     observations text,
     recorded_by uuid,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
+    base_amount numeric DEFAULT 0 NOT NULL,
+    late_fee numeric DEFAULT 0 NOT NULL,
     CONSTRAINT payments_month_reference_check CHECK (((month_reference >= 1) AND (month_reference <= 12))),
     CONSTRAINT payments_payment_method_check CHECK ((payment_method = ANY (ARRAY['Dinheiro'::text, 'Transferência'::text, 'Multicaixa Express'::text, 'Depósito'::text])))
 );
@@ -381,6 +455,14 @@ ALTER TABLE ONLY public.classes
 
 
 --
+-- Name: configuracoes_faltas configuracoes_faltas_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.configuracoes_faltas
+    ADD CONSTRAINT configuracoes_faltas_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: courses courses_name_unique; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -394,6 +476,14 @@ ALTER TABLE ONLY public.courses
 
 ALTER TABLE ONLY public.courses
     ADD CONSTRAINT courses_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: faltas_professores faltas_professores_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.faltas_professores
+    ADD CONSTRAINT faltas_professores_pkey PRIMARY KEY (id);
 
 
 --
@@ -581,6 +671,20 @@ ALTER TABLE ONLY public.user_roles
 
 
 --
+-- Name: configuracoes_faltas_ativo_unico; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX configuracoes_faltas_ativo_unico ON public.configuracoes_faltas USING btree ((true)) WHERE (ativo = true);
+
+
+--
+-- Name: faltas_professores trg_update_faltas_professores_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER trg_update_faltas_professores_updated_at BEFORE UPDATE ON public.faltas_professores FOR EACH ROW EXECUTE FUNCTION public.update_faltas_professores_updated_at();
+
+
+--
 -- Name: classes update_classes_updated_at; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -667,6 +771,22 @@ ALTER TABLE ONLY public.courses
 
 ALTER TABLE ONLY public.courses
     ADD CONSTRAINT courses_school_nucleus_id_fkey FOREIGN KEY (school_nucleus_id) REFERENCES public.school_nuclei(id) ON DELETE CASCADE;
+
+
+--
+-- Name: faltas_professores faltas_professores_disciplina_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.faltas_professores
+    ADD CONSTRAINT faltas_professores_disciplina_id_fkey FOREIGN KEY (disciplina_id) REFERENCES public.subjects(id) ON DELETE RESTRICT;
+
+
+--
+-- Name: faltas_professores faltas_professores_professor_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.faltas_professores
+    ADD CONSTRAINT faltas_professores_professor_id_fkey FOREIGN KEY (professor_id) REFERENCES public.teachers(id) ON DELETE RESTRICT;
 
 
 --
@@ -884,17 +1004,45 @@ CREATE POLICY "Admins can view students" ON public.students FOR SELECT USING ((p
 
 
 --
+-- Name: faltas_professores Admins podem actualizar faltas; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Admins podem actualizar faltas" ON public.faltas_professores FOR UPDATE USING ((public.has_role(auth.uid(), 'admin'::public.app_role) OR public.has_role(auth.uid(), 'super_admin'::public.app_role))) WITH CHECK ((public.has_role(auth.uid(), 'admin'::public.app_role) OR public.has_role(auth.uid(), 'super_admin'::public.app_role)));
+
+
+--
+-- Name: configuracoes_faltas Admins podem gerir configuracoes de faltas; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Admins podem gerir configuracoes de faltas" ON public.configuracoes_faltas USING ((public.has_role(auth.uid(), 'admin'::public.app_role) OR public.has_role(auth.uid(), 'super_admin'::public.app_role))) WITH CHECK ((public.has_role(auth.uid(), 'admin'::public.app_role) OR public.has_role(auth.uid(), 'super_admin'::public.app_role)));
+
+
+--
+-- Name: faltas_professores Admins podem gerir todas as faltas; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Admins podem gerir todas as faltas" ON public.faltas_professores FOR SELECT USING ((public.has_role(auth.uid(), 'admin'::public.app_role) OR public.has_role(auth.uid(), 'super_admin'::public.app_role)));
+
+
+--
+-- Name: faltas_professores Admins podem registar faltas; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Admins podem registar faltas" ON public.faltas_professores FOR INSERT WITH CHECK ((public.has_role(auth.uid(), 'admin'::public.app_role) OR public.has_role(auth.uid(), 'super_admin'::public.app_role)));
+
+
+--
 -- Name: teacher_class_assignments Authenticated users can view assignments; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY "Authenticated users can view assignments" ON public.teacher_class_assignments FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Authenticated users can view assignments" ON public.teacher_class_assignments FOR SELECT TO authenticated USING ((auth.uid() IS NOT NULL));
 
 
 --
 -- Name: classes Authenticated users can view classes; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY "Authenticated users can view classes" ON public.classes FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Authenticated users can view classes" ON public.classes FOR SELECT TO authenticated USING ((auth.uid() IS NOT NULL));
 
 
 --
@@ -908,14 +1056,14 @@ CREATE POLICY "Authenticated users can view courses" ON public.courses FOR SELEC
 -- Name: school_nuclei Authenticated users can view school nuclei; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY "Authenticated users can view school nuclei" ON public.school_nuclei FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Authenticated users can view school nuclei" ON public.school_nuclei FOR SELECT TO authenticated USING ((auth.uid() IS NOT NULL));
 
 
 --
 -- Name: subjects Authenticated users can view subjects; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY "Authenticated users can view subjects" ON public.subjects FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Authenticated users can view subjects" ON public.subjects FOR SELECT TO authenticated USING ((auth.uid() IS NOT NULL));
 
 
 --
@@ -944,6 +1092,26 @@ CREATE POLICY "Finance can manage payments" ON public.payments USING (public.has
 --
 
 CREATE POLICY "Finance can view students for payments" ON public.students FOR SELECT USING (public.has_role(auth.uid(), 'finance'::public.app_role));
+
+
+--
+-- Name: faltas_professores Professores podem justificar faltas nao_justificadas; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Professores podem justificar faltas nao_justificadas" ON public.faltas_professores FOR UPDATE USING ((public.has_role(auth.uid(), 'professor'::public.app_role) AND (EXISTS ( SELECT 1
+   FROM public.teachers t
+  WHERE ((t.id = faltas_professores.professor_id) AND (t.user_id = auth.uid())))) AND (status = 'nao_justificada'::public.professor_absence_status))) WITH CHECK ((public.has_role(auth.uid(), 'professor'::public.app_role) AND (EXISTS ( SELECT 1
+   FROM public.teachers t
+  WHERE ((t.id = faltas_professores.professor_id) AND (t.user_id = auth.uid())))) AND (status = 'justificativa_pendente'::public.professor_absence_status)));
+
+
+--
+-- Name: faltas_professores Professores podem ver as suas faltas; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Professores podem ver as suas faltas" ON public.faltas_professores FOR SELECT USING ((public.has_role(auth.uid(), 'professor'::public.app_role) AND (EXISTS ( SELECT 1
+   FROM public.teachers t
+  WHERE ((t.id = faltas_professores.professor_id) AND (t.user_id = auth.uid()))))));
 
 
 --
@@ -1104,10 +1272,22 @@ ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.classes ENABLE ROW LEVEL SECURITY;
 
 --
+-- Name: configuracoes_faltas; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.configuracoes_faltas ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: courses; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
 ALTER TABLE public.courses ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: faltas_professores; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.faltas_professores ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: grade_change_requests; Type: ROW SECURITY; Schema: public; Owner: -

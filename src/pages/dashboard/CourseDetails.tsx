@@ -216,7 +216,7 @@ export function CourseDetails() {
 
       {/* Classes by Grade Level */}
       {Object.entries(classesByGrade as Record<string, any[]>)
-        .filter(([grade]) => selectedClass === 'all' || grade === selectedClass)
+        .filter(([grade]) => (selectedClass === 'all' || grade === selectedClass) && grade !== '13')
         .sort(([a], [b]) => Number(a) - Number(b))
         .map(([grade, gradeClasses]) => (
           <Card key={grade} className="card-elevated">
@@ -306,7 +306,11 @@ export function CourseDetails() {
             </TableHeader>
             <TableBody>
               {courseSubjects.map((subject) => (
-                <TableRow key={subject.id} className="table-row-hover">
+                <TableRow
+                  key={subject.id}
+                  className="table-row-hover cursor-pointer"
+                  onClick={() => navigate(`/dashboard/disciplinas/${subject.id}`)}
+                >
                   <TableCell className="font-medium">{subject.name}</TableCell>
                   <TableCell className="text-center">{subject.grade_level}ª</TableCell>
                 </TableRow>

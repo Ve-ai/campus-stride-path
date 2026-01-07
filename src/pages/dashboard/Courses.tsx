@@ -48,6 +48,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useCourses, useTeachers, useSchoolNuclei, useClasses, useStudents, useSubjects, useDeleteCourse } from '@/hooks/useDatabase';
 import { toast } from "@/lib/notifications";
 import { CourseEditForm } from './CourseEditForm';
@@ -60,7 +61,11 @@ export function Courses() {
   const [wizardStep, setWizardStep] = useState<1 | 2 | 3 | 4 | 5>(1);
   const [editingCourse, setEditingCourse] = useState<any | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-
+  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
+  const [selectedCourseIds, setSelectedCourseIds] = useState<string[]>([]);
+  const [singleCourseId, setSingleCourseId] = useState<string>('');
+  const [exportDocumentType, setExportDocumentType] = useState<'mini' | 'final' | 'trimestral'>('mini');
+  const [selectedTrimester, setSelectedTrimester] = useState<string>('');
   type GradeConfig = {
     subjects: string[];
     subjectsInput: string;
@@ -75,7 +80,6 @@ export function Courses() {
 
   const [newCourse, setNewCourse] = useState({
     name: '',
-    school_nucleus_id: '',
     coordinator_id: '',
   });
 
@@ -184,7 +188,6 @@ export function Courses() {
         .from('courses')
         .insert({
           name: newCourse.name,
-          school_nucleus_id: newCourse.school_nucleus_id || nuclei?.[0]?.id,
           coordinator_id: newCourse.coordinator_id || undefined,
           monthly_fee_10: gradeConfigs['10'].monthlyFee
             ? parseFloat(gradeConfigs['10'].monthlyFee)
@@ -238,7 +241,7 @@ export function Courses() {
 
       // Create classes based on periods and turmas
       const classesPayload: any[] = [];
-      (['10', '11', '12', '13'] as const).forEach((grade) => {
+      (['10', '11', '12'] as const).forEach((grade) => {
         const config = gradeConfigs[grade];
         const morningSections = parseList(config.morningSections);
         const afternoonSections = parseList(config.afternoonSections);
@@ -283,7 +286,6 @@ export function Courses() {
       setWizardStep(1);
       setNewCourse({
         name: '',
-        school_nucleus_id: '',
         coordinator_id: '',
       });
       setGradeConfigs({
@@ -301,7 +303,6 @@ export function Courses() {
           morningSections: '',
           afternoonSections: '',
           internshipFee: '',
-          credentialFee: '',
         },
         '12': {
           subjects: [],
@@ -310,7 +311,6 @@ export function Courses() {
           morningSections: '',
           afternoonSections: '',
           internshipFee: '',
-          credentialFee: '',
         },
         '13': {
           subjects: [],
@@ -319,7 +319,6 @@ export function Courses() {
           morningSections: '',
           afternoonSections: '',
           internshipFee: '',
-          credentialFee: '',
           defenseEntryFee: '',
           tutorFee: '',
         },
@@ -385,26 +384,6 @@ export function Courses() {
                       setNewCourse((c) => ({ ...c, name: e.target.value }))
                     }
                   />
-                </div>
-                <div className="space-y-2">
-                  <Label>Núcleo Escolar</Label>
-                  <Select
-                    value={newCourse.school_nucleus_id}
-                    onValueChange={(v) =>
-                      setNewCourse((c) => ({ ...c, school_nucleus_id: v }))
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o núcleo" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {nuclei?.map((nucleus) => (
-                        <SelectItem key={nucleus.id} value={nucleus.id}>
-                          {nucleus.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label>Coordenador</Label>
@@ -530,7 +509,7 @@ export function Courses() {
                             />
                           </div>
 
-                          {(grade === '11' || grade === '12' || grade === '13') && (
+                          {(grade === '11' || grade === '12') && (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               <div className="space-y-2">
                                 <Label>Estágio</Label>
@@ -574,28 +553,30 @@ export function Courses() {
                             </div>
                           )}
 
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
-                            <div className="space-y-2">
-                              <Label>Período Manhã — Turmas (separadas por vírgulas)</Label>
-                              <Input
-                                placeholder="Ex: A, B, C"
-                                value={config.morningSections}
-                                onChange={(e) =>
-                                  setConfig({ morningSections: e.target.value })
-                                }
-                              />
+                          {grade !== '13' && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+                              <div className="space-y-2">
+                                <Label>Período Manhã — Turmas (separadas por vírgulas)</Label>
+                                <Input
+                                  placeholder="Ex: A, B, C"
+                                  value={config.morningSections}
+                                  onChange={(e) =>
+                                    setConfig({ morningSections: e.target.value })
+                                  }
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label>Período Tarde — Turmas (separadas por vírgulas)</Label>
+                                <Input
+                                  placeholder="Ex: D, E"
+                                  value={config.afternoonSections}
+                                  onChange={(e) =>
+                                    setConfig({ afternoonSections: e.target.value })
+                                  }
+                                />
+                              </div>
                             </div>
-                            <div className="space-y-2">
-                              <Label>Período Tarde — Turmas (separadas por vírgulas)</Label>
-                              <Input
-                                placeholder="Ex: D, E"
-                                value={config.afternoonSections}
-                                onChange={(e) =>
-                                  setConfig({ afternoonSections: e.target.value })
-                                }
-                              />
-                            </div>
-                          </div>
+                          )}
                         </CardContent>
                       </Card>
                     );
@@ -634,7 +615,7 @@ export function Courses() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
           <Input
-            placeholder="Pesquisar por nome do curso ou coordenador..."
+            placeholder="Pesquisar por curso, coordenador ou estudante (nome, matrícula, BI)..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10 input-field"
@@ -644,10 +625,160 @@ export function Courses() {
           <Filter className="w-4 h-4" />
           Filtros
         </Button>
-        <Button variant="outline" className="flex items-center gap-2" onClick={() => toast.info('Exportação em desenvolvimento')}>
-          <Download className="w-4 h-4" />
-          Exportar
-        </Button>
+        <Dialog open={isExportDialogOpen} onOpenChange={setIsExportDialogOpen}>
+          <DialogTrigger asChild>
+            <Button variant="outline" className="flex items-center gap-2">
+              <Download className="w-4 h-4" />
+              Exportar
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Exportar dados dos cursos</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-6 py-2">
+              <div className="space-y-2">
+                <Label>Exportação múltipla (vários cursos)</Label>
+                <p className="text-xs text-muted-foreground">
+                  Selecione os cursos que deseja incluir no ficheiro exportado.
+                </p>
+                <div className="border rounded-md p-3 space-y-2 max-h-64 overflow-y-auto">
+                  {coursesWithStats.map((course) => (
+                    <label
+                      key={course.id}
+                      className="flex items-center gap-2 text-sm cursor-pointer"
+                    >
+                      <Checkbox
+                        checked={selectedCourseIds.includes(course.id)}
+                        onCheckedChange={(checked) => {
+                          setSelectedCourseIds((prev) =>
+                            checked
+                              ? [...prev, course.id]
+                              : prev.filter((id) => id !== course.id),
+                          );
+                        }}
+                      />
+                      <span>{course.name}</span>
+                    </label>
+                  ))}
+                  {coursesWithStats.length === 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      Não há cursos para exportar.
+                    </p>
+                  )}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-2"
+                  onClick={() => {
+                    if (selectedCourseIds.length === 0) {
+                      toast.info('Selecione pelo menos um curso para exportar.');
+                      return;
+                    }
+                    toast.info('Exportação de vários cursos em desenvolvimento.');
+                  }}
+                >
+                  Exportar cursos selecionados
+                </Button>
+              </div>
+
+              <div className="space-y-2 border-t pt-4">
+                <Label>Exportação por curso</Label>
+                <p className="text-xs text-muted-foreground">
+                  Escolha um curso e o tipo de documento que deseja gerar.
+                </p>
+                <div className="space-y-2">
+                  <Label className="text-xs">Curso</Label>
+                  <Select
+                    value={singleCourseId}
+                    onValueChange={setSingleCourseId}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o curso" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {coursesWithStats.map((course) => (
+                        <SelectItem key={course.id} value={course.id}>
+                          {course.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs">Tipo de documento</Label>
+                  <div className="flex flex-wrap gap-3 text-sm">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="doc-type"
+                        value="mini"
+                        checked={exportDocumentType === 'mini'}
+                        onChange={() => setExportDocumentType('mini')}
+                      />
+                      Mini pauta
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="doc-type"
+                        value="final"
+                        checked={exportDocumentType === 'final'}
+                        onChange={() => setExportDocumentType('final')}
+                      />
+                      Pauta final
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="doc-type"
+                        value="trimestral"
+                        checked={exportDocumentType === 'trimestral'}
+                        onChange={() => setExportDocumentType('trimestral')}
+                      />
+                      Pauta trimestral
+                    </label>
+                  </div>
+                </div>
+                {exportDocumentType === 'trimestral' && (
+                  <div className="space-y-2">
+                    <Label className="text-xs">Trimestre</Label>
+                    <Select
+                      value={selectedTrimester}
+                      onValueChange={setSelectedTrimester}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o trimestre" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1">1º Trimestre</SelectItem>
+                        <SelectItem value="2">2º Trimestre</SelectItem>
+                        <SelectItem value="3">3º Trimestre</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+                <Button
+                  className="btn-primary mt-2"
+                  onClick={() => {
+                    if (!singleCourseId) {
+                      toast.info('Selecione um curso para exportar.');
+                      return;
+                    }
+                    if (exportDocumentType === 'trimestral' && !selectedTrimester) {
+                      toast.info('Selecione o trimestre desejado.');
+                      return;
+                    }
+                    toast.info('Exportação por curso em desenvolvimento.');
+                  }}
+                >
+                  Exportar curso
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Stats Cards */}

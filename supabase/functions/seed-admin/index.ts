@@ -19,11 +19,9 @@ Deno.serve(async (req) => {
     )
 
     // Parse request body
-    let resetPassword = false
     let isInitialSetup = false
     try {
       const body = await req.json()
-      resetPassword = body?.resetPassword === true
       isInitialSetup = body?.initialSetup === true
     } catch {
       // No body or invalid JSON, proceed with default
@@ -87,36 +85,30 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Default super admin credentials (email/username only)
+    // Credenciais padrão do super admin (fixas e conhecidas)
     const superAdminEmail = 'supadmin@escola.co.ao'
     const superAdminUsername = 'Lucidio001'
     const superAdminName = 'Administrador Supremo'
+    const superAdminDefaultPassword = '@Lucidio4321'
 
-    let generatedPasswordForResponse: string | undefined
+    let passwordForResponse = superAdminDefaultPassword
 
-    // Check if user already exists
+    // Verificar se o utilizador já existe
     const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers()
     const existingUser = existingUsers?.users?.find((u) => u.email === superAdminEmail)
 
     if (existingUser) {
-      console.log('Super admin found, checking role and profile...')
+      console.log('Super admin found, forcing password to default value...')
 
-      // Update password if requested
-      if (resetPassword) {
-        console.log('Resetting password...')
-        const newPassword = crypto.randomUUID() + '!As1'
-        const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(existingUser.id, {
-          password: newPassword,
-        })
+      const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(existingUser.id, {
+        password: superAdminDefaultPassword,
+      })
 
-        if (updateError) {
-          console.error('Password reset error:', updateError)
-        } else {
-          generatedPasswordForResponse = newPassword
-        }
+      if (updateError) {
+        console.error('Password reset error:', updateError)
       }
 
-      // Ensure role exists
+      // Garantir que o papel existe
       const { data: existingRole } = await supabaseAdmin
         .from('user_roles')
         .select('*')
@@ -132,7 +124,7 @@ Deno.serve(async (req) => {
         })
       }
 
-      // Ensure profile exists and is updated
+      // Garantir que o perfil existe e está atualizado
       const { data: existingProfile } = await supabaseAdmin
         .from('profiles')
         .select('*')
@@ -162,25 +154,21 @@ Deno.serve(async (req) => {
 
       return new Response(
         JSON.stringify({
-          message: resetPassword
-            ? 'Super admin atualizado com nova senha'
-            : 'Super admin já existe',
+          message: 'Super admin atualizado com senha padrão',
           email: superAdminEmail,
           username: superAdminUsername,
-          password: generatedPasswordForResponse,
+          password: passwordForResponse,
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    console.log('Creating new super admin user...')
+    console.log('Creating new super admin user with default password...')
 
-    const initialPassword = crypto.randomUUID() + '!As1'
-
-    // Create the super admin user
+    // Criar o utilizador super admin
     const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
       email: superAdminEmail,
-      password: initialPassword,
+      password: superAdminDefaultPassword,
       email_confirm: true,
       user_metadata: {
         full_name: superAdminName,
@@ -195,7 +183,7 @@ Deno.serve(async (req) => {
 
     console.log('User created:', newUser.user.id)
 
-    // Assign super_admin role
+    // Atribuir papel super_admin
     const { error: roleInsertError } = await supabaseAdmin.from('user_roles').insert({
       user_id: newUser.user.id,
       role: 'super_admin',
@@ -208,7 +196,7 @@ Deno.serve(async (req) => {
 
     console.log('Role assigned')
 
-    // Create profile
+    // Criar perfil
     const { error: profileError } = await supabaseAdmin.from('profiles').insert({
       user_id: newUser.user.id,
       username: superAdminUsername,
@@ -219,7 +207,7 @@ Deno.serve(async (req) => {
 
     if (profileError) {
       console.error('Profile creation error:', profileError)
-      // Try update if insert fails (profile might exist from trigger)
+      // Tentar atualizar se o insert falhar (perfil pode existir via trigger)
       await supabaseAdmin
         .from('profiles')
         .update({
@@ -237,7 +225,7 @@ Deno.serve(async (req) => {
         message: 'Super admin criado com sucesso',
         email: superAdminEmail,
         username: superAdminUsername,
-        password: initialPassword,
+        password: passwordForResponse,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )

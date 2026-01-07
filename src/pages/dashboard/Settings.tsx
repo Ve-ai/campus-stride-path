@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Shield,
   Bell,
@@ -15,6 +15,9 @@ import {
   Loader2,
   RefreshCw,
   Wallet,
+  Calendar,
+  GraduationCap,
+  ArrowRightLeft,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -51,6 +54,12 @@ import { useCourses, useTeachers, useDeleteCourse } from '@/hooks/useDatabase';
 import { toast } from "@/lib/notifications";
 import { CourseEditForm } from './CourseEditForm';
 import { supabase } from '@/integrations/supabase/client';
+import {
+  executeAcademicYearTransition,
+  getTransitionPreview,
+  getCurrentAcademicYear,
+} from '@/services/academicYearTransition';
+import { Progress } from '@/components/ui/progress';
 
 export function Settings() {
   const { user, updatePassword } = useAuth();
@@ -75,8 +84,53 @@ export function Settings() {
   const deleteCourse = useDeleteCourse();
   const [isSeedingData, setIsSeedingData] = useState(false);
   const [isSeedingFinance, setIsSeedingFinance] = useState(false);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [transitionPreview, setTransitionPreview] = useState<any[]>([]);
+  const [isLoadingPreview, setIsLoadingPreview] = useState(false);
+  const [transitionResult, setTransitionResult] = useState<any>(null);
 
+  const currentAcademicYear = getCurrentAcademicYear();
   const isSuperAdmin = user?.role === 'super_admin';
+
+  // Carrega preview quando abre a aba de transição
+  const loadTransitionPreview = async () => {
+    setIsLoadingPreview(true);
+    try {
+      const preview = await getTransitionPreview(currentAcademicYear);
+      setTransitionPreview(preview);
+    } catch (error) {
+      console.error('Erro ao carregar preview:', error);
+      toast.error('Erro ao carregar dados de transição');
+    } finally {
+      setIsLoadingPreview(false);
+    }
+  };
+
+  const handleAcademicYearTransition = async () => {
+    if (!confirm(`Tem a certeza que pretende executar a transição de ano letivo de ${currentAcademicYear}/${currentAcademicYear + 1} para ${currentAcademicYear + 1}/${currentAcademicYear + 2}? Esta ação irá mover os alunos para as suas novas turmas.`)) {
+      return;
+    }
+
+    setIsTransitioning(true);
+    try {
+      const result = await executeAcademicYearTransition(currentAcademicYear);
+      setTransitionResult(result);
+      
+      if (result.errors.length === 0) {
+        toast.success(`Transição concluída! ${result.promoted} promovidos, ${result.retained} retidos, ${result.graduated} graduados.`);
+      } else {
+        toast.warning(`Transição concluída com ${result.errors.length} erros. Verifique os detalhes.`);
+      }
+      
+      // Recarrega preview
+      await loadTransitionPreview();
+    } catch (error) {
+      console.error('Erro na transição:', error);
+      toast.error('Erro ao executar transição de ano letivo');
+    } finally {
+      setIsTransitioning(false);
+    }
+  };
 
   const applyTheme = (value: 'light' | 'dark') => {
     setTheme(value);
@@ -214,6 +268,14 @@ export function Settings() {
               <TabsTrigger value="admins" className="data-[state=active]:bg-background">
                 <Users className="w-4 h-4 mr-2" />
                 Administradores
+              </TabsTrigger>
+              <TabsTrigger 
+                value="academic-year" 
+                className="data-[state=active]:bg-background"
+                onClick={() => loadTransitionPreview()}
+              >
+                <ArrowRightLeft className="w-4 h-4 mr-2" />
+                Ano Letivo
               </TabsTrigger>
             </>
           )}
@@ -668,6 +730,188 @@ export function Settings() {
                     </TableRow>
                   </TableBody>
                 </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
+
+        {/* Academic Year Transition Tab (Super Admin Only) */}
+        {isSuperAdmin && (
+          <TabsContent value="academic-year" className="space-y-6">
+            <Card className="card-elevated">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Calendar className="w-5 h-5" />
+                  Transição de Ano Letivo
+                </CardTitle>
+                <CardDescription>
+                  Gerir a transição de alunos entre anos letivos. O ano letivo atual é {currentAcademicYear}/{currentAcademicYear + 1} (Setembro a Julho).
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Info Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
+                    <div className="flex items-center gap-2 text-primary mb-2">
+                      <GraduationCap className="w-5 h-5" />
+                      <span className="font-semibold">Aprovados</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Alunos com média ≥ 10 vão para a próxima classe. 12ª aprovados vão para 13ª (Estágio Curricular).
+                    </p>
+                  </div>
+                  <div className="p-4 rounded-lg bg-warning/10 border border-warning/20">
+                    <div className="flex items-center gap-2 text-warning mb-2">
+                      <RefreshCw className="w-5 h-5" />
+                      <span className="font-semibold">Reprovados</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Alunos com média &lt; 10 ficam na mesma classe para o novo ano letivo.
+                    </p>
+                  </div>
+                  <div className="p-4 rounded-lg bg-success/10 border border-success/20">
+                    <div className="flex items-center gap-2 text-success mb-2">
+                      <Check className="w-5 h-5" />
+                      <span className="font-semibold">Graduados</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Alunos da 13ª que concluem o estágio são marcados como graduados.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Preview Table */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-semibold text-foreground">Previsão de Transição</h3>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={loadTransitionPreview}
+                      disabled={isLoadingPreview}
+                    >
+                      {isLoadingPreview ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <RefreshCw className="w-4 h-4 mr-2" />
+                      )}
+                      Atualizar
+                    </Button>
+                  </div>
+
+                  {isLoadingPreview ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                    </div>
+                  ) : transitionPreview.length > 0 ? (
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="table-header">
+                          <TableHead>Turma</TableHead>
+                          <TableHead>Curso</TableHead>
+                          <TableHead className="text-center">Total</TableHead>
+                          <TableHead className="text-center">Aprovados</TableHead>
+                          <TableHead className="text-center">Reprovados</TableHead>
+                          <TableHead className="text-center">Taxa Aprovação</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {transitionPreview.map((item) => (
+                          <TableRow key={item.classId} className="table-row-hover">
+                            <TableCell className="font-medium">{item.className}</TableCell>
+                            <TableCell>{item.courseName}</TableCell>
+                            <TableCell className="text-center">{item.totalStudents}</TableCell>
+                            <TableCell className="text-center">
+                              <Badge className="badge-success">{item.approved}</Badge>
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <Badge variant="destructive">{item.failed}</Badge>
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <div className="flex items-center gap-2">
+                                <Progress 
+                                  value={item.totalStudents > 0 ? (item.approved / item.totalStudents) * 100 : 0} 
+                                  className="w-16 h-2"
+                                />
+                                <span className="text-sm text-muted-foreground">
+                                  {item.totalStudents > 0 
+                                    ? Math.round((item.approved / item.totalStudents) * 100) 
+                                    : 0}%
+                                </span>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Calendar className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                      <p>Clique em "Atualizar" para ver a previsão de transição.</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Transition Result */}
+                {transitionResult && (
+                  <div className="p-4 rounded-lg bg-muted/50 border border-border space-y-3">
+                    <h4 className="font-semibold text-foreground">Resultado da Transição</h4>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="text-center">
+                        <p className="text-2xl font-bold text-success">{transitionResult.promoted}</p>
+                        <p className="text-sm text-muted-foreground">Promovidos</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-2xl font-bold text-warning">{transitionResult.retained}</p>
+                        <p className="text-sm text-muted-foreground">Retidos</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-2xl font-bold text-primary">{transitionResult.graduated}</p>
+                        <p className="text-sm text-muted-foreground">Graduados</p>
+                      </div>
+                    </div>
+                    {transitionResult.errors.length > 0 && (
+                      <div className="mt-4 p-3 rounded bg-destructive/10 border border-destructive/20">
+                        <p className="text-sm font-medium text-destructive mb-2">Erros ({transitionResult.errors.length}):</p>
+                        <ul className="text-xs text-destructive/80 space-y-1">
+                          {transitionResult.errors.slice(0, 5).map((err: string, i: number) => (
+                            <li key={i}>• {err}</li>
+                          ))}
+                          {transitionResult.errors.length > 5 && (
+                            <li>• ... e mais {transitionResult.errors.length - 5} erros</li>
+                          )}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Execute Transition Button */}
+                <div className="flex items-center justify-between pt-4 border-t border-border">
+                  <div>
+                    <p className="font-medium text-foreground">Executar Transição</p>
+                    <p className="text-sm text-muted-foreground">
+                      Move os alunos para as novas turmas do ano letivo {currentAcademicYear + 1}/{currentAcademicYear + 2}
+                    </p>
+                  </div>
+                  <Button
+                    onClick={handleAcademicYearTransition}
+                    disabled={isTransitioning}
+                    className="btn-primary"
+                  >
+                    {isTransitioning ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        A executar transição...
+                      </>
+                    ) : (
+                      <>
+                        <ArrowRightLeft className="w-4 h-4 mr-2" />
+                        Executar Transição de Ano
+                      </>
+                    )}
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>

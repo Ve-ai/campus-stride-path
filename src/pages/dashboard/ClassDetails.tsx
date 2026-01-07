@@ -803,12 +803,7 @@ export function ClassDetails() {
                   onClick={() => {
                     const doc = new jsPDF('landscape');
 
-                    (doc as any).setFontSize(12);
-                    doc.text(
-                      `${course?.name || 'Curso'} - ${classData.grade_level}ª ${classData.section} | ${selectedTrimester}º Trimestre`,
-                      14,
-                      15,
-                    );
+                    const title = `${course?.name || 'Curso'} - ${classData.grade_level}ª ${classData.section} | ${selectedTrimester}º Trimestre`;
 
                     const headRow1: string[] = ['Nº', 'Nº Matrícula', 'Nome Completo'];
                     const headRow2: string[] = ['', '', ''];
@@ -847,9 +842,15 @@ export function ClassDetails() {
                       head: [headRow1, headRow2],
                       body,
                       startY: 22,
-                      styles: { fontSize: 8, cellPadding: 1.5 },
+                      margin: { top: 22, left: 8, right: 8 },
+                      styles: { fontSize: 7, cellPadding: 1, overflow: 'linebreak' },
                       headStyles: { fillColor: [240, 240, 240] },
                       theme: 'grid',
+                      pageBreak: 'auto',
+                      didDrawPage: (data: any) => {
+                        doc.setFontSize(11);
+                        doc.text(title, data.settings.margin.left, 15);
+                      },
                     });
 
                     doc.save(

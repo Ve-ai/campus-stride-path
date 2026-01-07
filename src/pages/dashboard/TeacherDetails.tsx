@@ -944,13 +944,19 @@ export function TeacherDetails() {
                                     // Se há slot ocupado por outra turma
                                     const isOccupiedByOther = existingSlot && !isCurrentAssignment;
                                     
+                                    // Label da turma selecionada
+                                    const currentClassLabel = selectedAssignment 
+                                      ? `${selectedAssignment.class?.grade_level}ª ${selectedAssignment.class?.section}`
+                                      : '';
+                                    const currentSubjectName = selectedAssignment?.subject?.name || '';
+                                    
                                     return (
                                       <TableCell key={day} className="p-0">
                                         <button
                                           type="button"
                                           onClick={() => toggleSlot(day, slot.start)}
                                           disabled={isOccupiedByOther}
-                                          className={`w-full h-14 text-xs md:text-sm border-l border-t last:border-r focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+                                          className={`w-full h-16 text-xs border-l border-t last:border-r focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 flex flex-col items-center justify-center gap-0.5 ${
                                             isOccupiedByOther
                                               ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 cursor-not-allowed'
                                               : isAssignedLocal
@@ -959,11 +965,17 @@ export function TeacherDetails() {
                                           }`}
                                           title={isOccupiedByOther ? `Ocupado: ${existingSlot.subjectName} - ${existingSlot.classLabel}` : undefined}
                                         >
-                                          {isOccupiedByOther
-                                            ? `${existingSlot.classLabel}`
-                                            : isAssignedLocal && selectedAssignment
-                                            ? `${selectedAssignment.class?.grade_level}ª ${selectedAssignment.class?.section}`
-                                            : ''}
+                                          {isOccupiedByOther ? (
+                                            <>
+                                              <span className="font-medium truncate max-w-full px-1">{existingSlot.subjectName}</span>
+                                              <span className="text-[10px] opacity-80">{existingSlot.classLabel}</span>
+                                            </>
+                                          ) : isAssignedLocal ? (
+                                            <>
+                                              <span className="font-medium truncate max-w-full px-1">{currentSubjectName}</span>
+                                              <span className="text-[10px] opacity-80">{currentClassLabel}</span>
+                                            </>
+                                          ) : null}
                                         </button>
                                       </TableCell>
                                     );

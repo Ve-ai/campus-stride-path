@@ -14,6 +14,7 @@ import {
   X,
   Bell,
   ChevronDown,
+  ClipboardList,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -33,6 +34,7 @@ const navigationItems = {
     { name: 'Estudantes', path: '/dashboard/estudantes', icon: User },
     { name: 'Diretores de Turma', path: '/dashboard/diretores', icon: UserCheck },
     { name: 'Professores', path: '/dashboard/professores', icon: GraduationCap },
+    { name: 'Coordenação', path: '/dashboard/coordenacao', icon: ClipboardList },
     { name: 'Faltas de Professores', path: '/dashboard/faltas-professores', icon: Bell },
     { name: 'Finanças', path: '/dashboard/financas', icon: Wallet },
     { name: 'Perfil', path: '/dashboard/perfil', icon: User },
@@ -45,6 +47,7 @@ const navigationItems = {
     { name: 'Estudantes', path: '/dashboard/estudantes', icon: User },
     { name: 'Diretores de Turma', path: '/dashboard/diretores', icon: UserCheck },
     { name: 'Professores', path: '/dashboard/professores', icon: GraduationCap },
+    { name: 'Coordenação', path: '/dashboard/coordenacao', icon: ClipboardList },
     { name: 'Faltas de Professores', path: '/dashboard/faltas-professores', icon: Bell },
     { name: 'Finanças', path: '/dashboard/financas', icon: Wallet },
     { name: 'Perfil', path: '/dashboard/perfil', icon: User },

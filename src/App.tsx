@@ -22,6 +22,7 @@ import { Profile } from "@/pages/dashboard/Profile";
 import { Settings } from "@/pages/dashboard/Settings";
 import { Grades } from "@/pages/dashboard/Grades";
 import { FaltasProfessoresPage } from "@/pages/dashboard/FaltasProfessores";
+import { Coordination } from "@/pages/dashboard/Coordination";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -71,6 +72,7 @@ function AppRoutes() {
         <Route path="configuracoes" element={<Settings />} />
         <Route path="notas" element={<Grades />} />
         <Route path="faltas-professores" element={<FaltasProfessoresPage />} />
+        <Route path="coordenacao" element={<Coordination />} />
       </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>

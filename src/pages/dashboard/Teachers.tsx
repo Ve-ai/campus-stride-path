@@ -449,6 +449,16 @@ export function Teachers() {
                         .map((assignment) => assignment.gradeLevel)
                         .filter((g): g is number => g !== undefined);
 
+                      // Filtrar turmas pelo curso e classe selecionada
+                      const classesForGrade = classesForCourse.filter(
+                        (cls: any) => cls.grade_level === a.gradeLevel
+                      );
+
+                      // Períodos disponíveis baseados nas turmas existentes
+                      const availablePeriods = Array.from(
+                        new Set(classesForGrade.map((cls: any) => cls.period))
+                      ).filter(Boolean) as string[];
+
                       const subjectsForClass = (subjects || []).filter((subject: any) =>
                         subject.course_id === a.courseId &&
                         (!a.gradeLevel || subject.grade_level === a.gradeLevel),
@@ -499,12 +509,21 @@ export function Teachers() {
                               value={a.gradeLevel ? String(a.gradeLevel) : undefined}
                               onValueChange={(value) => {
                                 const grade = parseInt(value, 10);
+                                // Auto-selecionar períodos disponíveis
+                                const classesForNewGrade = classesForCourse.filter(
+                                  (cls: any) => cls.grade_level === grade
+                                );
+                                const autoSelectedPeriods = Array.from(
+                                  new Set(classesForNewGrade.map((cls: any) => cls.period))
+                                ).filter(Boolean) as string[];
+
                                 setAssignments((prev) => {
                                   const copy = [...prev];
                                   copy[index] = {
                                     ...copy[index],
                                     gradeLevel: grade,
                                     subjectIds: [],
+                                    periods: autoSelectedPeriods.length === 1 ? autoSelectedPeriods : [],
                                   };
                                   return copy;
                                 });
@@ -579,37 +598,47 @@ export function Teachers() {
                           </div>
 
                           <div className="space-y-1">
-                            <Label className="text-xs">Períodos</Label>
+                            <Label className="text-xs">
+                              Períodos {availablePeriods.length === 0 && a.gradeLevel && (
+                                <span className="text-destructive">(sem turmas)</span>
+                              )}
+                            </Label>
                             <div className="flex gap-2 text-xs">
-                              {['Manhã', 'Tarde'].map((period) => {
-                                const checked = a.periods.includes(period);
-                                return (
-                                  <button
-                                    key={period}
-                                    type="button"
-                                    onClick={() =>
-                                      setAssignments((prev) => {
-                                        const copy = [...prev];
-                                        const current = copy[index];
-                                        copy[index] = {
-                                          ...current,
-                                          periods: checked
-                                            ? current.periods.filter((p) => p !== period)
-                                            : [...current.periods, period],
-                                        };
-                                        return copy;
-                                      })
-                                    }
-                                    className={`px-3 py-1 rounded-full border text-xs ${
-                                      checked
-                                        ? 'bg-primary text-primary-foreground border-primary'
-                                        : 'bg-background text-muted-foreground'
-                                    }`}
-                                  >
-                                    {period}
-                                  </button>
-                                );
-                              })}
+                              {availablePeriods.length > 0 ? (
+                                availablePeriods.map((period) => {
+                                  const checked = a.periods.includes(period);
+                                  return (
+                                    <button
+                                      key={period}
+                                      type="button"
+                                      onClick={() =>
+                                        setAssignments((prev) => {
+                                          const copy = [...prev];
+                                          const current = copy[index];
+                                          copy[index] = {
+                                            ...current,
+                                            periods: checked
+                                              ? current.periods.filter((p) => p !== period)
+                                              : [...current.periods, period],
+                                          };
+                                          return copy;
+                                        })
+                                      }
+                                      className={`px-3 py-1 rounded-full border text-xs ${
+                                        checked
+                                          ? 'bg-primary text-primary-foreground border-primary'
+                                          : 'bg-background text-muted-foreground'
+                                      }`}
+                                    >
+                                      {period}
+                                    </button>
+                                  );
+                                })
+                              ) : (
+                                <span className="text-muted-foreground text-xs">
+                                  {a.gradeLevel ? 'Nenhuma turma cadastrada' : 'Selecione a classe primeiro'}
+                                </span>
+                              )}
                             </div>
                           </div>
 

@@ -22,43 +22,43 @@ export const addPdfHeader = async (
   // Carregar imagem do logotipo
   try {
     const logoImg = await loadImage(instituteLogo);
-    const logoWidth = 50;
-    const logoHeight = 50;
-    const logoX = 40;
-    const logoY = 20;
+    const logoWidth = 40;
+    const logoHeight = 40;
+    const logoX = (pageWidth - logoWidth) / 2; // Centralizado
+    const logoY = 15;
     
     doc.addImage(logoImg, 'PNG', logoX, logoY, logoWidth, logoHeight);
     
-    // Nome da escola ao lado do logotipo
+    // Nome da escola centralizado abaixo do logotipo
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(16);
     doc.setTextColor(30, 64, 175); // Azul escuro
-    doc.text(SCHOOL_NAME, logoX + logoWidth + 15, logoY + 20);
+    doc.text(SCHOOL_NAME, pageWidth / 2, logoY + logoHeight + 12, { align: 'center' });
     
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
     doc.setTextColor(100, 100, 100);
-    doc.text(SCHOOL_SUBTITLE, logoX + logoWidth + 15, logoY + 35);
+    doc.text(SCHOOL_SUBTITLE, pageWidth / 2, logoY + logoHeight + 24, { align: 'center' });
     
     // Linha separadora
     doc.setDrawColor(200, 200, 200);
     doc.setLineWidth(0.5);
-    doc.line(40, 80, pageWidth - 40, 80);
+    doc.line(40, logoY + logoHeight + 35, pageWidth - 40, logoY + logoHeight + 35);
     
     // Título do documento
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(14);
     doc.setTextColor(0, 0, 0);
-    doc.text(title, pageWidth / 2, 100, { align: 'center' });
+    doc.text(title, pageWidth / 2, logoY + logoHeight + 52, { align: 'center' });
     
     // Subtítulo (se fornecido)
-    let nextY = 115;
+    let nextY = logoY + logoHeight + 67;
     if (subtitle) {
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(10);
       doc.setTextColor(80, 80, 80);
-      doc.text(subtitle, pageWidth / 2, 115, { align: 'center' });
-      nextY = 135;
+      doc.text(subtitle, pageWidth / 2, logoY + logoHeight + 67, { align: 'center' });
+      nextY = logoY + logoHeight + 85;
     }
     
     return nextY;

@@ -130,12 +130,28 @@ export function ClassDirectors() {
     return classes.filter(c => !c.class_director_id);
   }, [classes]);
 
-  // Get teachers without class director role
+  // Get teachers that are not already directors and teach in the selected class
   const availableTeachers = useMemo(() => {
     if (!teachers || !classes) return [];
+
+    // Teachers that are already class directors
     const directorIds = new Set(classes.filter(c => c.class_director_id).map(c => c.class_director_id));
-    return teachers.filter(t => !directorIds.has(t.id));
-  }, [teachers, classes]);
+
+    // If no class selected yet, just return teachers that are not already directors
+    if (!selectedClassId) {
+      return teachers.filter(t => !directorIds.has(t.id));
+    }
+
+    // Only allow teachers that teach in the selected class
+    return teachers.filter((teacher: any) => {
+      if (directorIds.has(teacher.id)) return false;
+      if (!teacher.teacher_class_assignments) return false;
+
+      return teacher.teacher_class_assignments.some((assignment: any) =>
+        assignment.class && assignment.class.id === selectedClassId
+      );
+    });
+  }, [teachers, classes, selectedClassId]);
 
   const filteredDirectors = directorsData.filter(
     (director) =>
@@ -188,12 +204,12 @@ export function ClassDirectors() {
                   <SelectContent>
                     {availableTeachers.length === 0 ? (
                       <SelectItem value="" disabled>
-                        Nenhum professor disponível
+                        Nenhum professor disponível para esta turma
                       </SelectItem>
                     ) : (
                       availableTeachers.map((teacher) => (
                         <SelectItem key={teacher.id} value={teacher.id}>
-                          {teacher.profiles?.full_name} ({teacher.employee_number})
+                          {teacher.profiles?.full_name}
                         </SelectItem>
                       ))
                     )}

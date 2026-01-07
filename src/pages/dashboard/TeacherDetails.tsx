@@ -181,14 +181,18 @@ export function TeacherDetails() {
   const [selectedAssignmentId, setSelectedAssignmentId] = useState<string | undefined>(
     teacherAssignments[0]?.id,
   );
+  const [selectedPeriod, setSelectedPeriod] = useState<'Manhã' | 'Tarde'>('Manhã');
   const [schedule, setSchedule] = useState<any>({});
 
   const updateAssignmentSchedule = useUpdateTeacherAssignmentSchedule();
 
   useEffect(() => {
-    const firstId = teacherAssignments[0]?.id;
+    const assignmentsForPeriod = teacherAssignments.filter((a: any) =>
+      a.periods?.includes(selectedPeriod),
+    );
+    const firstId = assignmentsForPeriod[0]?.id;
     setSelectedAssignmentId(firstId);
-  }, [teacherAssignments.length]);
+  }, [teacherAssignments.length, selectedPeriod]);
 
   const selectedAssignment = teacherAssignments.find(
     (a: any) => a.id === selectedAssignmentId,
@@ -201,7 +205,9 @@ export function TeacherDetails() {
   }, [selectedAssignment?.id]);
 
   const days = ['Segunda-Feira', 'Terça-Feira', 'Quarta-Feira', 'Quinta-Feira', 'Sexta-Feira'];
-  const times = ['07:30', '08:15', '09:00', '09:45', '10:30', '11:15'];
+  const morningTimes = ['07:30', '08:15', '09:00', '09:45', '10:30', '11:15'];
+  const afternoonTimes = ['13:00', '13:45', '14:30', '15:15', '16:00', '16:45'];
+  const times = selectedPeriod === 'Manhã' ? morningTimes : afternoonTimes;
 
   const toggleSlot = (day: string, time: string) => {
     setSchedule((prev: any) => {
@@ -690,19 +696,40 @@ export function TeacherDetails() {
                 <>
                   <div className="flex flex-col md:flex-row md:items-center gap-4 justify-between">
                     <div className="space-y-1">
-                      <p className="text-sm text-muted-foreground">Disciplina</p>
+                      <p className="text-sm text-muted-foreground">Período</p>
+                      <div className="flex gap-2 text-xs">
+                        {(['Manhã', 'Tarde'] as const).map((period) => (
+                          <button
+                            key={period}
+                            type="button"
+                            onClick={() => setSelectedPeriod(period)}
+                            className={`px-3 py-1 rounded-full border text-xs ${
+                              selectedPeriod === period
+                                ? 'bg-primary text-primary-foreground border-primary'
+                                : 'bg-background text-muted-foreground'
+                            }`}
+                          >
+                            {period}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm text-muted-foreground">Disciplina / Turma</p>
                       <select
-                        className="border rounded-md px-3 py-2 bg-background text-sm"
+                        className="border rounded-md px-3 py-2 bg-background text-sm min-w-[260px]"
                         value={selectedAssignmentId}
                         onChange={(e) => setSelectedAssignmentId(e.target.value)}
                       >
-                        {teacherAssignments.map((a: any) => (
-                          <option key={a.id} value={a.id}>
-                            {a.subject?.name} - {a.class?.grade_level}ª {a.class?.section} ({
-                              a.class?.course?.name
-                            })
-                          </option>
-                        ))}
+                        {teacherAssignments
+                          .filter((a: any) => a.periods?.includes(selectedPeriod))
+                          .map((a: any) => (
+                            <option key={a.id} value={a.id}>
+                              {a.subject?.name} - {a.class?.grade_level}ª {a.class?.section} ({
+                                a.class?.course?.name
+                              })
+                            </option>
+                          ))}
                       </select>
                     </div>
                     {selectedAssignment && (
@@ -716,61 +743,70 @@ export function TeacherDetails() {
                     )}
                   </div>
 
-                  <div className="overflow-x-auto">
-                    <Table className="min-w-[700px]">
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Horas</TableHead>
-                          {days.map((day) => (
-                            <TableHead key={day} className="text-center">
-                              {day}
-                            </TableHead>
-                          ))}
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {times.map((time) => (
-                          <TableRow key={time}>
-                            <TableCell className="font-mono text-xs md:text-sm w-20">
-                              {time}
-                            </TableCell>
-                            {days.map((day) => {
-                              const isAssigned = schedule?.[day]?.[time];
-                              return (
-                                <TableCell key={day} className="p-0">
-                                  <button
-                                    type="button"
-                                    onClick={() => toggleSlot(day, time)}
-                                    className={`w-full h-12 text-xs md:text-sm border-l border-t last:border-r focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
-                                      isAssigned
-                                        ? 'bg-primary/10 text-primary font-medium'
-                                        : 'hover:bg-muted'
-                                    }`}
-                                  >
-                                    {isAssigned && selectedAssignment
-                                      ? `${selectedAssignment.class?.grade_level}ª ${selectedAssignment.class?.section}`
-                                      : ''}
-                                  </button>
+                  {teacherAssignments.filter((a: any) => a.periods?.includes(selectedPeriod)).length ===
+                  0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      Não há disciplinas atribuídas a este professor no período {selectedPeriod}.
+                    </p>
+                  ) : (
+                    <>
+                      <div className="overflow-x-auto">
+                        <Table className="min-w-[700px]">
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Horas</TableHead>
+                              {days.map((day) => (
+                                <TableHead key={day} className="text-center">
+                                  {day}
+                                </TableHead>
+                              ))}
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {times.map((time) => (
+                              <TableRow key={time}>
+                                <TableCell className="font-mono text-xs md:text-sm w-20">
+                                  {time}
                                 </TableCell>
-                              );
-                            })}
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
+                                {days.map((day) => {
+                                  const isAssigned = schedule?.[day]?.[time];
+                                  return (
+                                    <TableCell key={day} className="p-0">
+                                      <button
+                                        type="button"
+                                        onClick={() => toggleSlot(day, time)}
+                                        className={`w-full h-12 text-xs md:text-sm border-l border-t last:border-r focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+                                          isAssigned
+                                            ? 'bg-primary/10 text-primary font-medium'
+                                            : 'hover:bg-muted'
+                                        }`}
+                                      >
+                                        {isAssigned && selectedAssignment
+                                          ? `${selectedAssignment.class?.grade_level}ª ${selectedAssignment.class?.section}`
+                                          : ''}
+                                      </button>
+                                    </TableCell>
+                                  );
+                                })}
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
 
-                  <div className="flex justify-end pt-4">
-                    <Button
-                      className="btn-primary"
-                      disabled={updateAssignmentSchedule.isPending || !selectedAssignment}
-                      onClick={handleSaveSchedule}
-                    >
-                      {updateAssignmentSchedule.isPending
-                        ? 'A guardar horário...'
-                        : 'Guardar horário'}
-                    </Button>
-                  </div>
+                      <div className="flex justify-end pt-4">
+                        <Button
+                          className="btn-primary"
+                          disabled={updateAssignmentSchedule.isPending || !selectedAssignment}
+                          onClick={handleSaveSchedule}
+                        >
+                          {updateAssignmentSchedule.isPending
+                            ? 'A guardar horário...'
+                            : 'Guardar horário'}
+                        </Button>
+                      </div>
+                    </>
+                  )}
                 </>
               )}
             </CardContent>

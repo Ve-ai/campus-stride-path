@@ -596,7 +596,10 @@ export function Finance() {
     const studentsById = new Map<string, any>(students.map((s: any) => [s.id, s] as const));
     const classesById = new Map<string, any>(classes.map((c: any) => [c.id, c] as const));
 
-    return [...payments]
+    // Auditoria do gestor financeiro: apenas pagamentos registados via sistema (recorded_by definido)
+    const auditedPayments = payments.filter((p) => p.recorded_by);
+
+    return [...auditedPayments]
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
       .slice(0, 20)
       .map((payment) => {

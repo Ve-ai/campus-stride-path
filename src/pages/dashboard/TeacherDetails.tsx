@@ -13,6 +13,9 @@ import {
   Users,
   BookOpen,
 } from 'lucide-react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import logoInstituto from '@/assets/logo-instituto-amor-de-deus.png';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -256,6 +259,103 @@ export function TeacherDetails() {
         onError: (error: any) => toast.error('Erro ao atualizar horário: ' + error.message),
       },
     );
+  };
+
+  const handleExportSchedule = () => {
+    if (!selectedAssignment) return;
+
+    const doc = new jsPDF('landscape');
+    const pageWidth = doc.internal.pageSize.getWidth();
+
+    // Tentar adicionar o logotipo no topo
+    const imgSize = 18;
+    const imgX = (pageWidth - imgSize) / 2;
+    try {
+      // @ts-ignore - jsPDF aceita path de imagem fornecido pelo bundler
+      doc.addImage(logoInstituto, 'PNG', imgX, 10, imgSize, imgSize);
+    } catch (e) {
+      console.error('Erro ao adicionar logotipo ao horário do professor:', e);
+    }
+
+    let currentY = 10 + imgSize + 4;
+
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(12);
+    doc.text('INSTITUTO TECNICO PRIVADO AMOR DE DEUS', pageWidth / 2, currentY, {
+      align: 'center',
+    });
+
+    currentY += 6;
+    doc.setFontSize(10);
+    doc.text('HORÁRIO DO PROFESSOR', pageWidth / 2, currentY, { align: 'center' });
+
+    currentY += 8;
+    doc.setFontSize(9);
+    const teacherName = formValues.full_name || teacher.profiles?.full_name || teacher.full_name;
+    const subjectName = selectedAssignment.subject?.name || '';
+    const classLabel = `${selectedAssignment.class?.grade_level || ''}ª ${
+      selectedAssignment.class?.section || ''
+    }`;
+
+    doc.text(
+      `Professor: ${teacherName}`,
+      14,
+      currentY,
+    );
+
+    doc.text(
+      `Disciplina/Turma: ${subjectName} - ${classLabel}`,
+      pageWidth / 2,
+      currentY,
+      { align: 'center' },
+    );
+
+    doc.text(
+      `Período: ${selectedPeriod}`,
+      pageWidth - 14,
+      currentY,
+      { align: 'right' },
+    );
+
+    // Construir tabela com horários (início e término) e dias
+    const head = [[
+      'Horário',
+      ...days,
+    ]];
+
+    const body = timeSlots.map((slot) => {
+      const row: (string | number)[] = [`${slot.start} - ${slot.end}`];
+
+      days.forEach((day) => {
+        const isAssigned = schedule?.[day]?.[slot.start];
+        if (isAssigned) {
+          row.push(`${classLabel}`);
+        } else {
+          row.push('');
+        }
+      });
+
+      return row;
+    });
+
+    autoTable(doc, {
+      head,
+      body,
+      startY: currentY + 6,
+      styles: {
+        fontSize: 8,
+        cellPadding: 2,
+      },
+      headStyles: {
+        fillColor: [15, 76, 129],
+        textColor: 255,
+      },
+      alternateRowStyles: {
+        fillColor: [245, 245, 245],
+      },
+    });
+
+    doc.save(`horario-${teacherName.replace(/\s+/g, '-').toLowerCase()}.pdf`);
   };
 
   return (
@@ -836,7 +936,14 @@ export function TeacherDetails() {
                         </Table>
                       </div>
 
-                      <div className="flex justify-end pt-4">
+                      <div className="flex flex-col md:flex-row justify-end gap-2 pt-4">
+                        <Button
+                          variant="outline"
+                          disabled={!selectedAssignment}
+                          onClick={handleExportSchedule}
+                        >
+                          Exportar horário (PDF)
+                        </Button>
                         <Button
                           className="btn-primary"
                           disabled={updateAssignmentSchedule.isPending || !selectedAssignment}

@@ -201,6 +201,35 @@ export function TeacherDetails() {
     (a: any) => a.id === selectedAssignmentId,
   );
 
+  // Consolidar os horários de TODAS as turmas do professor para o período selecionado
+  // Retorna: { [day]: { [time]: { assignmentId, classLabel, subjectName } } }
+  const consolidatedSchedule = React.useMemo(() => {
+    const result: Record<string, Record<string, { assignmentId: string; classLabel: string; subjectName: string }>> = {};
+    
+    teacherAssignments
+      .filter((a: any) => a.periods?.includes(selectedPeriod))
+      .forEach((assignment: any) => {
+        const assignmentSchedule = assignment.schedule || {};
+        const classLabel = `${assignment.class?.grade_level}ª ${assignment.class?.section}`;
+        const subjectName = assignment.subject?.name || '';
+        
+        Object.entries(assignmentSchedule).forEach(([day, times]: [string, any]) => {
+          if (!result[day]) result[day] = {};
+          Object.entries(times).forEach(([time, isAssigned]) => {
+            if (isAssigned) {
+              result[day][time] = {
+                assignmentId: assignment.id,
+                classLabel,
+                subjectName,
+              };
+            }
+          });
+        });
+      });
+    
+    return result;
+  }, [teacherAssignments, selectedPeriod]);
+
   useEffect(() => {
     if (selectedAssignment) {
       setSchedule(selectedAssignment.schedule || {});
@@ -237,6 +266,13 @@ export function TeacherDetails() {
   const times = timeSlots.map(slot => slot.start);
 
   const toggleSlot = (day: string, time: string) => {
+    // Verificar se o horário já está ocupado por outra turma
+    const existing = consolidatedSchedule[day]?.[time];
+    if (existing && existing.assignmentId !== selectedAssignmentId) {
+      toast.error(`Este horário já está ocupado pela turma ${existing.classLabel} (${existing.subjectName})`);
+      return;
+    }
+    
     setSchedule((prev: any) => {
       const daySchedule = prev[day] || {};
       const isAssigned = !!daySchedule[time];
@@ -262,8 +298,6 @@ export function TeacherDetails() {
   };
 
   const handleExportSchedule = () => {
-    if (!selectedAssignment) return;
-
     const doc = new jsPDF('landscape');
     const pageWidth = doc.internal.pageSize.getWidth();
 
@@ -292,22 +326,17 @@ export function TeacherDetails() {
     currentY += 8;
     doc.setFontSize(9);
     const teacherName = formValues.full_name || teacher.profiles?.full_name || teacher.full_name;
-    const subjectName = selectedAssignment.subject?.name || '';
-    const classLabel = `${selectedAssignment.class?.grade_level || ''}ª ${
-      selectedAssignment.class?.section || ''
-    }`;
+
+    // Listar todas as turmas/disciplinas do professor neste período
+    const assignmentsForPeriod = teacherAssignments.filter((a: any) => a.periods?.includes(selectedPeriod));
+    const subjectsClasses = assignmentsForPeriod.map((a: any) => 
+      `${a.subject?.name} - ${a.class?.grade_level}ª ${a.class?.section}`
+    ).join(', ');
 
     doc.text(
       `Professor: ${teacherName}`,
       14,
       currentY,
-    );
-
-    doc.text(
-      `Disciplina/Turma: ${subjectName} - ${classLabel}`,
-      pageWidth / 2,
-      currentY,
-      { align: 'center' },
     );
 
     doc.text(
@@ -317,7 +346,16 @@ export function TeacherDetails() {
       { align: 'right' },
     );
 
+    currentY += 5;
+    doc.setFontSize(8);
+    doc.text(
+      `Disciplinas/Turmas: ${subjectsClasses || 'Nenhuma'}`,
+      14,
+      currentY,
+    );
+
     // Construir tabela com horários (início e término) e dias
+    // Usar o consolidatedSchedule para mostrar TODAS as turmas
     const head = [[
       'Horário',
       ...days,
@@ -327,9 +365,9 @@ export function TeacherDetails() {
       const row: (string | number)[] = [`${slot.start} - ${slot.end}`];
 
       days.forEach((day) => {
-        const isAssigned = schedule?.[day]?.[slot.start];
-        if (isAssigned) {
-          row.push(`${classLabel}`);
+        const slotData = consolidatedSchedule[day]?.[slot.start];
+        if (slotData) {
+          row.push(`${slotData.subjectName}\n${slotData.classLabel}`);
         } else {
           row.push('');
         }
@@ -343,7 +381,7 @@ export function TeacherDetails() {
       body,
       startY: currentY + 6,
       styles: {
-        fontSize: 8,
+        fontSize: 7,
         cellPadding: 2,
       },
       headStyles: {
@@ -355,7 +393,7 @@ export function TeacherDetails() {
       },
     });
 
-    doc.save(`horario-${teacherName.replace(/\s+/g, '-').toLowerCase()}.pdf`);
+    doc.save(`horario-${teacherName.replace(/\s+/g, '-').toLowerCase()}-${selectedPeriod.toLowerCase()}.pdf`);
   };
 
   return (
@@ -897,19 +935,33 @@ export function TeacherDetails() {
                                     </div>
                                   </TableCell>
                                   {days.map((day) => {
-                                    const isAssigned = schedule?.[day]?.[slot.start];
+                                    // Verificar se há alguma turma atribuída neste slot (de qualquer assignment)
+                                    const existingSlot = consolidatedSchedule[day]?.[slot.start];
+                                    // Verificar se é da turma selecionada atualmente
+                                    const isCurrentAssignment = existingSlot?.assignmentId === selectedAssignmentId;
+                                    // Verificar se está atribuído no schedule local (para a turma selecionada)
+                                    const isAssignedLocal = schedule?.[day]?.[slot.start];
+                                    // Se há slot ocupado por outra turma
+                                    const isOccupiedByOther = existingSlot && !isCurrentAssignment;
+                                    
                                     return (
                                       <TableCell key={day} className="p-0">
                                         <button
                                           type="button"
                                           onClick={() => toggleSlot(day, slot.start)}
+                                          disabled={isOccupiedByOther}
                                           className={`w-full h-14 text-xs md:text-sm border-l border-t last:border-r focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
-                                            isAssigned
+                                            isOccupiedByOther
+                                              ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 cursor-not-allowed'
+                                              : isAssignedLocal
                                               ? 'bg-primary/10 text-primary font-medium'
                                               : 'hover:bg-muted'
                                           }`}
+                                          title={isOccupiedByOther ? `Ocupado: ${existingSlot.subjectName} - ${existingSlot.classLabel}` : undefined}
                                         >
-                                          {isAssigned && selectedAssignment
+                                          {isOccupiedByOther
+                                            ? `${existingSlot.classLabel}`
+                                            : isAssignedLocal && selectedAssignment
                                             ? `${selectedAssignment.class?.grade_level}ª ${selectedAssignment.class?.section}`
                                             : ''}
                                         </button>

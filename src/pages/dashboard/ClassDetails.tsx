@@ -879,25 +879,26 @@ export function ClassDetails() {
                     currentY += 5;
                     doc.text(`Disciplina: ${selectedSubject.name}`, 14, currentY);
 
-                    const headRow1: string[] = [
-                      'Nº',
-                      'NOME COMPLETO',
-                      'Iº TRIMESTRE',
-                      '',
-                      '',
-                      '',
-                      'IIº TRIMESTRE',
-                      '',
-                      '',
-                      '',
-                      'IIIº TRIMESTRE',
-                      '',
-                      '',
-                      '',
-                      'MFD',
+                    // Tabela seguindo o modelo: cabeçalhos de trimestre centralizados
+                    const headRow1: any[] = [
+                      { content: 'Nº', rowSpan: 2 },
+                      { content: 'NOME COMPLETO', rowSpan: 2 },
+                      { content: 'Iº TRIMESTRE', colSpan: 4 },
+                      {},
+                      {},
+                      {},
+                      { content: 'IIº TRIMESTRE', colSpan: 4 },
+                      {},
+                      {},
+                      {},
+                      { content: 'IIIº TRIMESTRE', colSpan: 4 },
+                      {},
+                      {},
+                      {},
+                      { content: 'MFD', rowSpan: 2 },
                     ];
 
-                    const headRow2: string[] = [
+                    const headRow2: any[] = [
                       '',
                       '',
                       'MAC',
@@ -942,21 +943,53 @@ export function ClassDetails() {
                       return row;
                     });
 
+                    // Fonte Times New Roman, tamanho 12, como no modelo
+                    doc.setFont('Times');
+                    doc.setFontSize(12);
+
                     autoTable(doc, {
                       head: [headRow1, headRow2],
                       body,
                       startY: currentY + 6,
                       margin: { top: currentY + 2, left: 8, right: 8 },
-                      styles: { fontSize: 7, cellPadding: 1, overflow: 'linebreak', textColor: [0, 0, 0] },
-                      headStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0] },
+                      styles: {
+                        font: 'times',
+                        fontSize: 12,
+                        cellPadding: 1,
+                        overflow: 'linebreak',
+                        textColor: [0, 0, 0],
+                      },
+                      headStyles: {
+                        fillColor: [240, 240, 240],
+                        textColor: [0, 0, 0],
+                        halign: 'center',
+                      },
+                      columnStyles: {
+                        // Centralizar colunas de trimestres e MFD
+                        0: { halign: 'center' },
+                        2: { halign: 'center' },
+                        3: { halign: 'center' },
+                        4: { halign: 'center' },
+                        5: { halign: 'center' },
+                        6: { halign: 'center' },
+                        7: { halign: 'center' },
+                        8: { halign: 'center' },
+                        9: { halign: 'center' },
+                        10: { halign: 'center' },
+                        11: { halign: 'center' },
+                        12: { halign: 'center' },
+                        13: { halign: 'center' },
+                        14: { halign: 'center' },
+                      },
                       theme: 'grid',
                       pageBreak: 'auto',
                       didParseCell: (data) => {
                         if (data.section === 'body') {
                           const raw = data.cell.raw;
-                          const value = typeof raw === 'string' || typeof raw === 'number'
-                            ? Number(raw)
-                            : NaN;
+                          const value =
+                            typeof raw === 'string' || typeof raw === 'number'
+                              ? Number(raw)
+                              : NaN;
 
                           if (!Number.isNaN(value) && value < 10) {
                             data.cell.styles.textColor = [255, 0, 0];

@@ -120,28 +120,28 @@ export function Settings() {
 
   const handleSeedDemoData = async () => {
     if (!isSuperAdmin) {
-      toast.error('Apenas o administrador supremo pode reinicializar os dados.');
+      toast.error('Apenas o administrador supremo pode limpar os dados de exemplo.');
       return;
     }
 
-    if (!confirm('Tem a certeza que pretende reinicializar todos os dados de exemplo? Esta ação não pode ser desfeita.')) {
+    if (!confirm('Tem a certeza que pretende apagar todos os dados de exemplo? Esta ação não pode ser desfeita.')) {
       return;
     }
 
     try {
       setIsSeedingData(true);
-      const { data, error } = await supabase.functions.invoke('seed-data');
+      const { data, error } = await supabase.functions.invoke('reset-demo');
 
       if (error) {
-        console.error('Seed error:', error);
-        toast.error('Erro ao reinicializar dados de exemplo.');
+        console.error('Reset demo error:', error);
+        toast.error('Erro ao limpar dados de exemplo.');
         return;
       }
 
-      toast.success(data?.message || 'Dados de exemplo reinicializados com sucesso.');
+      toast.success(data?.message || 'Dados de exemplo removidos com sucesso.');
     } catch (err) {
-      console.error('Seed error:', err);
-      toast.error('Erro inesperado ao reinicializar dados de exemplo.');
+      console.error('Reset demo error:', err);
+      toast.error('Erro inesperado ao limpar dados de exemplo.');
     } finally {
       setIsSeedingData(false);
     }
@@ -344,11 +344,10 @@ export function Settings() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-destructive">
                   <RefreshCw className="w-5 h-5" />
-                  Reinicializar base de dados de exemplo
+                  Limpar dados de exemplo
                 </CardTitle>
                 <CardDescription>
-                  Apaga todos os dados atuais de exemplo (alunos, cursos, turmas, professores, pagamentos) e recria o cenário padrão
-                  com 8 cursos, 96 turmas (manhã e tarde), 100 professores e 1400 alunos. Use apenas em ambiente de testes.
+                  Apaga todos os dados de teste (alunos, cursos, turmas, professores, pagamentos, faltas, notas) deixando apenas as contas de administração e finanças já configuradas.
                 </CardDescription>
               </CardHeader>
               <CardContent className="flex items-center justify-between gap-4 flex-wrap">

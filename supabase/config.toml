@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.admin-create-professor-user]
 verify_jwt = false
+
+[functions.reset-demo]
+verify_jwt = false

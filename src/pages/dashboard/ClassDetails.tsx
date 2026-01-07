@@ -117,6 +117,21 @@ export function ClassDetails() {
     setNewStudent((prev) => ({ ...prev, enrollment_date: parsed }));
   };
 
+  type NewStudentErrors = {
+    full_name?: string;
+    enrollment_number?: string;
+    bi_number?: string;
+    birth_date?: string;
+    birthplace?: string;
+    province?: string;
+    father_name?: string;
+    mother_name?: string;
+    guardian_name?: string;
+    enrollment_date?: string;
+  };
+
+  const [errors, setErrors] = useState<NewStudentErrors>({});
+
 
   const createStudent = useCreateStudent();
   
@@ -339,8 +354,13 @@ export function ClassDetails() {
                   onChange={(e) =>
                     setNewStudent({ ...newStudent, full_name: e.target.value })
                   }
+                  className={cn(errors.full_name && 'border-destructive focus-visible:ring-destructive')}
                 />
+                {errors.full_name && (
+                  <p className="text-sm text-destructive">{errors.full_name}</p>
+                )}
               </div>
+
               <div className="space-y-2">
                 <Label>Nº Matrícula *</Label>
                 <Input
@@ -349,18 +369,28 @@ export function ClassDetails() {
                   onChange={(e) =>
                     setNewStudent({ ...newStudent, enrollment_number: e.target.value })
                   }
+                  className={cn(errors.enrollment_number && 'border-destructive focus-visible:ring-destructive')}
                 />
+                {errors.enrollment_number && (
+                  <p className="text-sm text-destructive">{errors.enrollment_number}</p>
+                )}
               </div>
+
               <div className="space-y-2">
-                <Label>BI</Label>
+                <Label>BI *</Label>
                 <Input
                   placeholder="Número do BI"
                   value={newStudent.bi_number}
                   onChange={(e) =>
                     setNewStudent({ ...newStudent, bi_number: e.target.value })
                   }
+                  className={cn(errors.bi_number && 'border-destructive focus-visible:ring-destructive')}
                 />
+                {errors.bi_number && (
+                  <p className="text-sm text-destructive">{errors.bi_number}</p>
+                )}
               </div>
+
               <div className="space-y-2">
                 <Label>Género</Label>
                 <Select
@@ -385,7 +415,11 @@ export function ClassDetails() {
                     placeholder="dd/mm/aaaa"
                     value={formatDateInput(newStudent.birth_date)}
                     onChange={(e) => handleBirthDateInputChange(e.target.value)}
+                    className={cn(errors.birth_date && 'border-destructive focus-visible:ring-destructive')}
                   />
+                  {errors.birth_date && (
+                    <p className="text-sm text-destructive">{errors.birth_date}</p>
+                  )}
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button
@@ -432,55 +466,76 @@ export function ClassDetails() {
               </div>
 
               <div className="space-y-2">
-                <Label>Naturalidade</Label>
+                <Label>Naturalidade *</Label>
                 <Input
                   placeholder="Cidade/Local de nascimento"
                   value={newStudent.birthplace}
                   onChange={(e) =>
                     setNewStudent({ ...newStudent, birthplace: e.target.value })
                   }
+                  className={cn(errors.birthplace && 'border-destructive focus-visible:ring-destructive')}
                 />
+                {errors.birthplace && (
+                  <p className="text-sm text-destructive">{errors.birthplace}</p>
+                )}
               </div>
               <div className="space-y-2">
-                <Label>Província</Label>
+                <Label>Província *</Label>
                 <Input
                   placeholder="Província"
                   value={newStudent.province}
                   onChange={(e) =>
                     setNewStudent({ ...newStudent, province: e.target.value })
                   }
+                  className={cn(errors.province && 'border-destructive focus-visible:ring-destructive')}
                 />
+                {errors.province && (
+                  <p className="text-sm text-destructive">{errors.province}</p>
+                )}
               </div>
               <div className="space-y-2">
-                <Label>Filiação - Nome do Pai</Label>
+                <Label>Filiação - Nome do Pai *</Label>
                 <Input
                   placeholder="Nome do pai"
                   value={newStudent.father_name}
                   onChange={(e) =>
                     setNewStudent({ ...newStudent, father_name: e.target.value })
                   }
+                  className={cn(errors.father_name && 'border-destructive focus-visible:ring-destructive')}
                 />
+                {errors.father_name && (
+                  <p className="text-sm text-destructive">{errors.father_name}</p>
+                )}
               </div>
               <div className="space-y-2">
-                <Label>Filiação - Nome da Mãe</Label>
+                <Label>Filiação - Nome da Mãe *</Label>
                 <Input
                   placeholder="Nome da mãe"
                   value={newStudent.mother_name}
                   onChange={(e) =>
                     setNewStudent({ ...newStudent, mother_name: e.target.value })
                   }
+                  className={cn(errors.mother_name && 'border-destructive focus-visible:ring-destructive')}
                 />
+                {errors.mother_name && (
+                  <p className="text-sm text-destructive">{errors.mother_name}</p>
+                )}
               </div>
               <div className="space-y-2">
-                <Label>Nome do Encarregado</Label>
+                <Label>Nome do Encarregado *</Label>
                 <Input
                   placeholder="Nome do encarregado de educação"
                   value={newStudent.guardian_name}
                   onChange={(e) =>
                     setNewStudent({ ...newStudent, guardian_name: e.target.value })
                   }
+                  className={cn(errors.guardian_name && 'border-destructive focus-visible:ring-destructive')}
                 />
+                {errors.guardian_name && (
+                  <p className="text-sm text-destructive">{errors.guardian_name}</p>
+                )}
               </div>
+
               <div className="space-y-2">
                 <Label>Contacto do Encarregado (opcional)</Label>
                 <Input
@@ -506,7 +561,11 @@ export function ClassDetails() {
                     placeholder="dd/mm/aaaa"
                     value={formatDateInput(newStudent.enrollment_date)}
                     onChange={(e) => handleEnrollmentDateInputChange(e.target.value)}
+                    className={cn(errors.enrollment_date && 'border-destructive focus-visible:ring-destructive')}
                   />
+                  {errors.enrollment_date && (
+                    <p className="text-sm text-destructive">{errors.enrollment_date}</p>
+                  )}
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button
@@ -539,6 +598,7 @@ export function ClassDetails() {
                   </Popover>
                 </div>
               </div>
+
 
             </div>
             <div className="flex justify-end gap-2 pt-2">

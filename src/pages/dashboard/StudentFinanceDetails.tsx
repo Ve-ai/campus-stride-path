@@ -44,6 +44,7 @@ import {
 import { useStudents, usePayments, useClasses, useCourses, useCreatePayment } from '@/hooks/useDatabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from "@/lib/notifications";
+import instituteLogo from "@/assets/logo-instituto-amor-de-deus.png";
 
 const MONTHS = [
   'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -195,7 +196,6 @@ export function StudentFinanceDetails() {
       .institution { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
       .institution-sub { font-size: 11px; color: #4b5563; margin-top: 2px; }
       .title { font-size: 18px; font-weight: 700; margin: 8px 0 0 0; }
-      .subtitle { font-size: 13px; color: #111827; margin: 4px 0 0 0; text-transform: uppercase; }
       .section { margin-bottom: 16px; }
       .section-title { font-size: 13px; font-weight: 600; margin-bottom: 8px; text-transform: uppercase; color: #374151; }
       table { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -212,12 +212,10 @@ export function StudentFinanceDetails() {
   </head>
   <body>
     <div class="header">
-      ${nucleusLogo ? `<img src="${nucleusLogo}" alt="Logotipo ${nucleusName}" class="logo" />` : ''}
+      <img src="${instituteLogo}" alt="Logotipo Instituto Amor de Deus" class="logo" />
       <div>
         <div class="institution">INSTITUTO TÉCNICO PRIVADO DE SAÚDE AMOR DE DEUS</div>
         <div class="institution-sub">NIF: 7000001295 &bull; NEGAGE</div>
-        <h1 class="title">SECRETARIA GERAL</h1>
-        <p class="subtitle">Caro utente, informa-se aqui</p>
       </div>
     </div>
 

@@ -415,6 +415,149 @@ export function Finance() {
 
     toast.success('Relatório PDF gerado com sucesso');
   };
+
+  const handleExportDetailedReport = () => {
+    if (!paymentBreakdown.general) {
+      toast.error('Não há dados suficientes para gerar o relatório');
+      return;
+    }
+
+    const doc = new jsPDF('portrait', 'pt', 'a4');
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const currentMonth = new Date().getMonth() + 1;
+    const currentYear = new Date().getFullYear();
+
+    // Título
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(16);
+    doc.text('Relatório Detalhado de Entradas', pageWidth / 2, 40, { align: 'center' });
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.text(`Mês de Referência: ${paymentBreakdown.currentMonthLabel}`, pageWidth / 2, 55, { align: 'center' });
+    doc.text(`Gerado em: ${new Date().toLocaleString('pt-AO')}`, pageWidth / 2, 68, { align: 'center' });
+
+    // Resumo Geral
+    let startY = 95;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.text('Resumo Geral (Todos os Cursos)', 40, startY);
+
+    const generalSummary = [
+      ['Mensalidades Passadas (Atrasadas)', formatCurrency(paymentBreakdown.general.totalPast)],
+      ['Mensalidades Mês Corrente', formatCurrency(paymentBreakdown.general.totalCurrent)],
+      ['Mensalidades Adiantadas', formatCurrency(paymentBreakdown.general.totalAdvance)],
+      ['TOTAL DE ENTRADAS DO MÊS', formatCurrency(paymentBreakdown.general.grandTotal)],
+    ];
+
+    autoTable(doc, {
+      startY: startY + 10,
+      head: [['Categoria', 'Valor']],
+      body: generalSummary,
+      styles: { fontSize: 10 },
+      headStyles: { fillColor: [59, 130, 246] },
+      bodyStyles: { lineWidth: 0.5 },
+      didParseCell: (data) => {
+        if (data.row.index === generalSummary.length - 1) {
+          data.cell.styles.fontStyle = 'bold';
+          data.cell.styles.fillColor = [240, 253, 244];
+        }
+      },
+    });
+
+    // Detalhes por Mês - Passados
+    if (paymentBreakdown.general.pastMonths.length > 0) {
+      const pastStartY = (doc as any).lastAutoTable.finalY + 20;
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.text('Detalhes: Mensalidades Passadas (por mês)', 40, pastStartY);
+
+      autoTable(doc, {
+        startY: pastStartY + 10,
+        head: [['Mês/Ano', 'Valor Recebido']],
+        body: paymentBreakdown.general.pastMonths.map((m) => [m.label, formatCurrency(m.amount)]),
+        foot: [['Total Passados', formatCurrency(paymentBreakdown.general.totalPast)]],
+        styles: { fontSize: 9 },
+        headStyles: { fillColor: [245, 158, 11] },
+        footStyles: { fillColor: [254, 243, 199], fontStyle: 'bold', textColor: [0, 0, 0] },
+      });
+    }
+
+    // Detalhes por Mês - Adiantados
+    if (paymentBreakdown.general.advanceMonths.length > 0) {
+      const advanceStartY = (doc as any).lastAutoTable.finalY + 20;
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.text('Detalhes: Mensalidades Adiantadas (por mês)', 40, advanceStartY);
+
+      autoTable(doc, {
+        startY: advanceStartY + 10,
+        head: [['Mês/Ano', 'Valor Recebido']],
+        body: paymentBreakdown.general.advanceMonths.map((m) => [m.label, formatCurrency(m.amount)]),
+        foot: [['Total Adiantados', formatCurrency(paymentBreakdown.general.totalAdvance)]],
+        styles: { fontSize: 9 },
+        headStyles: { fillColor: [59, 130, 246] },
+        footStyles: { fillColor: [219, 234, 254], fontStyle: 'bold', textColor: [0, 0, 0] },
+      });
+    }
+
+    // Detalhes por Curso
+    if (paymentBreakdown.byCourse.length > 0) {
+      const courseStartY = (doc as any).lastAutoTable.finalY + 25;
+      
+      // Verificar se precisa de nova página
+      if (courseStartY > doc.internal.pageSize.getHeight() - 150) {
+        doc.addPage();
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(12);
+        doc.text('Detalhes por Curso', 40, 40);
+      } else {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(12);
+        doc.text('Detalhes por Curso', 40, courseStartY);
+      }
+
+      const courseData = paymentBreakdown.byCourse.map((course) => [
+        course.courseName,
+        formatCurrency(course.breakdown.totalPast),
+        formatCurrency(course.breakdown.totalCurrent),
+        formatCurrency(course.breakdown.totalAdvance),
+        formatCurrency(course.breakdown.grandTotal),
+      ]);
+
+      // Totais
+      let totalPast = 0;
+      let totalCurrent = 0;
+      let totalAdvance = 0;
+      let grandTotalCourse = 0;
+      paymentBreakdown.byCourse.forEach((c) => {
+        totalPast += c.breakdown.totalPast;
+        totalCurrent += c.breakdown.totalCurrent;
+        totalAdvance += c.breakdown.totalAdvance;
+        grandTotalCourse += c.breakdown.grandTotal;
+      });
+
+      autoTable(doc, {
+        startY: courseStartY > doc.internal.pageSize.getHeight() - 150 ? 50 : courseStartY + 10,
+        head: [['Curso', 'Passadas', 'Corrente', 'Adiantadas', 'Total']],
+        body: courseData,
+        foot: [['TOTAL GERAL', formatCurrency(totalPast), formatCurrency(totalCurrent), formatCurrency(totalAdvance), formatCurrency(grandTotalCourse)]],
+        styles: { fontSize: 9 },
+        headStyles: { fillColor: [107, 114, 128] },
+        footStyles: { fillColor: [229, 231, 235], fontStyle: 'bold', textColor: [0, 0, 0] },
+        columnStyles: {
+          0: { cellWidth: 'auto' },
+          1: { halign: 'right' },
+          2: { halign: 'right' },
+          3: { halign: 'right' },
+          4: { halign: 'right', fontStyle: 'bold' },
+        },
+      });
+    }
+
+    doc.save(`relatorio-entradas-detalhado-${currentYear}-${currentMonth}.pdf`);
+    toast.success('Relatório detalhado exportado com sucesso');
+  };
   const handleCreatePayment = () => {
     if (!newPayment.student_id) {
       toast.error('Selecione um estudante');
@@ -1461,14 +1604,20 @@ export function Finance() {
 
           {/* Relatório Detalhado de Entradas do Mês */}
           <Card className="card-elevated">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Wallet className="w-5 h-5" />
-                Detalhes de Entradas do Mês ({paymentBreakdown.currentMonthLabel})
-              </CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Classificação dos pagamentos recebidos este mês: mensalidades passadas, corrente e adiantadas
-              </p>
+            <CardHeader className="flex flex-row items-start justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Wallet className="w-5 h-5" />
+                  Detalhes de Entradas do Mês ({paymentBreakdown.currentMonthLabel})
+                </CardTitle>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Classificação dos pagamentos recebidos este mês: mensalidades passadas, corrente e adiantadas
+                </p>
+              </div>
+              <Button variant="outline" size="sm" onClick={handleExportDetailedReport}>
+                <Download className="w-4 h-4 mr-2" />
+                Exportar PDF
+              </Button>
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Resumo Geral */}

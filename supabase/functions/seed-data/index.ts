@@ -241,8 +241,8 @@ serve(async (req) => {
 
     console.log('Subjects created')
 
-    // 4. Create Classes for each course (target: 48 turmas)
-    const periods = ['Manhã']
+    // 4. Create Classes for each course (target: 96 turmas - manhã e tarde)
+    const periods = ['Manhã', 'Tarde']
     const sections = ['A', 'B']
     const academicYear = 2025
 
@@ -263,7 +263,7 @@ serve(async (req) => {
       }
     }
 
-    // Criar todas as combinações definidas (exatamente 48 turmas = 8 cursos x 3 anos x 2 turmas)
+    // Criar todas as combinações definidas (96 turmas = 8 cursos x 3 anos x 2 turmas x 2 períodos)
     const selectedClassConfigs = classConfigs
 
     for (const cfg of selectedClassConfigs) {
@@ -287,7 +287,7 @@ serve(async (req) => {
     const { data: classes } = await supabase.from('classes').select('id, course_id, grade_level, section, period')
     console.log('Classes created:', classes?.length)
 
-    // 5. Create Teachers with profiles (target: 50 professores)
+    // 5. Create Teachers with profiles (target: 100 professores)
     const teachersData = [
       { name: 'Carlos Alberto Mendes', employeeNumber: 'PROF001', degree: 'Licenciatura', degreeArea: 'Matemática', salary: 85000, phone: '925654254' },
       { name: 'Sofia Maria Lima', employeeNumber: 'PROF002', degree: 'Mestrado', degreeArea: 'Engenharia Informática', salary: 95000, phone: '923456789' },
@@ -312,7 +312,7 @@ serve(async (req) => {
       'Psicologia',
     ]
 
-    const totalTeachersTarget = 50
+    const totalTeachersTarget = 100
 
     for (let i = teachersData.length + 1; i <= totalTeachersTarget; i++) {
       const index = i - 1
@@ -398,7 +398,7 @@ serve(async (req) => {
       console.log('Course coordinators assigned')
     }
 
-    // 6. Create Students (target: 700 estudantes divididos nas turmas)
+    // 6. Create Students (target: 1400 estudantes divididos nas turmas - manhã e tarde)
     const firstNames = ['Pedro', 'Maria', 'João', 'Ana', 'Carlos', 'Sofia', 'Manuel', 'Catarina', 'António', 'Isabel', 'Miguel', 'Francisca', 'José', 'Beatriz', 'Paulo']
     const lastNames = ['Alves', 'Santos', 'Ferreira', 'Costa', 'Silva', 'Oliveira', 'Mendes', 'Nunes', 'Pereira', 'Rodrigues', 'Martins', 'Sousa', 'Fernandes', 'Gonçalves', 'Gomes']
     const provinces = ['Luanda', 'Benguela', 'Huambo', 'Huíla', 'Bié', 'Malanje', 'Kwanza Norte', 'Kwanza Sul']
@@ -407,7 +407,7 @@ serve(async (req) => {
     let studentCount = 0
     const classesToPopulate = (classes || []) // popular todas as turmas existentes (de todos os cursos)
 
-    const totalStudentsTarget = 700
+    const totalStudentsTarget = 1400
     const numClasses = classesToPopulate.length
     const basePerClass = Math.floor(totalStudentsTarget / Math.max(numClasses, 1))
     const remainder = totalStudentsTarget - basePerClass * numClasses

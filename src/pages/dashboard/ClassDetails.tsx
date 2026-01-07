@@ -11,7 +11,7 @@ import {
   CalendarIcon,
 } from 'lucide-react';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -809,8 +809,8 @@ export function ClassDetails() {
                     const headRow2: string[] = ['', '', ''];
 
                     classSubjects.forEach((subject) => {
-                      headRow1.push(subject.name, '', '');
-                      headRow2.push('MAC', 'NPT', 'MT');
+                      headRow1.push(subject.name, '', '', '');
+                      headRow2.push('MAC', 'NPP', 'NPT', 'MT');
                     });
 
                     const body = filteredStudents.map((student, index) => {
@@ -830,6 +830,7 @@ export function ClassDetails() {
                         );
                         row.push(
                           grade?.mac ?? '-',
+                          '-',
                           grade?.npt ?? '-',
                           grade?.mt ?? '-',
                         );
@@ -838,7 +839,7 @@ export function ClassDetails() {
                       return row;
                     });
 
-                    (doc as any).autoTable({
+                    autoTable(doc, {
                       head: [headRow1, headRow2],
                       body,
                       startY: 22,
@@ -872,7 +873,7 @@ export function ClassDetails() {
                       <TableHead className="sticky left-10 bg-background z-10">N° Matrícula</TableHead>
                       <TableHead className="sticky left-28 bg-background z-10 min-w-[200px]">Nome Completo</TableHead>
                       {classSubjects.map((subject) => (
-                        <TableHead key={subject.id} colSpan={3} className="text-center border-l">
+                        <TableHead key={subject.id} colSpan={4} className="text-center border-l">
                           {subject.name}
                         </TableHead>
                       ))}
@@ -884,6 +885,7 @@ export function ClassDetails() {
                       {classSubjects.map((subject) => (
                         <React.Fragment key={`headers-${subject.id}`}>
                           <TableHead className="text-center text-xs border-l">MAC</TableHead>
+                          <TableHead className="text-center text-xs">NPP</TableHead>
                           <TableHead className="text-center text-xs">NPT</TableHead>
                           <TableHead className="text-center text-xs">MT</TableHead>
                         </React.Fragment>

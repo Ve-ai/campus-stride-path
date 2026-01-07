@@ -308,13 +308,113 @@ export function Finance() {
       headStyles: { fillColor: [108, 117, 125] },
     });
 
+    // Nova página para gráficos
+    doc.addPage('landscape');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(14);
+    doc.text('Gráficos Financeiros', pageWidth / 2, 40, { align: 'center' });
+
+    const chartMarginLeft = 60;
+    const chartWidth = pageWidth - chartMarginLeft * 2;
+
+    // Gráfico 1 — Receitas Mensais (barras)
+    const barChartTop = 70;
+    const barChartHeight = 100;
+
+    doc.setFontSize(11);
+    doc.text('Receitas Mensais (Mensalidades e Multas)', chartMarginLeft, barChartTop - 10);
+
+    const monthsToShow = monthlyData.slice(-6); // últimos 6 meses ou menos
+    const maxValue = Math.max(
+      1,
+      ...monthsToShow.map((m) => m.receita || 0),
+      ...monthsToShow.map((m) => m.multas || 0),
+    );
+
+    const barGroupWidth = chartWidth / Math.max(1, monthsToShow.length);
+    const barWidth = barGroupWidth / 3;
+
+    monthsToShow.forEach((m, index) => {
+      const xBase = chartMarginLeft + index * barGroupWidth;
+      const receitaHeight = (m.receita / maxValue) * barChartHeight;
+      const multasHeight = (m.multas / maxValue) * barChartHeight;
+
+      // Receita (verde)
+      doc.setFillColor(40, 167, 69);
+      doc.rect(
+        xBase,
+        barChartTop + barChartHeight - receitaHeight,
+        barWidth,
+        receitaHeight,
+        'F',
+      );
+
+      // Multas (amarelo)
+      doc.setFillColor(255, 193, 7);
+      doc.rect(
+        xBase + barWidth + 2,
+        barChartTop + barChartHeight - multasHeight,
+        barWidth,
+        multasHeight,
+        'F',
+      );
+
+      // Label do mês
+      doc.setFontSize(8);
+      doc.setTextColor(0);
+      doc.text(String(m.month), xBase + barGroupWidth / 2, barChartTop + barChartHeight + 10, {
+        align: 'center',
+      });
+    });
+
+    // Legenda do gráfico de barras
+    doc.setFontSize(9);
+    let legendY = barChartTop + barChartHeight + 25;
+    doc.setFillColor(40, 167, 69);
+    doc.rect(chartMarginLeft, legendY - 5, 8, 8, 'F');
+    doc.text('Receita (Mensalidades)', chartMarginLeft + 14, legendY);
+
+    doc.setFillColor(255, 193, 7);
+    doc.rect(chartMarginLeft + 160, legendY - 5, 8, 8, 'F');
+    doc.text('Multas', chartMarginLeft + 176, legendY);
+
+    // Gráfico 2 — Distribuição de Pagamentos (barras horizontais)
+    const distTop = legendY + 30;
+    const distBarMaxWidth = chartWidth * 0.5;
+
+    doc.setFontSize(11);
+    doc.text('Distribuição de Pagamentos (Pagos vs Pendentes)', chartMarginLeft, distTop);
+
+    const totalDist = Math.max(1, paymentDistribution.reduce((sum, d) => sum + d.value, 0));
+
+    let currentY = distTop + 15;
+    paymentDistribution.forEach((item) => {
+      const width = (item.value / totalDist) * distBarMaxWidth;
+      const color = item.name === 'Pagos' ? [40, 167, 69] : [220, 53, 69];
+
+      doc.setFillColor(color[0], color[1], color[2]);
+      doc.rect(chartMarginLeft, currentY, width, 10, 'F');
+
+      doc.setFontSize(9);
+      doc.setTextColor(0);
+      doc.text(
+        `${item.name} — ${item.value} estudantes (${(
+          (item.value / totalDist) * 100
+        ).toFixed(1)}%)`,
+        chartMarginLeft + width + 10,
+        currentY + 8,
+      );
+
+      currentY += 18;
+    });
+
     doc.save(`relatorio-financas-${new Date().getFullYear()}-${
       new Date().getMonth() + 1
     }.pdf`);
 
     toast.success('Relatório PDF gerado com sucesso');
   };
-
   const handleCreatePayment = () => {
     if (!newPayment.student_id) {
       toast.error('Selecione um estudante');

@@ -194,6 +194,59 @@ export type Database = {
           },
         ]
       }
+      estagios: {
+        Row: {
+          created_at: string
+          data_inicio: string | null
+          data_termino: string | null
+          id: string
+          local_estagio: string | null
+          observacoes: string | null
+          status: string | null
+          student_id: string
+          supervisor_contacto: string | null
+          supervisor_nome: string | null
+          tempo_estagio_meses: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          data_inicio?: string | null
+          data_termino?: string | null
+          id?: string
+          local_estagio?: string | null
+          observacoes?: string | null
+          status?: string | null
+          student_id: string
+          supervisor_contacto?: string | null
+          supervisor_nome?: string | null
+          tempo_estagio_meses?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          data_inicio?: string | null
+          data_termino?: string | null
+          id?: string
+          local_estagio?: string | null
+          observacoes?: string | null
+          status?: string | null
+          student_id?: string
+          supervisor_contacto?: string | null
+          supervisor_nome?: string | null
+          tempo_estagio_meses?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "estagios_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       faltas_professores: {
         Row: {
           atualizado_em: string
@@ -752,6 +805,60 @@ export type Database = {
             columns: ["profile_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trabalhos_fim_curso: {
+        Row: {
+          created_at: string
+          data_defesa: string | null
+          id: string
+          nota_final: number | null
+          observacoes: string | null
+          status: string | null
+          student_id: string
+          tema: string | null
+          tutor_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          data_defesa?: string | null
+          id?: string
+          nota_final?: number | null
+          observacoes?: string | null
+          status?: string | null
+          student_id: string
+          tema?: string | null
+          tutor_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          data_defesa?: string | null
+          id?: string
+          nota_final?: number | null
+          observacoes?: string | null
+          status?: string | null
+          student_id?: string
+          tema?: string | null
+          tutor_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trabalhos_fim_curso_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trabalhos_fim_curso_tutor_id_fkey"
+            columns: ["tutor_id"]
+            isOneToOne: false
+            referencedRelation: "teachers"
             referencedColumns: ["id"]
           },
         ]

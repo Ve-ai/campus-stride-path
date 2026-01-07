@@ -35,11 +35,13 @@ export function LoginPage() {
       if (error) {
         toast.error('Erro ao criar admin: ' + error.message);
       } else if (data?.password) {
-        toast.success(`Admin criado/atualizado com sucesso! A senha foi gerada automaticamente.`);
+        // Quando a função gerar/atualizar a senha, mostramos claramente ao utilizador
+        toast.success(`Admin criado/atualizado com sucesso!\nUtilizador: ${data.username || 'Lucidio001'}\nSenha temporária: ${data.password}`);
         setUsername(data.username || 'Lucidio001');
+        setPassword(data.password);
       } else {
-        toast.info('Super admin já existe. Faça login para redefinir a senha.');
-        setUsername('Lucidio001');
+        toast.info('Super admin já existe. Clique novamente em "Inicializar Super Admin" para gerar uma nova senha, se necessário.');
+        setUsername(data?.username || 'Lucidio001');
       }
     } catch (err) {
       toast.error('Erro ao criar admin');
@@ -47,7 +49,6 @@ export function LoginPage() {
       setIsSeeding(false);
     }
   };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');

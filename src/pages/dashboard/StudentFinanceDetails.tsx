@@ -190,10 +190,12 @@ export function StudentFinanceDetails() {
     <title>Fatura - ${student.full_name}</title>
     <style>
       body { font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 40px; color: #111827; }
-      .header { display: flex; align-items: center; gap: 16px; border-bottom: 2px solid #e5e7eb; padding-bottom: 16px; margin-bottom: 24px; }
+      .header { display: flex; flex-direction: column; align-items: center; gap: 8px; border-bottom: 2px solid #e5e7eb; padding-bottom: 16px; margin-bottom: 24px; text-align: center; }
       .logo { width: 72px; height: 72px; object-fit: contain; }
-      .title { font-size: 20px; font-weight: 700; margin: 0; }
-      .subtitle { font-size: 12px; color: #6b7280; margin: 2px 0 0 0; }
+      .institution { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+      .institution-sub { font-size: 11px; color: #4b5563; margin-top: 2px; }
+      .title { font-size: 18px; font-weight: 700; margin: 8px 0 0 0; }
+      .subtitle { font-size: 13px; color: #111827; margin: 4px 0 0 0; text-transform: uppercase; }
       .section { margin-bottom: 16px; }
       .section-title { font-size: 13px; font-weight: 600; margin-bottom: 8px; text-transform: uppercase; color: #374151; }
       table { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -212,8 +214,10 @@ export function StudentFinanceDetails() {
     <div class="header">
       ${nucleusLogo ? `<img src="${nucleusLogo}" alt="Logotipo ${nucleusName}" class="logo" />` : ''}
       <div>
-        <h1 class="title">${nucleusName}</h1>
-        <p class="subtitle">Comprovativo de Pagamento de Mensalidade</p>
+        <div class="institution">INSTITUTO TÉCNICO PRIVADO DE SAÚDE AMOR DE DEUS</div>
+        <div class="institution-sub">NIF: 7000001295 &bull; NEGAGE</div>
+        <h1 class="title">SECRETARIA GERAL</h1>
+        <p class="subtitle">Caro utente, informa-se aqui</p>
       </div>
     </div>
 

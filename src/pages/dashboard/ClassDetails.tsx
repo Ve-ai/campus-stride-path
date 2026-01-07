@@ -210,12 +210,31 @@ export function ClassDetails() {
     s.enrollment_number.toLowerCase().includes(searchTerm.toLowerCase())
   ) || [];
 
-  const [selectedTrimester, setSelectedTrimester] = useState<number>(1);
-
-  const gradesForSelectedTrimester = React.useMemo(
-    () => grades?.filter((g) => g.trimester === selectedTrimester) || [],
-    [grades, selectedTrimester],
+  const [selectedSubjectId, setSelectedSubjectId] = useState<string | undefined>(
+    classSubjects[0]?.id,
   );
+
+  React.useEffect(() => {
+    if (classSubjects.length > 0 && !selectedSubjectId) {
+      setSelectedSubjectId(classSubjects[0].id);
+    }
+  }, [classSubjects, selectedSubjectId]);
+
+  const gradesByKey = React.useMemo(() => {
+    const map = new Map<string, any>();
+    (grades || []).forEach((g) => {
+      map.set(`${g.student_id}-${g.subject_id}-${g.trimester}`, g);
+    });
+    return map;
+  }, [grades]);
+
+  const getGradeFor = (
+    studentId: string,
+    subjectId: string,
+    trimester: number,
+  ) => gradesByKey.get(`${studentId}-${subjectId}-${trimester}`);
+
+  const selectedSubject = classSubjects.find((s) => s.id === selectedSubjectId);
 
   const handleCreateStudent = async () => {
     if (!newStudent.full_name.trim()) {
@@ -775,25 +794,27 @@ export function ClassDetails() {
           <Card className="card-elevated">
             <CardHeader className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div>
-                <CardTitle>Mini pauta do trimestre</CardTitle>
+                <CardTitle>Mini pauta por disciplina (3 trimestres)</CardTitle>
                 <p className="text-sm text-muted-foreground">
-                  Notas da turma por disciplina para o trimestre selecionado.
+                  Notas da turma por disciplina, apresentando os 3 trimestres no mesmo mapa.
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-3">
                 <div className="flex items-center gap-2">
-                  <Label>Trimestre</Label>
+                  <Label>Disciplina</Label>
                   <Select
-                    value={String(selectedTrimester)}
-                    onValueChange={(value) => setSelectedTrimester(Number(value))}
+                    value={selectedSubjectId}
+                    onValueChange={(value) => setSelectedSubjectId(value)}
                   >
-                    <SelectTrigger className="w-[140px]">
-                      <SelectValue />
+                    <SelectTrigger className="w-[220px]">
+                      <SelectValue placeholder="Selecionar disciplina" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="1">1º Trimestre</SelectItem>
-                      <SelectItem value="2">2º Trimestre</SelectItem>
-                      <SelectItem value="3">3º Trimestre</SelectItem>
+                      {classSubjects.map((subject) => (
+                        <SelectItem key={subject.id} value={subject.id}>
+                          {subject.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -801,7 +822,10 @@ export function ClassDetails() {
                   variant="outline"
                   size="sm"
                   className="gap-2"
+                  disabled={!selectedSubjectId}
                   onClick={() => {
+                    if (!selectedSubject || !selectedSubjectId) return;
+
                     const doc = new jsPDF('landscape');
 
                     const pageWidth = doc.internal.pageSize.getWidth();
@@ -842,37 +866,75 @@ export function ClassDetails() {
                     const turma = classData.section;
                     const periodo = classData.period || '';
                     const anoLectivo = classData.academic_year || '';
-                    const linhaInfo = `Curso: ${curso}   Classe: ${classe}   Turma: ${turma}   Periodo: ${periodo}   Ano Lectivo: ${anoLectivo}   Trimestre: ${selectedTrimester}º`;
-                    doc.text(linhaInfo, pageWidth / 2, currentY, { align: 'center' });
+                    doc.text(
+                      `Curso: ${curso}   Classe: ${classe}   Turma: ${turma}   Periodo: ${periodo}   Ano Lectivo: ${anoLectivo}`,
+                      pageWidth / 2,
+                      currentY,
+                      { align: 'center' },
+                    );
 
-                    const headRow1: string[] = ['Nº', 'Nº Matrícula', 'Nome Completo'];
-                    const headRow2: string[] = ['', '', ''];
+                    currentY += 5;
+                    doc.text(`Disciplina: ${selectedSubject.name}`, 14, currentY);
 
-                    classSubjects.forEach((subject) => {
-                      headRow1.push(subject.name, '', '', '');
-                      headRow2.push('MAC', 'NPP', 'NPT', 'MT');
-                    });
+                    const headRow1: string[] = [
+                      'Nº',
+                      'NOME COMPLETO',
+                      'Iº TRIMESTRE',
+                      '',
+                      '',
+                      '',
+                      'IIº TRIMESTRE',
+                      '',
+                      '',
+                      '',
+                      'IIIº TRIMESTRE',
+                      '',
+                      '',
+                      '',
+                      'MFD',
+                    ];
+
+                    const headRow2: string[] = [
+                      '',
+                      '',
+                      'MAC',
+                      'NPP',
+                      'NPT',
+                      'MT',
+                      'MAC',
+                      'NPP',
+                      'NPT',
+                      'MT',
+                      'MAC',
+                      'NPP',
+                      'NPT',
+                      'MT',
+                      '',
+                    ];
 
                     const body = filteredStudents.map((student, index) => {
-                      const row: (string | number)[] = [
-                        index + 1,
-                        student.enrollment_number,
-                        student.full_name,
-                      ];
+                      const row: (string | number)[] = [index + 1, student.full_name];
 
-                      const studentGrades = gradesForSelectedTrimester.filter(
-                        (g) => g.student_id === student.id,
+                      const g1 = getGradeFor(student.id, selectedSubjectId, 1);
+                      const g2 = getGradeFor(student.id, selectedSubjectId, 2);
+                      const g3 = getGradeFor(student.id, selectedSubjectId, 3);
+
+                      const pushGrade = (g: any) => {
+                        row.push(g?.mac ?? '-', '- ', g?.npt ?? '-', g?.mt ?? '-');
+                      };
+
+                      pushGrade(g1);
+                      pushGrade(g2);
+                      pushGrade(g3);
+
+                      const mts = [g1?.mt, g2?.mt, g3?.mt].filter(
+                        (v): v is number => typeof v === 'number',
                       );
+                      const mfd = mts.length
+                        ? (mts.reduce((sum, v) => sum + v, 0) / mts.length).toFixed(1)
+                        : '-';
 
-                      classSubjects.forEach((subject) => {
-                        const grade = studentGrades.find((g) => g.subject_id === subject.id);
-                        row.push(
-                          grade?.mac ?? '-',
-                          '-',
-                          grade?.npt ?? '-',
-                          grade?.mt ?? '-',
-                        );
-                      });
+                      row.push(mfd);
 
                       return row;
                     });
@@ -889,7 +951,7 @@ export function ClassDetails() {
                     });
 
                     doc.save(
-                      `mini-pauta-${classData.grade_level}a-${classData.section}-tri${selectedTrimester}.pdf`,
+                      `mini-pauta-${classData.grade_level}a-${classData.section}-${selectedSubject.name}.pdf`,
                     );
                   }}
                 >
@@ -899,84 +961,96 @@ export function ClassDetails() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="table-header">
-                      <TableHead className="sticky left-0 bg-background z-10">N°</TableHead>
-                      <TableHead className="sticky left-10 bg-background z-10">N° Matrícula</TableHead>
-                      <TableHead className="sticky left-28 bg-background z-10 min-w-[200px]">Nome Completo</TableHead>
-                      {classSubjects.map((subject) => (
-                        <TableHead key={subject.id} colSpan={4} className="text-center border-l">
-                          {subject.name}
+              {!selectedSubjectId ? (
+                <p className="text-sm text-muted-foreground">
+                  Selecione uma disciplina para visualizar a mini pauta.
+                </p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="table-header">
+                        <TableHead className="sticky left-0 bg-background z-10">N°</TableHead>
+                        <TableHead className="sticky left-16 bg-background z-10 min-w-[220px]">
+                          Nome Completo
                         </TableHead>
-                      ))}
-                    </TableRow>
-                    <TableRow className="table-header">
-                      <TableHead className="sticky left-0 bg-background z-10"></TableHead>
-                      <TableHead className="sticky left-10 bg-background z-10"></TableHead>
-                      <TableHead className="sticky left-28 bg-background z-10"></TableHead>
-                      {classSubjects.map((subject) => (
-                        <React.Fragment key={`headers-${subject.id}`}>
-                          <TableHead className="text-center text-xs border-l">MAC</TableHead>
-                          <TableHead className="text-center text-xs">NPP</TableHead>
-                          <TableHead className="text-center text-xs">NPT</TableHead>
-                          <TableHead className="text-center text-xs">MT</TableHead>
-                        </React.Fragment>
-                      ))}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredStudents.map((student, index) => {
-                      const studentGrades = gradesForSelectedTrimester.filter(
-                        (g) => g.student_id === student.id,
-                      );
-                      return (
-                        <TableRow key={student.id} className="table-row-hover">
-                          <TableCell className="sticky left-0 bg-background">{index + 1}</TableCell>
-                          <TableCell className="sticky left-10 bg-background font-mono">
-                            {student.enrollment_number}
-                          </TableCell>
-                          <TableCell className="sticky left-28 bg-background font-medium">
-                            {student.full_name}
-                          </TableCell>
-                          {classSubjects.map((subject) => {
-                            const grade = studentGrades.find(
-                              (g) => g.subject_id === subject.id,
-                            );
-                            return (
-                              <React.Fragment key={`grade-${student.id}-${subject.id}`}>
+                        <TableHead colSpan={4} className="text-center border-l">
+                          Iº TRIMESTRE
+                        </TableHead>
+                        <TableHead colSpan={4} className="text-center border-l">
+                          IIº TRIMESTRE
+                        </TableHead>
+                        <TableHead colSpan={4} className="text-center border-l">
+                          IIIº TRIMESTRE
+                        </TableHead>
+                        <TableHead className="text-center border-l">MFD</TableHead>
+                      </TableRow>
+                      <TableRow className="table-header">
+                        <TableHead className="sticky left-0 bg-background z-10"></TableHead>
+                        <TableHead className="sticky left-16 bg-background z-10"></TableHead>
+                        {Array.from({ length: 3 }).map((_, idx) => (
+                          <React.Fragment key={idx}>
+                            <TableHead className="text-center text-xs border-l">MAC</TableHead>
+                            <TableHead className="text-center text-xs">NPP</TableHead>
+                            <TableHead className="text-center text-xs">NPT</TableHead>
+                            <TableHead className="text-center text-xs">MT</TableHead>
+                          </React.Fragment>
+                        ))}
+                        <TableHead className="text-center text-xs border-l">MFD</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredStudents.map((student, index) => {
+                        const g1 = getGradeFor(student.id, selectedSubjectId!, 1);
+                        const g2 = getGradeFor(student.id, selectedSubjectId!, 2);
+                        const g3 = getGradeFor(student.id, selectedSubjectId!, 3);
+
+                        const mts = [g1?.mt, g2?.mt, g3?.mt].filter(
+                          (v): v is number => typeof v === 'number',
+                        );
+                        const mfd = mts.length
+                          ? (mts.reduce((sum, v) => sum + v, 0) / mts.length).toFixed(1)
+                          : '-';
+
+                        return (
+                          <TableRow key={student.id} className="table-row-hover">
+                            <TableCell className="sticky left-0 bg-background">
+                              {index + 1}
+                            </TableCell>
+                            <TableCell className="sticky left-16 bg-background font-medium">
+                              {student.full_name}
+                            </TableCell>
+                            {[g1, g2, g3].map((g, idx) => (
+                              <React.Fragment key={`${student.id}-tri-${idx}`}>
                                 <TableCell className="text-center border-l">
-                                  {grade?.mac ?? '-'}
+                                  {g?.mac ?? '-'}
                                 </TableCell>
+                                <TableCell className="text-center">-</TableCell>
                                 <TableCell className="text-center">
-                                  -
-                                </TableCell>
-                                <TableCell className="text-center">
-                                  {grade?.npt ?? '-'}
+                                  {g?.npt ?? '-'}
                                 </TableCell>
                                 <TableCell className="text-center font-medium">
-                                  {grade?.mt ?? '-'}
+                                  {g?.mt ?? '-'}
                                 </TableCell>
                               </React.Fragment>
-                            );
-                          })}
+                            ))}
+                            <TableCell className="text-center font-semibold border-l">
+                              {mfd}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                      {filteredStudents.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={2 + 3 * 4 + 1} className="text-center text-muted-foreground py-8">
+                            Nenhum estudante para exibir notas
+                          </TableCell>
                         </TableRow>
-                      );
-                    })}
-                    {filteredStudents.length === 0 && (
-                      <TableRow>
-                        <TableCell
-                          colSpan={3 + classSubjects.length * 4}
-                           className="text-center text-muted-foreground py-8"
-                        >
-                          Nenhum estudante para exibir notas
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

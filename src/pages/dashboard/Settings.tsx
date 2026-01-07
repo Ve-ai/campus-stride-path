@@ -363,10 +363,10 @@ export function Settings() {
                   {isSeedingData ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      A reinicializar...
+                      A limpar dados de exemplo...
                     </>
                   ) : (
-                    'Reinicializar base de dados de exemplo'
+                    'Limpar dados de exemplo'
                   )}
                 </Button>
               </CardContent>

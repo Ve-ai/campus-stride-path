@@ -341,7 +341,7 @@ export function ClassDetails() {
             {course?.name} - {classData.grade_level}ª {classData.section}
           </h1>
           <p className="text-muted-foreground">
-            Diretor de Turma: {director?.profiles?.full_name || 'Não atribuído'}
+            Diretor de Turma: {director?.profiles?.full_name || director?.full_name || 'Não atribuído'}
           </p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>

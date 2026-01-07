@@ -375,9 +375,9 @@ export function StudentFinanceDetails() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="Dinheiro">Dinheiro</SelectItem>
                     <SelectItem value="Transferência">Transferência Bancária</SelectItem>
-                    <SelectItem value="Numerário">Numerário</SelectItem>
-                    <SelectItem value="Multicaixa">Multicaixa Express</SelectItem>
+                    <SelectItem value="Multicaixa Express">Multicaixa Express</SelectItem>
                     <SelectItem value="Depósito">Depósito Bancário</SelectItem>
                   </SelectContent>
                 </Select>

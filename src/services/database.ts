@@ -306,6 +306,11 @@ export async function createPayment(payment: CreatePaymentInput) {
   const baseAmount = payment.amount;
   const totalAmount = baseAmount + lateFee;
 
+  // Guardar quem registou o pagamento (para auditoria do gestor financeiro)
+  const { data: authData, error: authError } = await supabase.auth.getUser();
+  if (authError) throw authError;
+  const recordedBy = authData.user?.id ?? null;
+
   const { data, error } = await supabase
     .from('payments')
     .insert({
@@ -317,6 +322,7 @@ export async function createPayment(payment: CreatePaymentInput) {
       year_reference: payment.year_reference,
       payment_method: payment.payment_method,
       observations: payment.observations,
+      recorded_by: recordedBy,
     })
     .select()
     .single();

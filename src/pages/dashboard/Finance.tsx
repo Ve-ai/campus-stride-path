@@ -618,6 +618,150 @@ export function Finance() {
       });
   }, [payments, students, classes]);
 
+  // Relatório detalhado de entradas: passados, corrente, adiantados
+  const paymentBreakdown = useMemo(() => {
+    if (!payments || !students || !classes || !courses) {
+      return { general: null, byCourse: [] };
+    }
+
+    const currentMonth = new Date().getMonth() + 1;
+    const currentYear = new Date().getFullYear();
+    const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+
+    const studentsById = new Map<string, any>(students.map((s: any) => [s.id, s]));
+    const classesById = new Map<string, any>(classes.map((c: any) => [c.id, c]));
+
+    // Pagamentos feitos neste mês (por data de criação)
+    const paymentsThisMonth = payments.filter((p) => {
+      const createdAt = new Date(p.created_at);
+      return createdAt.getMonth() + 1 === currentMonth && createdAt.getFullYear() === currentYear;
+    });
+
+    interface MonthlyBreakdown {
+      month: number;
+      year: number;
+      label: string;
+      amount: number;
+    }
+
+    interface CategoryBreakdown {
+      pastMonths: MonthlyBreakdown[];
+      currentMonth: number;
+      advanceMonths: MonthlyBreakdown[];
+      totalPast: number;
+      totalCurrent: number;
+      totalAdvance: number;
+      grandTotal: number;
+    }
+
+    const calculateBreakdown = (paymentsList: any[]): CategoryBreakdown => {
+      const pastMonths: Map<string, MonthlyBreakdown> = new Map();
+      const advanceMonths: Map<string, MonthlyBreakdown> = new Map();
+      let currentMonthTotal = 0;
+
+      paymentsList.forEach((p) => {
+        const refMonth = p.month_reference;
+        const refYear = p.year_reference;
+        const amount = Number(p.amount);
+
+        // Calcular se é passado, corrente ou adiantado
+        const refDate = new Date(refYear, refMonth - 1, 1);
+        const currentDate = new Date(currentYear, currentMonth - 1, 1);
+
+        if (refYear < currentYear || (refYear === currentYear && refMonth < currentMonth)) {
+          // Mês passado
+          const key = `${refYear}-${refMonth}`;
+          const existing = pastMonths.get(key);
+          if (existing) {
+            existing.amount += amount;
+          } else {
+            pastMonths.set(key, {
+              month: refMonth,
+              year: refYear,
+              label: `${monthNames[refMonth - 1]} ${refYear}`,
+              amount,
+            });
+          }
+        } else if (refYear === currentYear && refMonth === currentMonth) {
+          // Mês corrente
+          currentMonthTotal += amount;
+        } else {
+          // Mês adiantado (futuro)
+          const key = `${refYear}-${refMonth}`;
+          const existing = advanceMonths.get(key);
+          if (existing) {
+            existing.amount += amount;
+          } else {
+            advanceMonths.set(key, {
+              month: refMonth,
+              year: refYear,
+              label: `${monthNames[refMonth - 1]} ${refYear}`,
+              amount,
+            });
+          }
+        }
+      });
+
+      const pastArray = Array.from(pastMonths.values()).sort((a, b) => {
+        if (a.year !== b.year) return a.year - b.year;
+        return a.month - b.month;
+      });
+
+      const advanceArray = Array.from(advanceMonths.values()).sort((a, b) => {
+        if (a.year !== b.year) return a.year - b.year;
+        return a.month - b.month;
+      });
+
+      const totalPast = pastArray.reduce((sum, m) => sum + m.amount, 0);
+      const totalAdvance = advanceArray.reduce((sum, m) => sum + m.amount, 0);
+
+      return {
+        pastMonths: pastArray,
+        currentMonth: currentMonthTotal,
+        advanceMonths: advanceArray,
+        totalPast,
+        totalCurrent: currentMonthTotal,
+        totalAdvance,
+        grandTotal: totalPast + currentMonthTotal + totalAdvance,
+      };
+    };
+
+    // Calcular dados gerais
+    const generalBreakdown = calculateBreakdown(paymentsThisMonth);
+
+    // Calcular por curso
+    const paymentsByCourseMap = new Map<string, { courseId: string; courseName: string; payments: any[] }>();
+
+    paymentsThisMonth.forEach((p) => {
+      const student = studentsById.get(p.student_id);
+      if (!student?.class_id) return;
+      const cls = classesById.get(student.class_id);
+      if (!cls) return;
+
+      const courseId = cls.course_id;
+      const courseName = cls.course?.name || courses.find((c: any) => c.id === courseId)?.name || 'Curso';
+
+      const existing = paymentsByCourseMap.get(courseId);
+      if (existing) {
+        existing.payments.push(p);
+      } else {
+        paymentsByCourseMap.set(courseId, { courseId, courseName, payments: [p] });
+      }
+    });
+
+    const byCourse = Array.from(paymentsByCourseMap.values()).map((item) => ({
+      courseId: item.courseId,
+      courseName: item.courseName,
+      breakdown: calculateBreakdown(item.payments),
+    }));
+
+    return {
+      general: generalBreakdown,
+      byCourse,
+      currentMonthLabel: `${monthNames[currentMonth - 1]} ${currentYear}`,
+    };
+  }, [payments, students, classes, courses]);
+
   const location = useLocation();
 
   const [activeTab, setActiveTab] = useState(() => {
@@ -1238,7 +1382,7 @@ export function Finance() {
               </CardContent>
             </Card>
 
-            {/* Análise por curso */}
+          {/* Análise por curso */}
             <Card className="card-elevated">
               <CardHeader>
                 <CardTitle>Análise por Curso</CardTitle>
@@ -1314,6 +1458,153 @@ export function Finance() {
               </CardContent>
             </Card>
           </div>
+
+          {/* Relatório Detalhado de Entradas do Mês */}
+          <Card className="card-elevated">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Wallet className="w-5 h-5" />
+                Detalhes de Entradas do Mês ({paymentBreakdown.currentMonthLabel})
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Classificação dos pagamentos recebidos este mês: mensalidades passadas, corrente e adiantadas
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Resumo Geral */}
+              {paymentBreakdown.general && (
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4" />
+                    Resumo Geral (Todos os Cursos)
+                  </h3>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Mensalidades Passadas */}
+                    <Card className="border-l-4 border-l-warning">
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-medium text-muted-foreground">Mensalidades Passadas</span>
+                          <Badge variant="outline" className="bg-warning/10 text-warning border-warning/20">
+                            Atrasadas
+                          </Badge>
+                        </div>
+                        <p className="text-2xl font-bold">{formatCurrency(paymentBreakdown.general.totalPast)}</p>
+                        {paymentBreakdown.general.pastMonths.length > 0 && (
+                          <div className="mt-3 space-y-1">
+                            {paymentBreakdown.general.pastMonths.map((m) => (
+                              <div key={`${m.year}-${m.month}`} className="flex justify-between text-xs">
+                                <span className="text-muted-foreground">{m.label}</span>
+                                <span className="font-medium">{formatCurrency(m.amount)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+
+                    {/* Mês Corrente */}
+                    <Card className="border-l-4 border-l-success">
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-medium text-muted-foreground">Mês Corrente</span>
+                          <Badge variant="outline" className="bg-success/10 text-success border-success/20">
+                            Em dia
+                          </Badge>
+                        </div>
+                        <p className="text-2xl font-bold">{formatCurrency(paymentBreakdown.general.totalCurrent)}</p>
+                        <p className="text-xs text-muted-foreground mt-2">
+                          Pagamentos referentes a {paymentBreakdown.currentMonthLabel}
+                        </p>
+                      </CardContent>
+                    </Card>
+
+                    {/* Mensalidades Adiantadas */}
+                    <Card className="border-l-4 border-l-primary">
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-medium text-muted-foreground">Mensalidades Adiantadas</span>
+                          <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
+                            Antecipadas
+                          </Badge>
+                        </div>
+                        <p className="text-2xl font-bold">{formatCurrency(paymentBreakdown.general.totalAdvance)}</p>
+                        {paymentBreakdown.general.advanceMonths.length > 0 && (
+                          <div className="mt-3 space-y-1">
+                            {paymentBreakdown.general.advanceMonths.map((m) => (
+                              <div key={`${m.year}-${m.month}`} className="flex justify-between text-xs">
+                                <span className="text-muted-foreground">{m.label}</span>
+                                <span className="font-medium">{formatCurrency(m.amount)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* Total Geral */}
+                  <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+                    <span className="text-lg font-semibold">Total de Entradas do Mês</span>
+                    <span className="text-2xl font-bold text-primary">
+                      {formatCurrency(paymentBreakdown.general.grandTotal)}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Por Curso */}
+              {paymentBreakdown.byCourse.length > 0 && (
+                <div className="space-y-4 pt-4 border-t">
+                  <h3 className="text-lg font-semibold">Detalhes por Curso</h3>
+                  
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="table-header">
+                        <TableHead>Curso</TableHead>
+                        <TableHead className="text-right">Mensalidades Passadas</TableHead>
+                        <TableHead className="text-right">Mês Corrente</TableHead>
+                        <TableHead className="text-right">Adiantadas</TableHead>
+                        <TableHead className="text-right">Total</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {paymentBreakdown.byCourse.map((course) => (
+                        <TableRow key={course.courseId}>
+                          <TableCell className="font-medium">{course.courseName}</TableCell>
+                          <TableCell className="text-right">
+                            <span className="text-warning font-medium">
+                              {formatCurrency(course.breakdown.totalPast)}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <span className="text-success font-medium">
+                              {formatCurrency(course.breakdown.totalCurrent)}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <span className="text-primary font-medium">
+                              {formatCurrency(course.breakdown.totalAdvance)}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-right font-bold">
+                            {formatCurrency(course.breakdown.grandTotal)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+
+              {/* Mensagem se não houver dados */}
+              {(!paymentBreakdown.general || paymentBreakdown.general.grandTotal === 0) && (
+                <div className="text-center py-8 text-muted-foreground">
+                  Nenhum pagamento registado neste mês.
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           {/* Auditoria de transações */}
           <Card className="card-elevated">

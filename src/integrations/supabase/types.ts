@@ -194,6 +194,39 @@ export type Database = {
           },
         ]
       }
+      enrollment_periods: {
+        Row: {
+          academic_year: number
+          created_at: string
+          created_by: string | null
+          end_date: string
+          id: string
+          is_active: boolean
+          start_date: string
+          updated_at: string
+        }
+        Insert: {
+          academic_year: number
+          created_at?: string
+          created_by?: string | null
+          end_date: string
+          id?: string
+          is_active?: boolean
+          start_date: string
+          updated_at?: string
+        }
+        Update: {
+          academic_year?: number
+          created_at?: string
+          created_by?: string | null
+          end_date?: string
+          id?: string
+          is_active?: boolean
+          start_date?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       estagios: {
         Row: {
           created_at: string
@@ -742,6 +775,7 @@ export type Database = {
           birthplace: string | null
           class_id: string | null
           created_at: string
+          enrollment_date: string | null
           enrollment_number: string
           enrollment_year: number
           full_name: string
@@ -762,6 +796,7 @@ export type Database = {
           birthplace?: string | null
           class_id?: string | null
           created_at?: string
+          enrollment_date?: string | null
           enrollment_number: string
           enrollment_year: number
           full_name: string
@@ -782,6 +817,7 @@ export type Database = {
           birthplace?: string | null
           class_id?: string | null
           created_at?: string
+          enrollment_date?: string | null
           enrollment_number?: string
           enrollment_year?: number
           full_name?: string
@@ -1040,6 +1076,7 @@ export type Database = {
         | "finance"
         | "professor"
         | "coordinator"
+        | "matricula"
       professor_absence_discount_type: "justificada" | "nao_justificada"
       professor_absence_status:
         | "registada"
@@ -1174,7 +1211,14 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["super_admin", "admin", "finance", "professor", "coordinator"],
+      app_role: [
+        "super_admin",
+        "admin",
+        "finance",
+        "professor",
+        "coordinator",
+        "matricula",
+      ],
       professor_absence_discount_type: ["justificada", "nao_justificada"],
       professor_absence_status: [
         "registada",

@@ -24,6 +24,7 @@ import { Grades } from "@/pages/dashboard/Grades";
 import { FaltasProfessoresPage } from "@/pages/dashboard/FaltasProfessores";
 import { Coordination } from "@/pages/dashboard/Coordination";
 import { CleaningStaffPage } from "@/pages/dashboard/CleaningStaff";
+import { EnrollmentPage } from "@/pages/dashboard/Enrollment";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -75,6 +76,7 @@ function AppRoutes() {
         <Route path="faltas-professores" element={<FaltasProfessoresPage />} />
         <Route path="coordenacao" element={<Coordination />} />
         <Route path="pessoal-limpeza" element={<CleaningStaffPage />} />
+        <Route path="matriculas" element={<EnrollmentPage />} />
       </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>

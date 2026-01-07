@@ -42,10 +42,22 @@ export const DEFAULT_CREDENTIALS = {
     name: 'Administrador',
   },
   finance: {
-    username: 'financa@uni',
-    email: 'financa@uni',
-    defaultPassword: 'FIN@SrongPass\\',
+    username: 'financa',
+    email: 'financa@escola.local',
+    defaultPassword: 'Fin@2025!',
     name: 'Gestor Financeiro',
+  },
+  coordinator: {
+    username: 'coordenador',
+    email: 'coordenador@escola.local',
+    defaultPassword: 'Coord@2025!',
+    name: 'Coordenador de Curso',
+  },
+  matricula: {
+    username: 'matricula',
+    email: 'matricula@escola.local',
+    defaultPassword: 'Matr@2025!',
+    name: 'Agente de Matrículas',
   },
 } as const;
 

@@ -61,7 +61,7 @@ export function LoginPage() {
     const result = await login({ username: username.trim(), password });
     
     if (result.success) {
-      if (user?.role === 'finance') {
+      if (result.userRole === 'finance') {
         navigate('/dashboard/financas');
       } else {
         navigate('/dashboard');
@@ -69,6 +69,7 @@ export function LoginPage() {
     } else {
       setError(result.error || 'Erro ao fazer login');
     }
+
   };
 
   return (

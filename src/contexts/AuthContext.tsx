@@ -4,7 +4,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { Session, User as SupabaseUser } from '@supabase/supabase-js';
 
 interface AuthContextType extends AuthState {
-  login: (credentials: LoginCredentials) => Promise<{ success: boolean; error?: string; mustChangePassword?: boolean }>;
+  login: (
+    credentials: LoginCredentials,
+  ) => Promise<{ success: boolean; error?: string; mustChangePassword?: boolean; userRole?: UserRole }>;
   logout: () => void;
   updatePassword: (newPassword: string) => Promise<{ success: boolean; error?: string }>;
   session: Session | null;
@@ -194,7 +196,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           
           return { 
             success: true, 
-            mustChangePassword: user.mustChangePassword 
+            mustChangePassword: user.mustChangePassword,
+            userRole: user.role,
           };
         }
       }

@@ -52,6 +52,9 @@ const MONTHS = [
   'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
 ];
 
+// Ano lectivo: Setembro a Julho (meses 9, 10, 11, 12, 1, 2, 3, 4, 5, 6, 7)
+const ACADEMIC_YEAR_MONTHS = [9, 10, 11, 12, 1, 2, 3, 4, 5, 6, 7];
+
 export function StudentFinanceDetails() {
   const { studentId } = useParams();
   const navigate = useNavigate();
@@ -143,34 +146,55 @@ export function StudentFinanceDetails() {
       });
   }, [payments, studentId]);
 
-  // Calculate payment status per month
+  // Calculate payment status per month - Ano lectivo: Setembro a Julho
   const currentYear = new Date().getFullYear();
+  const currentMonth = new Date().getMonth() + 1;
+  
+  // Determina o ano lectivo actual (ex: se estamos em Março 2024, o ano lectivo é 2023/2024)
+  const getAcademicYear = () => {
+    if (currentMonth >= 9) {
+      return { startYear: currentYear, endYear: currentYear + 1 };
+    } else {
+      return { startYear: currentYear - 1, endYear: currentYear };
+    }
+  };
+  
+  const academicYear = getAcademicYear();
+  
   const paymentStatus = useMemo(() => {
-    return MONTHS.map((month, index) => {
-      const monthNum = index + 1;
+    return ACADEMIC_YEAR_MONTHS.map((monthNum) => {
+      // Meses 9-12 pertencem ao startYear, meses 1-7 pertencem ao endYear
+      const yearForMonth = monthNum >= 9 ? academicYear.startYear : academicYear.endYear;
+      
       const payment = studentPayments.find(
-        p => p.month_reference === monthNum && p.year_reference === currentYear
+        p => p.month_reference === monthNum && p.year_reference === yearForMonth
       );
       
-      const isPast = monthNum < new Date().getMonth() + 1;
-      const isCurrent = monthNum === new Date().getMonth() + 1;
+      const isPast = (yearForMonth < currentYear) || 
+        (yearForMonth === currentYear && monthNum < currentMonth);
+      const isCurrent = yearForMonth === currentYear && monthNum === currentMonth;
       
       return {
-        month,
+        month: MONTHS[monthNum - 1],
         monthNum,
+        year: yearForMonth,
         paid: !!payment,
         amount: payment?.amount || 0,
+        lateFee: payment?.late_fee || 0,
         date: payment?.payment_date,
         status: payment ? 'paid' : (isPast ? 'overdue' : (isCurrent ? 'pending' : 'future')),
       };
     });
-  }, [studentPayments, currentYear]);
+  }, [studentPayments, academicYear.startYear, academicYear.endYear, currentMonth, currentYear]);
 
   const paidMonths = paymentStatus.filter(p => p.paid).length;
   const overdueMonths = paymentStatus.filter(p => p.status === 'overdue').length;
-  const totalPaid = studentPayments
-    .filter(p => p.year_reference === currentYear)
+  const totalPaid = paymentStatus
+    .filter(p => p.paid)
     .reduce((sum, p) => sum + Number(p.amount), 0);
+  const totalLateFees = paymentStatus
+    .filter(p => p.paid)
+    .reduce((sum, p) => sum + Number(p.lateFee || 0), 0);
 
   const lastPayment = studentPayments[0];
 
@@ -385,11 +409,12 @@ export function StudentFinanceDetails() {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label>Valor (AOA)</Label>
+                <Label>Valor Base (AOA)</Label>
                 <Input
                   type="number"
                   value={newPayment.amount}
-                  onChange={(e) => setNewPayment({ ...newPayment, amount: e.target.value })}
+                  disabled
+                  className="bg-muted cursor-not-allowed"
                 />
               </div>
               <div className="space-y-2">
@@ -475,8 +500,11 @@ export function StudentFinanceDetails() {
                 <p className="text-xl font-bold text-primary">{formatCurrency(monthlyFee)}</p>
               </div>
               <div className="space-y-2">
-                <p className="text-sm text-muted-foreground">Total Pago ({currentYear})</p>
-                <p className="text-xl font-bold text-success">{formatCurrency(totalPaid)}</p>
+                <p className="text-sm text-muted-foreground">Total Pago (Ano Lectivo)</p>
+                <p className="text-xl font-bold text-success">{formatCurrency(totalPaid - totalLateFees)}</p>
+                {totalLateFees > 0 && (
+                  <p className="text-xs text-warning">+ {formatCurrency(totalLateFees)} em multas</p>
+                )}
               </div>
             </div>
           </div>
@@ -548,7 +576,7 @@ export function StudentFinanceDetails() {
         <CardHeader>
           <CardTitle className="text-lg font-semibold flex items-center gap-2">
             <Calendar className="w-5 h-5 text-primary" />
-            Calendário de Pagamentos - {currentYear}
+            Calendário de Pagamentos - Ano Lectivo {academicYear.startYear}/{academicYear.endYear}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -584,6 +612,11 @@ export function StudentFinanceDetails() {
                 {month.paid && (
                   <p className="text-xs text-muted-foreground mt-1">
                     {formatCurrency(month.amount)}
+                    {month.lateFee > 0 && (
+                      <span className="block text-warning text-[10px]">
+                        (inclui {formatCurrency(month.lateFee)} multa)
+                      </span>
+                    )}
                   </p>
                 )}
               </div>

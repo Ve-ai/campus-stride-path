@@ -294,13 +294,20 @@ export interface CreatePaymentInput {
 export async function createPayment(payment: CreatePaymentInput) {
   const today = new Date();
 
-  // Calcula o prazo limite: último dia do mês de referência + 9 dias do mês seguinte
+  // Calcula o prazo limite: dia 10 do mês seguinte ao mês de referência
   const referenceMonth = payment.month_reference; // 1-12
   const referenceYear = payment.year_reference;
 
-  const lastDayOfMonth = new Date(referenceYear, referenceMonth, 0); // dia 0 do mês seguinte = último dia do mês
-  const dueDate = new Date(lastDayOfMonth);
-  dueDate.setDate(dueDate.getDate() + 9); // +9 dias do mês seguinte
+  // Mês seguinte ao de referência
+  let dueMonth = referenceMonth + 1;
+  let dueYear = referenceYear;
+  if (dueMonth > 12) {
+    dueMonth = 1;
+    dueYear = referenceYear + 1;
+  }
+  
+  // Dia 10 do mês seguinte é o limite (multa após este dia)
+  const dueDate = new Date(dueYear, dueMonth - 1, 10); // mês é 0-indexed
 
   const isLate = today > dueDate;
   const lateFee = isLate ? 1000 : 0;

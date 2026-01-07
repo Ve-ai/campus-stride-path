@@ -205,9 +205,33 @@ export function TeacherDetails() {
   }, [selectedAssignment?.id]);
 
   const days = ['Segunda-Feira', 'Terça-Feira', 'Quarta-Feira', 'Quinta-Feira', 'Sexta-Feira'];
-  const morningTimes = ['07:30', '08:15', '09:00', '09:45', '10:30', '11:15'];
-  const afternoonTimes = ['13:00', '13:45', '14:30', '15:15', '16:00', '16:45'];
-  const times = selectedPeriod === 'Manhã' ? morningTimes : afternoonTimes;
+  
+  // Horários com início e término baseados na estrutura oficial
+  // Manhã: aulas de 45min com intervalo após a 3ª aula
+  const morningTimeSlots = [
+    { start: '07:30', end: '08:15' },
+    { start: '08:15', end: '09:00' },
+    { start: '09:00', end: '09:45' },
+    // intervalo
+    { start: '10:00', end: '10:45' },
+    { start: '10:45', end: '11:30' },
+    { start: '11:30', end: '12:15' },
+  ];
+  
+  // Tarde: aulas de 45min com intervalo de 15min após a 3ª aula
+  const afternoonTimeSlots = [
+    { start: '13:00', end: '13:45' },
+    { start: '13:45', end: '14:30' },
+    { start: '14:30', end: '15:15' },
+    // intervalo 15 minutos
+    { start: '15:30', end: '16:15' },
+    { start: '16:15', end: '17:00' },
+    { start: '17:00', end: '17:45' },
+  ];
+  
+  const timeSlots = selectedPeriod === 'Manhã' ? morningTimeSlots : afternoonTimeSlots;
+  // Para compatibilidade com schedule (usa apenas o horário de início como chave)
+  const times = timeSlots.map(slot => slot.start);
 
   const toggleSlot = (day: string, time: string) => {
     setSchedule((prev: any) => {
@@ -754,7 +778,7 @@ export function TeacherDetails() {
                         <Table className="min-w-[700px]">
                           <TableHeader>
                             <TableRow>
-                              <TableHead>Horas</TableHead>
+                              <TableHead className="min-w-[130px]">Horário</TableHead>
                               {days.map((day) => (
                                 <TableHead key={day} className="text-center">
                                   {day}
@@ -763,20 +787,23 @@ export function TeacherDetails() {
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {times.map((time, index) => (
-                              <React.Fragment key={time}>
+                            {timeSlots.map((slot, index) => (
+                              <React.Fragment key={slot.start}>
                                 <TableRow>
-                                  <TableCell className="font-mono text-xs md:text-sm w-20">
-                                    {time}
+                                  <TableCell className="font-mono text-xs md:text-sm w-32">
+                                    <div className="flex flex-col">
+                                      <span className="font-medium">{slot.start}</span>
+                                      <span className="text-muted-foreground">{slot.end}</span>
+                                    </div>
                                   </TableCell>
                                   {days.map((day) => {
-                                    const isAssigned = schedule?.[day]?.[time];
+                                    const isAssigned = schedule?.[day]?.[slot.start];
                                     return (
                                       <TableCell key={day} className="p-0">
                                         <button
                                           type="button"
-                                          onClick={() => toggleSlot(day, time)}
-                                          className={`w-full h-12 text-xs md:text-sm border-l border-t last:border-r focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+                                          onClick={() => toggleSlot(day, slot.start)}
+                                          className={`w-full h-14 text-xs md:text-sm border-l border-t last:border-r focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
                                             isAssigned
                                               ? 'bg-primary/10 text-primary font-medium'
                                               : 'hover:bg-muted'
@@ -793,10 +820,13 @@ export function TeacherDetails() {
                                 {index === 2 && (
                                   <TableRow>
                                     <TableCell className="text-xs md:text-sm font-medium text-muted-foreground">
-                                      Intervalo
+                                      <div className="flex flex-col">
+                                        <span>Intervalo</span>
+                                        <span className="text-xs">{selectedPeriod === 'Manhã' ? '15 min' : '15 min'}</span>
+                                      </div>
                                     </TableCell>
                                     {days.map((day) => (
-                                      <TableCell key={`${day}-break`} className="bg-muted/40 h-8" />
+                                      <TableCell key={`${day}-break`} className="bg-muted/40 h-10" />
                                     ))}
                                   </TableRow>
                                 )}

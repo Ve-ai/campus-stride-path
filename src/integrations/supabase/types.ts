@@ -461,6 +461,56 @@ export type Database = {
           },
         ]
       }
+      pagamentos_limpeza: {
+        Row: {
+          ano_referencia: number
+          created_at: string
+          data_pagamento: string
+          descontos: number
+          id: string
+          mes_referencia: number
+          observacoes: string | null
+          pago_por: string | null
+          pessoal_id: string
+          valor_bruto: number
+          valor_liquido: number
+        }
+        Insert: {
+          ano_referencia: number
+          created_at?: string
+          data_pagamento?: string
+          descontos?: number
+          id?: string
+          mes_referencia: number
+          observacoes?: string | null
+          pago_por?: string | null
+          pessoal_id: string
+          valor_bruto: number
+          valor_liquido: number
+        }
+        Update: {
+          ano_referencia?: number
+          created_at?: string
+          data_pagamento?: string
+          descontos?: number
+          id?: string
+          mes_referencia?: number
+          observacoes?: string | null
+          pago_por?: string | null
+          pessoal_id?: string
+          valor_bruto?: number
+          valor_liquido?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pagamentos_limpeza_pessoal_id_fkey"
+            columns: ["pessoal_id"]
+            isOneToOne: false
+            referencedRelation: "pessoal_limpeza"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payments: {
         Row: {
           amount: number
@@ -513,6 +563,92 @@ export type Database = {
             columns: ["student_id"]
             isOneToOne: false
             referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pessoal_limpeza: {
+        Row: {
+          address: string | null
+          bi_issue_date: string | null
+          bi_number: string | null
+          birth_date: string | null
+          created_at: string
+          data_admissao: string
+          dias_trabalho: string[]
+          funcao: string
+          id: string
+          is_active: boolean
+          nome_completo: string
+          phone: string | null
+          salario_bruto: number
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          bi_issue_date?: string | null
+          bi_number?: string | null
+          birth_date?: string | null
+          created_at?: string
+          data_admissao?: string
+          dias_trabalho?: string[]
+          funcao?: string
+          id?: string
+          is_active?: boolean
+          nome_completo: string
+          phone?: string | null
+          salario_bruto?: number
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          bi_issue_date?: string | null
+          bi_number?: string | null
+          birth_date?: string | null
+          created_at?: string
+          data_admissao?: string
+          dias_trabalho?: string[]
+          funcao?: string
+          id?: string
+          is_active?: boolean
+          nome_completo?: string
+          phone?: string | null
+          salario_bruto?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      presencas_limpeza: {
+        Row: {
+          created_at: string
+          data: string
+          id: string
+          observacoes: string | null
+          pessoal_id: string
+          tipo: string
+        }
+        Insert: {
+          created_at?: string
+          data: string
+          id?: string
+          observacoes?: string | null
+          pessoal_id: string
+          tipo: string
+        }
+        Update: {
+          created_at?: string
+          data?: string
+          id?: string
+          observacoes?: string | null
+          pessoal_id?: string
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "presencas_limpeza_pessoal_id_fkey"
+            columns: ["pessoal_id"]
+            isOneToOne: false
+            referencedRelation: "pessoal_limpeza"
             referencedColumns: ["id"]
           },
         ]
@@ -898,7 +1034,12 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "super_admin" | "admin" | "finance" | "professor"
+      app_role:
+        | "super_admin"
+        | "admin"
+        | "finance"
+        | "professor"
+        | "coordinator"
       professor_absence_discount_type: "justificada" | "nao_justificada"
       professor_absence_status:
         | "registada"
@@ -1033,7 +1174,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["super_admin", "admin", "finance", "professor"],
+      app_role: ["super_admin", "admin", "finance", "professor", "coordinator"],
       professor_absence_discount_type: ["justificada", "nao_justificada"],
       professor_absence_status: [
         "registada",

@@ -12,52 +12,6 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const authHeader = req.headers.get('Authorization')
-
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return new Response(
-        JSON.stringify({ error: 'Não autorizado. Token de autenticação em falta.' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    const supabaseAuth = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        global: {
-          headers: { Authorization: authHeader },
-        },
-        auth: { autoRefreshToken: false, persistSession: false },
-      }
-    )
-
-    const token = authHeader.replace('Bearer ', '')
-    const { data: claims, error: claimsError } = await supabaseAuth.auth.getClaims(token)
-
-    if (claimsError || !claims?.claims?.sub) {
-      console.error('Erro ao validar token na função seed-admin:', claimsError)
-      return new Response(
-        JSON.stringify({ error: 'Não autorizado. Token inválido.' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    const userId = claims.claims.sub as string
-
-    const { data: hasRole, error: roleError } = await supabaseAuth.rpc('has_role', {
-      _user_id: userId,
-      _role: 'super_admin',
-    })
-
-    if (roleError || !hasRole) {
-      console.error('Utilizador sem permissão de super_admin para executar seed-admin:', roleError)
-      return new Response(
-        JSON.stringify({ error: 'Proibido. Apenas super administradores podem executar esta ação.' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',

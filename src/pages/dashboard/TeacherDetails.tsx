@@ -202,9 +202,9 @@ export function TeacherDetails() {
   );
 
   // Consolidar os horários de TODAS as turmas do professor para o período selecionado
-  // Retorna: { [day]: { [time]: { assignmentId, classLabel, subjectName } } }
+  // Retorna: { [day]: { [time]: { assignmentId, classLabel, subjectName, courseName } } }
   const consolidatedSchedule = React.useMemo(() => {
-    const result: Record<string, Record<string, { assignmentId: string; classLabel: string; subjectName: string }>> = {};
+    const result: Record<string, Record<string, { assignmentId: string; classLabel: string; subjectName: string; courseName: string }>> = {};
     
     teacherAssignments
       .filter((a: any) => a.periods?.includes(selectedPeriod))
@@ -212,6 +212,7 @@ export function TeacherDetails() {
         const assignmentSchedule = assignment.schedule || {};
         const classLabel = `${assignment.class?.grade_level}ª ${assignment.class?.section}`;
         const subjectName = assignment.subject?.name || '';
+        const courseName = assignment.class?.course?.name || '';
         
         Object.entries(assignmentSchedule).forEach(([day, times]: [string, any]) => {
           if (!result[day]) result[day] = {};
@@ -221,6 +222,7 @@ export function TeacherDetails() {
                 assignmentId: assignment.id,
                 classLabel,
                 subjectName,
+                courseName,
               };
             }
           });
@@ -367,7 +369,7 @@ export function TeacherDetails() {
       days.forEach((day) => {
         const slotData = consolidatedSchedule[day]?.[slot.start];
         if (slotData) {
-          row.push(`${slotData.subjectName}\n${slotData.classLabel}`);
+          row.push(`${slotData.courseName}\n${slotData.subjectName}\n${slotData.classLabel}`);
         } else {
           row.push('');
         }
@@ -949,6 +951,7 @@ export function TeacherDetails() {
                                       ? `${selectedAssignment.class?.grade_level}ª ${selectedAssignment.class?.section}`
                                       : '';
                                     const currentSubjectName = selectedAssignment?.subject?.name || '';
+                                    const currentCourseName = selectedAssignment?.class?.course?.name || '';
                                     
                                     return (
                                       <TableCell key={day} className="p-0">
@@ -956,23 +959,25 @@ export function TeacherDetails() {
                                           type="button"
                                           onClick={() => toggleSlot(day, slot.start)}
                                           disabled={isOccupiedByOther}
-                                          className={`w-full h-16 text-xs border-l border-t last:border-r focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 flex flex-col items-center justify-center gap-0.5 ${
+                                          className={`w-full h-[72px] text-xs border-l border-t last:border-r focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 flex flex-col items-center justify-center gap-0.5 px-1 ${
                                             isOccupiedByOther
                                               ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 cursor-not-allowed'
                                               : isAssignedLocal
                                               ? 'bg-primary/10 text-primary font-medium'
                                               : 'hover:bg-muted'
                                           }`}
-                                          title={isOccupiedByOther ? `Ocupado: ${existingSlot.subjectName} - ${existingSlot.classLabel}` : undefined}
+                                          title={isOccupiedByOther ? `Ocupado: ${existingSlot.courseName} - ${existingSlot.subjectName} - ${existingSlot.classLabel}` : undefined}
                                         >
                                           {isOccupiedByOther ? (
                                             <>
-                                              <span className="font-medium truncate max-w-full px-1">{existingSlot.subjectName}</span>
+                                              <span className="font-medium truncate max-w-full text-[10px]">{existingSlot.courseName}</span>
+                                              <span className="truncate max-w-full">{existingSlot.subjectName}</span>
                                               <span className="text-[10px] opacity-80">{existingSlot.classLabel}</span>
                                             </>
                                           ) : isAssignedLocal ? (
                                             <>
-                                              <span className="font-medium truncate max-w-full px-1">{currentSubjectName}</span>
+                                              <span className="font-medium truncate max-w-full text-[10px]">{currentCourseName}</span>
+                                              <span className="truncate max-w-full">{currentSubjectName}</span>
                                               <span className="text-[10px] opacity-80">{currentClassLabel}</span>
                                             </>
                                           ) : null}

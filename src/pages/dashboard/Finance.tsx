@@ -67,6 +67,7 @@ import { usePayments, useClasses, useStudents, useCourses, useStatistics, useCre
 import { toast } from "@/lib/notifications";
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { addPdfHeaderSync, addPdfFooter } from '@/lib/pdfHeader';
 
 export function Finance() {
   const navigate = useNavigate();
@@ -243,19 +244,13 @@ export function Finance() {
     const doc = new jsPDF('landscape', 'pt', 'a4');
     const pageWidth = doc.internal.pageSize.getWidth();
 
+    // Cabeçalho com logotipo e nome da escola
     const title = 'Relatório Financeiro — Mensalidades e Multas';
     const subtitle = new Date().toLocaleString('pt-AO');
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(18);
-    doc.text(title, pageWidth / 2, 40, { align: 'center' });
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-    doc.text(subtitle, pageWidth / 2, 55, { align: 'center' });
+    const startY = addPdfHeaderSync(doc, title, subtitle);
 
     // Secção 1 — Resumo geral
-    const summaryStartY = 80;
+    const summaryStartY = startY;
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
     doc.text('Resumo Financeiro do Mês Atual', 40, summaryStartY);
@@ -428,21 +423,13 @@ export function Finance() {
 
     const doc = new jsPDF('portrait', 'pt', 'a4');
     const pageWidth = doc.internal.pageSize.getWidth();
-    const currentMonth = new Date().getMonth() + 1;
-    const currentYear = new Date().getFullYear();
 
-    // Título
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(16);
-    doc.text('Relatório Detalhado de Entradas', pageWidth / 2, 40, { align: 'center' });
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-    doc.text(`Mês de Referência: ${paymentBreakdown.currentMonthLabel}`, pageWidth / 2, 55, { align: 'center' });
-    doc.text(`Gerado em: ${new Date().toLocaleString('pt-AO')}`, pageWidth / 2, 68, { align: 'center' });
+    // Cabeçalho com logotipo e nome da escola
+    const pdfTitle = 'Relatório Detalhado de Entradas';
+    const pdfSubtitle = `Mês de Referência: ${paymentBreakdown.currentMonthLabel} | Gerado em: ${new Date().toLocaleString('pt-AO')}`;
+    let startY = addPdfHeaderSync(doc, pdfTitle, pdfSubtitle);
 
     // Resumo Geral
-    let startY = 95;
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(12);
     doc.text('Resumo Geral (Todos os Cursos)', 40, startY);
@@ -559,7 +546,7 @@ export function Finance() {
       });
     }
 
-    doc.save(`relatorio-entradas-detalhado-${currentYear}-${currentMonth}.pdf`);
+    doc.save(`relatorio-entradas-detalhado-${reportYear}-${reportMonth}.pdf`);
     toast.success('Relatório detalhado exportado com sucesso');
   };
   const handleCreatePayment = () => {

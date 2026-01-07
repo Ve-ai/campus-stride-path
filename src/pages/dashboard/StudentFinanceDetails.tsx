@@ -380,33 +380,36 @@ export function StudentFinanceDetails() {
               <DialogTitle>Registar Pagamento</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Mês</Label>
-                  <Select
-                    value={newPayment.month}
-                    onValueChange={(v) => setNewPayment({ ...newPayment, month: v })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {MONTHS.map((month, index) => (
-                        <SelectItem key={index} value={(index + 1).toString()}>
-                          {month}
+              <div className="space-y-2">
+                <Label>Mês de Referência</Label>
+                <Select
+                  value={`${newPayment.month}-${newPayment.year}`}
+                  onValueChange={(v) => {
+                    const [month, year] = v.split('-');
+                    setNewPayment({ ...newPayment, month, year });
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o mês" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ACADEMIC_YEAR_MONTHS.map((monthNum) => {
+                      const yearForMonth = monthNum >= 9 ? academicYear.startYear : academicYear.endYear;
+                      const isAlreadyPaid = studentPayments.some(
+                        p => p.month_reference === monthNum && p.year_reference === yearForMonth
+                      );
+                      return (
+                        <SelectItem 
+                          key={`${monthNum}-${yearForMonth}`} 
+                          value={`${monthNum}-${yearForMonth}`}
+                          disabled={isAlreadyPaid}
+                        >
+                          {MONTHS[monthNum - 1]} {yearForMonth} {isAlreadyPaid ? '(Pago)' : ''}
                         </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Ano</Label>
-                  <Input
-                    type="number"
-                    value={newPayment.year}
-                    onChange={(e) => setNewPayment({ ...newPayment, year: e.target.value })}
-                  />
-                </div>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label>Valor Base (AOA)</Label>

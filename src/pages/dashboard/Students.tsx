@@ -56,6 +56,8 @@ export function Students() {
   );
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [selectedStudent, setSelectedStudent] = useState<any | null>(null);
+  const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
   const [newStudent, setNewStudent] = useState({
     enrollment_number: '',
     full_name: '',
@@ -86,10 +88,14 @@ export function Students() {
   const filteredStudents = useMemo(() => {
     if (!students) return [];
 
+    const term = searchTerm.toLowerCase().trim();
+
     return students.filter((student) => {
       const matchesSearch =
-        student.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        student.enrollment_number.toLowerCase().includes(searchTerm.toLowerCase());
+        !term ||
+        student.full_name.toLowerCase().includes(term) ||
+        student.enrollment_number.toLowerCase().includes(term) ||
+        (student.bi_number && student.bi_number.toLowerCase().includes(term));
       const matchesClass =
         selectedClassId === 'Todos' || student.class_id === selectedClassId;
       const matchesStatus =
@@ -522,7 +528,7 @@ export function Students() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
           <Input
-            placeholder="Pesquisar por nome ou nº de matrícula"
+            placeholder="Pesquisar por nome, nº de matrícula ou BI"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10"
@@ -597,7 +603,14 @@ export function Students() {
                     : 'Sem turma';
 
                   return (
-                    <TableRow key={student.id} className="table-row-hover">
+                    <TableRow
+                      key={student.id}
+                      className="table-row-hover cursor-pointer"
+                      onClick={() => {
+                        setSelectedStudent(student);
+                        setIsDetailDialogOpen(true);
+                      }}
+                    >
                       <TableCell className="font-mono">
                         {student.enrollment_number}
                       </TableCell>
@@ -625,9 +638,10 @@ export function Students() {
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={() =>
-                            navigate(`/dashboard/financas/estudante/${student.id}`)
-                          }
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/dashboard/financas/estudante/${student.id}`);
+                          }}
                         >
                           Ver Finanças
                         </Button>
@@ -640,6 +654,78 @@ export function Students() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Student Detail Dialog */}
+      <Dialog
+        open={!!selectedStudent && isDetailDialogOpen}
+        onOpenChange={(open) => {
+          setIsDetailDialogOpen(open);
+          if (!open) setSelectedStudent(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>
+              Detalhes do Estudante
+            </DialogTitle>
+          </DialogHeader>
+          {selectedStudent && (
+            <div className="space-y-4">
+              <div>
+                <p className="text-sm text-muted-foreground">Nome</p>
+                <p className="font-semibold">{selectedStudent.full_name}</p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Nº Matrícula</p>
+                  <p className="font-medium">{selectedStudent.enrollment_number}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">BI</p>
+                  <p className="font-medium">{selectedStudent.bi_number || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Turma</p>
+                  <p className="font-medium">
+                    {(() => {
+                      const cls = classes?.find((c) => c.id === selectedStudent.class_id);
+                      return cls
+                        ? `${cls.course?.name} - ${cls.grade_level}ª ${cls.section}`
+                        : 'Sem turma';
+                    })()}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Estado</p>
+                  <p className="font-medium">
+                    {(selectedStudent.status || 'active') === 'active'
+                      ? 'Ativo'
+                      : 'Desistente'}
+                  </p>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Encarregado</p>
+                  <p className="font-medium">{selectedStudent.guardian_name || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Contacto</p>
+                  <p className="font-medium">{selectedStudent.guardian_contact || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Província</p>
+                  <p className="font-medium">{selectedStudent.province || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Naturalidade</p>
+                  <p className="font-medium">{selectedStudent.birthplace || '-'}</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

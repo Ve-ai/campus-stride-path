@@ -14,6 +14,7 @@ import {
   Edit,
   Loader2,
   RefreshCw,
+  Wallet,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -73,6 +74,7 @@ export function Settings() {
   const { data: teachers } = useTeachers();
   const deleteCourse = useDeleteCourse();
   const [isSeedingData, setIsSeedingData] = useState(false);
+  const [isSeedingFinance, setIsSeedingFinance] = useState(false);
 
   const isSuperAdmin = user?.role === 'super_admin';
 
@@ -142,6 +144,38 @@ export function Settings() {
       toast.error('Erro inesperado ao reinicializar dados de exemplo.');
     } finally {
       setIsSeedingData(false);
+    }
+  };
+
+  const handleSeedFinance = async () => {
+    if (!isSuperAdmin) {
+      toast.error('Apenas o administrador supremo pode inicializar o Gestor Financeiro.');
+      return;
+    }
+
+    setIsSeedingFinance(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('seed-finance', {
+        body: { resetPassword: true },
+      });
+
+      if (error) {
+        console.error('Seed finance error:', error);
+        toast.error('Erro ao criar Gestor Financeiro: ' + error.message);
+      } else if (data?.password) {
+        toast.success(
+          `Gestor Financeiro criado/atualizado com sucesso!\nUtilizador: ${data.username || 'financa@uni'}\nSenha temporária: ${data.password}`,
+        );
+      } else {
+        toast.info(
+          'Gestor Financeiro já existe. Clique novamente em "Inicializar Gestor Financeiro" para gerar uma nova senha, se necessário.',
+        );
+      }
+    } catch (err) {
+      console.error('Seed finance error:', err);
+      toast.error('Erro inesperado ao criar Gestor Financeiro');
+    } finally {
+      setIsSeedingFinance(false);
     }
   };
 
@@ -334,6 +368,41 @@ export function Settings() {
                     </>
                   ) : (
                     'Reinicializar base de dados de exemplo'
+                  )}
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
+          {isSuperAdmin && (
+            <Card className="card-elevated">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Wallet className="w-5 h-5" />
+                  Inicializar Gestor Financeiro
+                </CardTitle>
+                <CardDescription>
+                  Cria automaticamente uma conta de Gestor Financeiro permanente (função "finance") para o sistema.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="flex items-center justify-between gap-4 flex-wrap">
+                <p className="text-sm text-muted-foreground max-w-xl">
+                  O utilizador será criado com credenciais geradas automaticamente. Guarde a senha apresentada para
+                  partilhar com o Gestor Financeiro.
+                </p>
+                <Button
+                  variant="outline"
+                  onClick={handleSeedFinance}
+                  disabled={isSeedingFinance}
+                  className="shrink-0"
+                >
+                  {isSeedingFinance ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      A criar Gestor Financeiro...
+                    </>
+                  ) : (
+                    'Inicializar Gestor Financeiro'
                   )}
                 </Button>
               </CardContent>

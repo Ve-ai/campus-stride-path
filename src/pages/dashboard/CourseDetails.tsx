@@ -254,8 +254,15 @@ export function CourseDetails() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge variant="outline">
-                            {cls.period === 'morning' ? 'Manhã' : 'Tarde'}
+                          <Badge 
+                            variant="secondary"
+                            className={
+                              cls.period === 'Manhã'
+                                ? 'bg-warning/10 text-warning'
+                                : 'bg-accent/10 text-accent'
+                            }
+                          >
+                            {cls.period}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-center">{cls.max_students}</TableCell>

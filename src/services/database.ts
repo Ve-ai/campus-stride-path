@@ -224,12 +224,14 @@ export async function fetchStatistics() {
 
   const { data: payments } = await supabase
     .from('payments')
-    .select('amount')
+    .select('base_amount, late_fee')
     .eq('month_reference', currentMonth)
     .eq('year_reference', currentYear);
 
   const monthlyRevenue =
-    payments?.reduce((sum, p) => sum + Number((p as any).amount), 0) || 0;
+    payments?.reduce((sum, p) => sum + Number((p as any).base_amount || 0), 0) || 0;
+  const monthlyFines =
+    payments?.reduce((sum, p) => sum + Number((p as any).late_fee || 0), 0) || 0;
 
   return {
     students: {
@@ -244,6 +246,7 @@ export async function fetchStatistics() {
     classes: classCount || 0,
     finance: {
       monthlyRevenue,
+      monthlyFines,
     },
   };
 }
@@ -280,7 +283,7 @@ export async function createStudent(student: CreateStudentInput) {
 
 export interface CreatePaymentInput {
   student_id: string;
-  amount: number;
+  amount: number; // valor base da mensalidade (sem multa)
   month_reference: number;
   year_reference: number;
   payment_method: string;
@@ -288,9 +291,33 @@ export interface CreatePaymentInput {
 }
 
 export async function createPayment(payment: CreatePaymentInput) {
+  const today = new Date();
+
+  // Calcula o prazo limite: último dia do mês de referência + 9 dias do mês seguinte
+  const referenceMonth = payment.month_reference; // 1-12
+  const referenceYear = payment.year_reference;
+
+  const lastDayOfMonth = new Date(referenceYear, referenceMonth, 0); // dia 0 do mês seguinte = último dia do mês
+  const dueDate = new Date(lastDayOfMonth);
+  dueDate.setDate(dueDate.getDate() + 9); // +9 dias do mês seguinte
+
+  const isLate = today > dueDate;
+  const lateFee = isLate ? 1000 : 0;
+  const baseAmount = payment.amount;
+  const totalAmount = baseAmount + lateFee;
+
   const { data, error } = await supabase
     .from('payments')
-    .insert(payment)
+    .insert({
+      student_id: payment.student_id,
+      amount: totalAmount,
+      base_amount: baseAmount,
+      late_fee: lateFee,
+      month_reference: payment.month_reference,
+      year_reference: payment.year_reference,
+      payment_method: payment.payment_method,
+      observations: payment.observations,
+    })
     .select()
     .single();
 

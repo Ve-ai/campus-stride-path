@@ -411,8 +411,10 @@ export type Database = {
       payments: {
         Row: {
           amount: number
+          base_amount: number
           created_at: string
           id: string
+          late_fee: number
           month_reference: number
           observations: string | null
           payment_date: string
@@ -424,8 +426,10 @@ export type Database = {
         }
         Insert: {
           amount: number
+          base_amount?: number
           created_at?: string
           id?: string
+          late_fee?: number
           month_reference: number
           observations?: string | null
           payment_date?: string
@@ -437,8 +441,10 @@ export type Database = {
         }
         Update: {
           amount?: number
+          base_amount?: number
           created_at?: string
           id?: string
+          late_fee?: number
           month_reference?: number
           observations?: string | null
           payment_date?: string

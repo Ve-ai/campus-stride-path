@@ -841,6 +841,9 @@ export function ClassDetails() {
                       console.error('Erro ao adicionar logotipo à mini pauta:', e);
                     }
 
+                    // Garantir que todo o texto (exceto notas em falta) fica a preto por padrão
+                    doc.setTextColor(0, 0, 0);
+
                     // Cabeçalho semelhante ao modelo enviado
                     let currentY = 8 + imgSize + 4;
                     doc.setFontSize(11);
@@ -920,7 +923,7 @@ export function ClassDetails() {
                       const g3 = getGradeFor(student.id, selectedSubjectId, 3);
 
                       const pushGrade = (g: any) => {
-                        row.push(g?.mac ?? '-', '- ', g?.npt ?? '-', g?.mt ?? '-');
+                        row.push(g?.mac ?? '-', g?.npp ?? '-', g?.npt ?? '-', g?.mt ?? '-');
                       };
 
                       pushGrade(g1);
@@ -944,10 +947,24 @@ export function ClassDetails() {
                       body,
                       startY: currentY + 6,
                       margin: { top: currentY + 2, left: 8, right: 8 },
-                      styles: { fontSize: 7, cellPadding: 1, overflow: 'linebreak' },
-                      headStyles: { fillColor: [240, 240, 240] },
+                      styles: { fontSize: 7, cellPadding: 1, overflow: 'linebreak', textColor: [0, 0, 0] },
+                      headStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0] },
                       theme: 'grid',
                       pageBreak: 'auto',
+                      didParseCell: (data) => {
+                        if (data.section === 'body') {
+                          const raw = data.cell.raw;
+                          const value = typeof raw === 'string' || typeof raw === 'number'
+                            ? Number(raw)
+                            : NaN;
+
+                          if (!Number.isNaN(value) && value < 10) {
+                            data.cell.styles.textColor = [255, 0, 0];
+                          } else {
+                            data.cell.styles.textColor = [0, 0, 0];
+                          }
+                        }
+                      },
                     });
 
                     doc.save(

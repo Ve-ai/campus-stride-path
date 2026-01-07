@@ -25,6 +25,20 @@ serve(async (req) => {
 
     console.log('Starting data seed...')
 
+    // Limpar dados existentes para garantir números exatos
+    console.log('Cleaning existing demo data...')
+
+    // Apagar dados dependentes primeiro para respeitar as chaves estrangeiras
+    await supabase.from('payments').delete().neq('id', '')
+    await supabase.from('grades').delete().neq('id', '')
+    await supabase.from('teacher_class_assignments').delete().neq('id', '')
+    await supabase.from('students').delete().neq('id', '')
+    await supabase.from('classes').delete().neq('id', '')
+    await supabase.from('subjects').delete().neq('id', '')
+    await supabase.from('courses').delete().neq('id', '')
+    await supabase.from('teachers').delete().neq('id', '')
+
+    console.log('Existing demo data cleaned')
     // 1. Create School Nucleus
     const { data: nucleus, error: nucleusError } = await supabase
       .from('school_nuclei')
@@ -50,7 +64,7 @@ serve(async (req) => {
 
     console.log('Nucleus ID:', nucleusId)
 
-    // 2. Create Courses (target: 6 cursos)
+    // 2. Create Courses (target: 8 cursos)
     const coursesData = [
       { 
         name: 'Enfermagem Geral', 
@@ -124,6 +138,30 @@ serve(async (req) => {
         defense_entry_fee: 15000,
         tutor_fee: 28000,
       },
+      {
+        name: 'Gestão de Recursos Humanos',
+        school_nucleus_id: nucleusId,
+        monthly_fee_10: 13000,
+        monthly_fee_11: 15500,
+        monthly_fee_12: 18000,
+        monthly_fee_13: 20000,
+        internship_fee: 22000,
+        credential_fee: 5000,
+        defense_entry_fee: 15000,
+        tutor_fee: 26000,
+      },
+      {
+        name: 'Saúde Pública',
+        school_nucleus_id: nucleusId,
+        monthly_fee_10: 15000,
+        monthly_fee_11: 18000,
+        monthly_fee_12: 21000,
+        monthly_fee_13: 23000,
+        internship_fee: 26000,
+        credential_fee: 6000,
+        defense_entry_fee: 16000,
+        tutor_fee: 30000,
+      },
     ]
 
     for (const course of coursesData) {
@@ -155,6 +193,10 @@ serve(async (req) => {
     const farmaciaSubjects = ['Farmacologia', 'Toxicologia', 'Química Orgânica', 'Matemática', 'Português', 'Inglês', 'Tecnologia Farmacêutica', 'Legislação Farmacêutica']
     // Administração Hospitalar subjects
     const administracaoSubjects = ['Gestão Hospitalar', 'Administração', 'Economia da Saúde', 'Matemática', 'Português', 'Inglês', 'Direito da Saúde', 'Estatística Aplicada']
+    // Gestão de Recursos Humanos subjects
+    const recursosHumanosSubjects = ['Psicologia Organizacional', 'Gestão de Pessoas', 'Direito Laboral', 'Matemática', 'Português', 'Inglês', 'Comportamento Organizacional', 'Ética Profissional']
+    // Saúde Pública subjects
+    const saudePublicaSubjects = ['Epidemiologia', 'Promoção da Saúde', 'Estatística em Saúde', 'Matemática', 'Português', 'Inglês', 'Gestão de Programas de Saúde', 'Legislação em Saúde Pública']
 
     const courseSubjectsMap: { [key: string]: string[] } = {
       'Enfermagem Geral': enfermagemSubjects,
@@ -163,6 +205,8 @@ serve(async (req) => {
       'Análises Clínicas': analisesSubjects,
       'Farmácia': farmaciaSubjects,
       'Administração Hospitalar': administracaoSubjects,
+      'Gestão de Recursos Humanos': recursosHumanosSubjects,
+      'Saúde Pública': saudePublicaSubjects,
     }
 
     for (const course of courses || []) {
@@ -197,15 +241,15 @@ serve(async (req) => {
 
     console.log('Subjects created')
 
-    // 4. Create Classes for each course (target: 42 turmas)
-    const periods = ['Manhã', 'Tarde']
+    // 4. Create Classes for each course (target: 48 turmas)
+    const periods = ['Manhã']
     const sections = ['A', 'B']
     const academicYear = 2025
 
     const classConfigs: { course_id: string; grade_level: number; section: string; period: string }[] = []
 
     for (const course of courses || []) {
-      for (const gradeLevel of [10, 11, 12, 13]) {
+      for (const gradeLevel of [10, 11, 12]) {
         for (const period of periods) {
           for (const section of sections) {
             classConfigs.push({
@@ -219,7 +263,8 @@ serve(async (req) => {
       }
     }
 
-    const selectedClassConfigs = classConfigs.slice(0, 42) // exactly 42 classes
+    // Criar todas as combinações definidas (exatamente 48 turmas = 8 cursos x 3 anos x 2 turmas)
+    const selectedClassConfigs = classConfigs
 
     for (const cfg of selectedClassConfigs) {
       const { error } = await supabase
@@ -353,7 +398,7 @@ serve(async (req) => {
       console.log('Course coordinators assigned')
     }
 
-    // 6. Create Students (target: 1000 estudantes divididos nas turmas)
+    // 6. Create Students (target: 700 estudantes divididos nas turmas)
     const firstNames = ['Pedro', 'Maria', 'João', 'Ana', 'Carlos', 'Sofia', 'Manuel', 'Catarina', 'António', 'Isabel', 'Miguel', 'Francisca', 'José', 'Beatriz', 'Paulo']
     const lastNames = ['Alves', 'Santos', 'Ferreira', 'Costa', 'Silva', 'Oliveira', 'Mendes', 'Nunes', 'Pereira', 'Rodrigues', 'Martins', 'Sousa', 'Fernandes', 'Gonçalves', 'Gomes']
     const provinces = ['Luanda', 'Benguela', 'Huambo', 'Huíla', 'Bié', 'Malanje', 'Kwanza Norte', 'Kwanza Sul']
@@ -362,7 +407,7 @@ serve(async (req) => {
     let studentCount = 0
     const classesToPopulate = (classes || []) // popular todas as turmas existentes (de todos os cursos)
 
-    const totalStudentsTarget = 1000
+    const totalStudentsTarget = 700
     const numClasses = classesToPopulate.length
     const basePerClass = Math.floor(totalStudentsTarget / Math.max(numClasses, 1))
     const remainder = totalStudentsTarget - basePerClass * numClasses

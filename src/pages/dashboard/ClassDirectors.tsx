@@ -124,11 +124,27 @@ export function ClassDirectors() {
     }));
   }, [classes, teachers]);
 
-  // Get classes without directors
+  // Get classes without directors, optionally filtered by selected teacher assignments
   const classesWithoutDirector = useMemo(() => {
     if (!classes) return [];
-    return classes.filter(c => !c.class_director_id);
-  }, [classes]);
+
+    // Classes that currently don't have a director
+    const baseClasses = classes.filter((c: any) => !c.class_director_id);
+
+    // If no teacher selected, show all classes without director
+    if (!selectedTeacherId || !teachers) return baseClasses;
+
+    const teacher = teachers.find((t: any) => t.id === selectedTeacherId);
+    if (!teacher || !teacher.teacher_class_assignments) return [];
+
+    const allowedClassIds = new Set(
+      teacher.teacher_class_assignments
+        .map((assignment: any) => assignment.class?.id)
+        .filter(Boolean)
+    );
+
+    return baseClasses.filter((c: any) => allowedClassIds.has(c.id));
+  }, [classes, selectedTeacherId, teachers]);
 
   // Get teachers that are not already directors and teach in the selected class
   const availableTeachers = useMemo(() => {

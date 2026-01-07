@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import logoInstituto from '@/assets/logo-instituto-amor-de-deus.png';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -803,7 +804,46 @@ export function ClassDetails() {
                   onClick={() => {
                     const doc = new jsPDF('landscape');
 
-                    const title = `${course?.name || 'Curso'} - ${classData.grade_level}ª ${classData.section} | ${selectedTrimester}º Trimestre`;
+                    const pageWidth = doc.internal.pageSize.getWidth();
+                    const imgSize = 20;
+                    const imgX = (pageWidth - imgSize) / 2;
+
+                    try {
+                      // Logotipo centrado no topo
+                      // @ts-ignore - jsPDF aceita path de imagem fornecido pelo bundler
+                      doc.addImage(logoInstituto, 'PNG', imgX, 8, imgSize, imgSize);
+                    } catch (e) {
+                      // Se por algum motivo a imagem falhar, continuamos apenas com o texto
+                      console.error('Erro ao adicionar logotipo à mini pauta:', e);
+                    }
+
+                    // Cabeçalho semelhante ao modelo enviado
+                    let currentY = 8 + imgSize + 4;
+                    doc.setFontSize(11);
+                    doc.text('INSTITUTO TECNICO PRIVADO AMOR DE DEUS', pageWidth / 2, currentY, {
+                      align: 'center',
+                    });
+
+                    currentY += 5;
+                    doc.setFontSize(9);
+                    doc.text('NIF:7000001295', pageWidth / 2, currentY, { align: 'center' });
+
+                    currentY += 5;
+                    doc.text('NEGAGE', pageWidth / 2, currentY, { align: 'center' });
+
+                    currentY += 5;
+                    doc.setFontSize(10);
+                    doc.text('MINI PAUTA GERAL', pageWidth / 2, currentY, { align: 'center' });
+
+                    currentY += 6;
+                    doc.setFontSize(8);
+                    const curso = course?.name || 'Curso';
+                    const classe = `${classData.grade_level}ª`;
+                    const turma = classData.section;
+                    const periodo = classData.period || '';
+                    const anoLectivo = classData.academic_year || '';
+                    const linhaInfo = `Curso: ${curso}   Classe: ${classe}   Turma: ${turma}   Periodo: ${periodo}   Ano Lectivo: ${anoLectivo}   Trimestre: ${selectedTrimester}º`;
+                    doc.text(linhaInfo, pageWidth / 2, currentY, { align: 'center' });
 
                     const headRow1: string[] = ['Nº', 'Nº Matrícula', 'Nome Completo'];
                     const headRow2: string[] = ['', '', ''];
@@ -825,9 +865,7 @@ export function ClassDetails() {
                       );
 
                       classSubjects.forEach((subject) => {
-                        const grade = studentGrades.find(
-                          (g) => g.subject_id === subject.id,
-                        );
+                        const grade = studentGrades.find((g) => g.subject_id === subject.id);
                         row.push(
                           grade?.mac ?? '-',
                           '-',
@@ -842,16 +880,12 @@ export function ClassDetails() {
                     autoTable(doc, {
                       head: [headRow1, headRow2],
                       body,
-                      startY: 22,
-                      margin: { top: 22, left: 8, right: 8 },
+                      startY: currentY + 6,
+                      margin: { top: currentY + 2, left: 8, right: 8 },
                       styles: { fontSize: 7, cellPadding: 1, overflow: 'linebreak' },
                       headStyles: { fillColor: [240, 240, 240] },
                       theme: 'grid',
                       pageBreak: 'auto',
-                      didDrawPage: (data: any) => {
-                        doc.setFontSize(11);
-                        doc.text(title, data.settings.margin.left, 15);
-                      },
                     });
 
                     doc.save(
@@ -916,6 +950,9 @@ export function ClassDetails() {
                                   {grade?.mac ?? '-'}
                                 </TableCell>
                                 <TableCell className="text-center">
+                                  -
+                                </TableCell>
+                                <TableCell className="text-center">
                                   {grade?.npt ?? '-'}
                                 </TableCell>
                                 <TableCell className="text-center font-medium">
@@ -930,8 +967,8 @@ export function ClassDetails() {
                     {filteredStudents.length === 0 && (
                       <TableRow>
                         <TableCell
-                          colSpan={3 + classSubjects.length * 3}
-                          className="text-center text-muted-foreground py-8"
+                          colSpan={3 + classSubjects.length * 4}
+                           className="text-center text-muted-foreground py-8"
                         >
                           Nenhum estudante para exibir notas
                         </TableCell>

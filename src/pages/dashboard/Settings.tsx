@@ -348,7 +348,7 @@ export function Settings() {
                 </CardTitle>
                 <CardDescription>
                   Apaga todos os dados atuais de exemplo (alunos, cursos, turmas, professores, pagamentos) e recria o cenário padrão
-                  com 8 cursos, 48 turmas, 50 professores e 700 alunos. Use apenas em ambiente de testes.
+                  com 8 cursos, 96 turmas (manhã e tarde), 100 professores e 1400 alunos. Use apenas em ambiente de testes.
                 </CardDescription>
               </CardHeader>
               <CardContent className="flex items-center justify-between gap-4 flex-wrap">

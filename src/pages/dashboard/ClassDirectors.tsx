@@ -203,7 +203,7 @@ export function ClassDirectors() {
                   </SelectTrigger>
                   <SelectContent>
                     {availableTeachers.length === 0 ? (
-                      <SelectItem value="" disabled>
+                      <SelectItem value="no-available-teacher" disabled>
                         Nenhum professor disponível para esta turma
                       </SelectItem>
                     ) : (
@@ -227,7 +227,7 @@ export function ClassDirectors() {
                   </SelectTrigger>
                   <SelectContent>
                     {classesWithoutDirector.length === 0 ? (
-                      <SelectItem value="" disabled>
+                      <SelectItem value="no-available-class" disabled>
                         Todas as turmas têm director
                       </SelectItem>
                     ) : (

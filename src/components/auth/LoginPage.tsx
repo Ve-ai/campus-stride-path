@@ -11,7 +11,7 @@ import { useStatistics } from '@/hooks/useDatabase';
 
 export function LoginPage() {
   const navigate = useNavigate();
-  const { login, isLoading, user } = useAuth();
+  const { login, isLoading } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -49,6 +49,32 @@ export function LoginPage() {
       setIsSeeding(false);
     }
   };
+
+  const handleSeedFinance = async () => {
+    setIsSeedingFinance(true);
+    try {
+      // Requer um super_admin autenticado; o token é enviado automaticamente pelo cliente
+      const { data, error } = await supabase.functions.invoke('seed-finance', {
+        body: { resetPassword: true },
+      });
+
+      if (error) {
+        toast.error('Erro ao criar Gestor Financeiro: ' + error.message);
+      } else if (data?.password) {
+        toast.success(`Gestor Financeiro criado/atualizado com sucesso!\nUtilizador: ${data.username || 'financa@uni'}\nSenha temporária: ${data.password}`);
+        setUsername(data.username || 'financa@uni');
+        setPassword(data.password);
+      } else {
+        toast.info('Gestor Financeiro já existe. Clique novamente em "Inicializar Gestor Financeiro" para gerar uma nova senha, se necessário.');
+        setUsername(data?.username || 'financa@uni');
+      }
+    } catch (err) {
+      toast.error('Erro ao criar Gestor Financeiro');
+    } finally {
+      setIsSeedingFinance(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -69,7 +95,6 @@ export function LoginPage() {
     } else {
       setError(result.error || 'Erro ao fazer login');
     }
-
   };
 
   return (
@@ -201,13 +226,13 @@ export function LoginPage() {
             </Button>
           </form>
 
-          <div className="mt-8 pt-8 border-t border-border">
+          <div className="mt-8 pt-8 border-t border-border space-y-3">
             <Button
               type="button"
               variant="outline"
               onClick={handleSeedAdmin}
               disabled={isSeeding}
-              className="w-full mb-3"
+              className="w-full"
             >
               {isSeeding ? (
                 <>
@@ -221,7 +246,28 @@ export function LoginPage() {
                 </>
               )}
             </Button>
-            <p className="text-xs text-muted-foreground text-center mb-2">
+
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleSeedFinance}
+              disabled={isSeedingFinance}
+              className="w-full"
+            >
+              {isSeedingFinance ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  A criar Gestor Financeiro...
+                </>
+              ) : (
+                <>
+                  <Wallet className="w-4 h-4 mr-2" />
+                  Inicializar Gestor Financeiro
+                </>
+              )}
+            </Button>
+
+            <p className="text-xs text-muted-foreground text-center">
               Nota: A inicialização de contas requer autenticação após a criação do primeiro super admin.
             </p>
             <p className="text-center text-sm text-muted-foreground">

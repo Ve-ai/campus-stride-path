@@ -284,7 +284,9 @@ export function StudentFinanceDetails() {
         <tr><td class="label">Mês pago</td><td class="value">${monthLabel} / ${targetPayment.year_reference}</td></tr>
         <tr><td class="label">Data do pagamento</td><td class="value">${paymentDate}</td></tr>
         <tr><td class="label">Método</td><td class="value"><span class="badge">${targetPayment.payment_method || 'N/D'}</span></td></tr>
-        <tr><td class="label">Valor pago</td><td class="value amount">${amountFormatted}</td></tr>
+        <tr><td class="label">Valor Base</td><td class="value">${new Intl.NumberFormat('pt-AO', { style: 'currency', currency: 'AOA', minimumFractionDigits: 0 }).format(Number(targetPayment.base_amount || targetPayment.amount))}</td></tr>
+        ${Number(targetPayment.late_fee) > 0 ? `<tr><td class="label" style="color: #dc2626;">Multa por Atraso</td><td class="value" style="color: #dc2626;">${new Intl.NumberFormat('pt-AO', { style: 'currency', currency: 'AOA', minimumFractionDigits: 0 }).format(Number(targetPayment.late_fee))}</td></tr>` : ''}
+        <tr><td class="label" style="font-weight: 700;">Total Pago</td><td class="value amount">${amountFormatted}</td></tr>
       </table>
     </div>
 
@@ -411,15 +413,77 @@ export function StudentFinanceDetails() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label>Valor Base (AOA)</Label>
-                <Input
-                  type="number"
-                  value={newPayment.amount}
-                  disabled
-                  className="bg-muted cursor-not-allowed"
-                />
-              </div>
+              
+              {/* Cálculo de multa em tempo real */}
+              {(() => {
+                const selectedMonth = parseInt(newPayment.month);
+                const selectedYear = parseInt(newPayment.year);
+                const today = new Date();
+                const currentDay = today.getDate();
+                const currentMonthNow = today.getMonth() + 1;
+                const currentYearNow = today.getFullYear();
+                
+                // Determina o mês/ano limite para pagamento sem multa (dia 10 do mês seguinte)
+                let deadlineMonth = selectedMonth + 1;
+                let deadlineYear = selectedYear;
+                if (deadlineMonth > 12) {
+                  deadlineMonth = 1;
+                  deadlineYear += 1;
+                }
+                
+                // Verifica se está em atraso
+                const isLate = (currentYearNow > deadlineYear) || 
+                  (currentYearNow === deadlineYear && currentMonthNow > deadlineMonth) ||
+                  (currentYearNow === deadlineYear && currentMonthNow === deadlineMonth && currentDay > 10);
+                
+                const lateFee = isLate ? 1000 : 0;
+                const baseAmount = parseFloat(newPayment.amount) || 0;
+                const totalAmount = baseAmount + lateFee;
+                
+                return (
+                  <>
+                    <div className="space-y-2">
+                      <Label>Valor Base (AOA)</Label>
+                      <Input
+                        type="number"
+                        value={newPayment.amount}
+                        disabled
+                        className="bg-muted cursor-not-allowed"
+                      />
+                    </div>
+                    
+                    {isLate && (
+                      <div className="space-y-2">
+                        <Label className="text-destructive">Multa por Atraso (AOA)</Label>
+                        <Input
+                          type="number"
+                          value={lateFee}
+                          disabled
+                          className="bg-destructive/10 border-destructive/30 text-destructive cursor-not-allowed"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Pagamento após o dia 10 do mês seguinte ao mês de referência.
+                        </p>
+                      </div>
+                    )}
+                    
+                    <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
+                      <div className="flex justify-between items-center">
+                        <span className="font-medium text-sm">Total a Pagar</span>
+                        <span className="font-bold text-lg text-primary">
+                          {new Intl.NumberFormat('pt-AO', { style: 'currency', currency: 'AOA', minimumFractionDigits: 0 }).format(totalAmount)}
+                        </span>
+                      </div>
+                      {isLate && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          ({new Intl.NumberFormat('pt-AO', { style: 'currency', currency: 'AOA', minimumFractionDigits: 0 }).format(baseAmount)} + {new Intl.NumberFormat('pt-AO', { style: 'currency', currency: 'AOA', minimumFractionDigits: 0 }).format(lateFee)} multa)
+                        </p>
+                      )}
+                    </div>
+                  </>
+                );
+              })()}
+              
               <div className="space-y-2">
                 <Label>Método de Pagamento</Label>
                 <Select

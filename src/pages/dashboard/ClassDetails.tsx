@@ -10,6 +10,8 @@ import {
   Search,
   CalendarIcon,
 } from 'lucide-react';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -206,6 +208,13 @@ export function ClassDetails() {
     s.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     s.enrollment_number.toLowerCase().includes(searchTerm.toLowerCase())
   ) || [];
+
+  const [selectedTrimester, setSelectedTrimester] = useState<number>(1);
+
+  const gradesForSelectedTrimester = React.useMemo(
+    () => grades?.filter((g) => g.trimester === selectedTrimester) || [],
+    [grades, selectedTrimester],
+  );
 
   const handleCreateStudent = async () => {
     if (!newStudent.full_name.trim()) {
@@ -763,8 +772,95 @@ export function ClassDetails() {
 
         <TabsContent value="grades" className="space-y-4">
           <Card className="card-elevated">
-            <CardHeader>
-              <CardTitle>Notas por Disciplina</CardTitle>
+            <CardHeader className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div>
+                <CardTitle>Mini pauta do trimestre</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Notas da turma por disciplina para o trimestre selecionado.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <Label>Trimestre</Label>
+                  <Select
+                    value={String(selectedTrimester)}
+                    onValueChange={(value) => setSelectedTrimester(Number(value))}
+                  >
+                    <SelectTrigger className="w-[140px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1">1º Trimestre</SelectItem>
+                      <SelectItem value="2">2º Trimestre</SelectItem>
+                      <SelectItem value="3">3º Trimestre</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                  onClick={() => {
+                    const doc = new jsPDF('landscape');
+
+                    (doc as any).setFontSize(12);
+                    doc.text(
+                      `${course?.name || 'Curso'} - ${classData.grade_level}ª ${classData.section} | ${selectedTrimester}º Trimestre`,
+                      14,
+                      15,
+                    );
+
+                    const headRow1: string[] = ['Nº', 'Nº Matrícula', 'Nome Completo'];
+                    const headRow2: string[] = ['', '', ''];
+
+                    classSubjects.forEach((subject) => {
+                      headRow1.push(subject.name, '', '');
+                      headRow2.push('MAC', 'NPT', 'MT');
+                    });
+
+                    const body = filteredStudents.map((student, index) => {
+                      const row: (string | number)[] = [
+                        index + 1,
+                        student.enrollment_number,
+                        student.full_name,
+                      ];
+
+                      const studentGrades = gradesForSelectedTrimester.filter(
+                        (g) => g.student_id === student.id,
+                      );
+
+                      classSubjects.forEach((subject) => {
+                        const grade = studentGrades.find(
+                          (g) => g.subject_id === subject.id,
+                        );
+                        row.push(
+                          grade?.mac ?? '-',
+                          grade?.npt ?? '-',
+                          grade?.mt ?? '-',
+                        );
+                      });
+
+                      return row;
+                    });
+
+                    (doc as any).autoTable({
+                      head: [headRow1, headRow2],
+                      body,
+                      startY: 22,
+                      styles: { fontSize: 8, cellPadding: 1.5 },
+                      headStyles: { fillColor: [240, 240, 240] },
+                      theme: 'grid',
+                    });
+
+                    doc.save(
+                      `mini-pauta-${classData.grade_level}a-${classData.section}-tri${selectedTrimester}.pdf`,
+                    );
+                  }}
+                >
+                  <Download className="w-4 h-4" />
+                  Exportar mini pauta (PDF)
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
@@ -773,7 +869,7 @@ export function ClassDetails() {
                     <TableRow className="table-header">
                       <TableHead className="sticky left-0 bg-background z-10">N°</TableHead>
                       <TableHead className="sticky left-10 bg-background z-10">N° Matrícula</TableHead>
-                      <TableHead className="sticky left-28 bg-background z-10 min-w-[200px]">Nome</TableHead>
+                      <TableHead className="sticky left-28 bg-background z-10 min-w-[200px]">Nome Completo</TableHead>
                       {classSubjects.map((subject) => (
                         <TableHead key={subject.id} colSpan={3} className="text-center border-l">
                           {subject.name}
@@ -795,7 +891,9 @@ export function ClassDetails() {
                   </TableHeader>
                   <TableBody>
                     {filteredStudents.map((student, index) => {
-                      const studentGrades = grades?.filter(g => g.student_id === student.id) || [];
+                      const studentGrades = gradesForSelectedTrimester.filter(
+                        (g) => g.student_id === student.id,
+                      );
                       return (
                         <TableRow key={student.id} className="table-row-hover">
                           <TableCell className="sticky left-0 bg-background">{index + 1}</TableCell>
@@ -806,7 +904,9 @@ export function ClassDetails() {
                             {student.full_name}
                           </TableCell>
                           {classSubjects.map((subject) => {
-                            const grade = studentGrades.find(g => g.subject_id === subject.id);
+                            const grade = studentGrades.find(
+                              (g) => g.subject_id === subject.id,
+                            );
                             return (
                               <React.Fragment key={`grade-${student.id}-${subject.id}`}>
                                 <TableCell className="text-center border-l">
@@ -826,7 +926,10 @@ export function ClassDetails() {
                     })}
                     {filteredStudents.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={3 + classSubjects.length * 3} className="text-center text-muted-foreground py-8">
+                        <TableCell
+                          colSpan={3 + classSubjects.length * 3}
+                          className="text-center text-muted-foreground py-8"
+                        >
                           Nenhum estudante para exibir notas
                         </TableCell>
                       </TableRow>

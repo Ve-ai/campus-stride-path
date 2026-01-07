@@ -11,7 +11,7 @@ import { useStatistics } from '@/hooks/useDatabase';
 
 export function LoginPage() {
   const navigate = useNavigate();
-  const { login, isLoading } = useAuth();
+  const { login, isLoading, user } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -51,6 +51,11 @@ export function LoginPage() {
   };
 
   const handleSeedFinance = async () => {
+    if (!user || user.role !== 'super_admin') {
+      toast.error('Apenas o Administrador Supremo pode inicializar o Gestor Financeiro.');
+      return;
+    }
+
     setIsSeedingFinance(true);
     try {
       // Requer um super_admin autenticado; o token é enviado automaticamente pelo cliente

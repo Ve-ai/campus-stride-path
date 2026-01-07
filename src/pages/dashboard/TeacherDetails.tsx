@@ -763,32 +763,44 @@ export function TeacherDetails() {
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {times.map((time) => (
-                              <TableRow key={time}>
-                                <TableCell className="font-mono text-xs md:text-sm w-20">
-                                  {time}
-                                </TableCell>
-                                {days.map((day) => {
-                                  const isAssigned = schedule?.[day]?.[time];
-                                  return (
-                                    <TableCell key={day} className="p-0">
-                                      <button
-                                        type="button"
-                                        onClick={() => toggleSlot(day, time)}
-                                        className={`w-full h-12 text-xs md:text-sm border-l border-t last:border-r focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
-                                          isAssigned
-                                            ? 'bg-primary/10 text-primary font-medium'
-                                            : 'hover:bg-muted'
-                                        }`}
-                                      >
-                                        {isAssigned && selectedAssignment
-                                          ? `${selectedAssignment.class?.grade_level}ª ${selectedAssignment.class?.section}`
-                                          : ''}
-                                      </button>
+                            {times.map((time, index) => (
+                              <React.Fragment key={time}>
+                                <TableRow>
+                                  <TableCell className="font-mono text-xs md:text-sm w-20">
+                                    {time}
+                                  </TableCell>
+                                  {days.map((day) => {
+                                    const isAssigned = schedule?.[day]?.[time];
+                                    return (
+                                      <TableCell key={day} className="p-0">
+                                        <button
+                                          type="button"
+                                          onClick={() => toggleSlot(day, time)}
+                                          className={`w-full h-12 text-xs md:text-sm border-l border-t last:border-r focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+                                            isAssigned
+                                              ? 'bg-primary/10 text-primary font-medium'
+                                              : 'hover:bg-muted'
+                                          }`}
+                                        >
+                                          {isAssigned && selectedAssignment
+                                            ? `${selectedAssignment.class?.grade_level}ª ${selectedAssignment.class?.section}`
+                                            : ''}
+                                        </button>
+                                      </TableCell>
+                                    );
+                                  })}
+                                </TableRow>
+                                {index === 2 && (
+                                  <TableRow>
+                                    <TableCell className="text-xs md:text-sm font-medium text-muted-foreground">
+                                      Intervalo
                                     </TableCell>
-                                  );
-                                })}
-                              </TableRow>
+                                    {days.map((day) => (
+                                      <TableCell key={`${day}-break`} className="bg-muted/40 h-8" />
+                                    ))}
+                                  </TableRow>
+                                )}
+                              </React.Fragment>
                             ))}
                           </TableBody>
                         </Table>

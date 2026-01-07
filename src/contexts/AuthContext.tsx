@@ -147,13 +147,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Encontrar o email a partir do username
       let email = '';
       
-      // Credenciais padrão (super admin / admin / finanças)
+      // Credenciais padrão (super admin / admin / finanças / coordenador / matricula)
       if (username === DEFAULT_CREDENTIALS.super_admin.username) {
         email = DEFAULT_CREDENTIALS.super_admin.email;
       } else if (username === DEFAULT_CREDENTIALS.admin.username) {
         email = DEFAULT_CREDENTIALS.admin.email;
       } else if (username === DEFAULT_CREDENTIALS.finance.username) {
         email = DEFAULT_CREDENTIALS.finance.email;
+      } else if (username === DEFAULT_CREDENTIALS.coordinator.username) {
+        email = DEFAULT_CREDENTIALS.coordinator.email;
+      } else if (username === DEFAULT_CREDENTIALS.matricula.username) {
+        email = DEFAULT_CREDENTIALS.matricula.email;
       } else {
         // Para professores, o username é o BI - procurar o utilizador
         const { data: profile } = await supabase

@@ -30,6 +30,7 @@ import {
 const navigationItems = {
   super_admin: [
     { name: 'Visão Geral', path: '/dashboard', icon: LayoutDashboard },
+    { name: 'Matrículas', path: '/dashboard/matriculas', icon: GraduationCap },
     { name: 'Cursos', path: '/dashboard/cursos', icon: BookOpen },
     { name: 'Turmas', path: '/dashboard/turmas', icon: Users },
     { name: 'Estudantes', path: '/dashboard/estudantes', icon: User },
@@ -44,6 +45,7 @@ const navigationItems = {
   ],
   admin: [
     { name: 'Visão Geral', path: '/dashboard', icon: LayoutDashboard },
+    { name: 'Matrículas', path: '/dashboard/matriculas', icon: GraduationCap },
     { name: 'Cursos', path: '/dashboard/cursos', icon: BookOpen },
     { name: 'Turmas', path: '/dashboard/turmas', icon: Users },
     { name: 'Estudantes', path: '/dashboard/estudantes', icon: User },
@@ -62,6 +64,19 @@ const navigationItems = {
     { name: 'Relatórios', path: '/dashboard/relatorios', icon: BookOpen },
     { name: 'Faltas de Professores', path: '/dashboard/faltas-professores', icon: Bell },
     { name: 'Configurações', path: '/dashboard/configuracoes', icon: Settings },
+  ],
+  coordinator: [
+    { name: 'Visão Geral', path: '/dashboard', icon: LayoutDashboard },
+    { name: 'Coordenação', path: '/dashboard/coordenacao', icon: ClipboardList },
+    { name: 'Turmas', path: '/dashboard/turmas', icon: Users },
+    { name: 'Estudantes', path: '/dashboard/estudantes', icon: User },
+    { name: 'Perfil', path: '/dashboard/perfil', icon: User },
+  ],
+  matricula: [
+    { name: 'Visão Geral', path: '/dashboard', icon: LayoutDashboard },
+    { name: 'Matrículas', path: '/dashboard/matriculas', icon: GraduationCap },
+    { name: 'Turmas', path: '/dashboard/turmas', icon: Users },
+    { name: 'Perfil', path: '/dashboard/perfil', icon: User },
   ],
   professor: [
     { name: 'Visão Geral', path: '/dashboard', icon: LayoutDashboard },
@@ -97,6 +112,8 @@ export function DashboardLayout() {
       admin: 'Administrador',
       finance: 'Gestor Financeiro',
       professor: 'Professor',
+      coordinator: 'Coordenador de Curso',
+      matricula: 'Agente de Matrículas',
     };
     return roles[role] || role;
   };

@@ -75,7 +75,7 @@ export function Finance() {
     amount: '',
     month_reference: (new Date().getMonth() + 1).toString(),
     year_reference: new Date().getFullYear().toString(),
-    payment_method: 'Numerário',
+    payment_method: 'Dinheiro',
     observations: '',
   });
 
@@ -288,7 +288,7 @@ export function Finance() {
           amount: '',
           month_reference: (new Date().getMonth() + 1).toString(),
           year_reference: new Date().getFullYear().toString(),
-          payment_method: 'Numerário',
+          payment_method: 'Dinheiro',
           observations: '',
         });
       },
@@ -576,8 +576,9 @@ export function Finance() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Numerário">Numerário</SelectItem>
+                        <SelectItem value="Dinheiro">Dinheiro</SelectItem>
                         <SelectItem value="Transferência">Transferência</SelectItem>
+                        <SelectItem value="Multicaixa Express">Multicaixa Express</SelectItem>
                         <SelectItem value="Depósito">Depósito</SelectItem>
                       </SelectContent>
                     </Select>

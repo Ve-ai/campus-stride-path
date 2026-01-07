@@ -60,13 +60,18 @@ import {
   Pie,
   Cell,
 } from 'recharts';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import {
+  Tabs, TabsList, TabsTrigger, TabsContent
+} from '@/components/ui/tabs';
 import { usePayments, useClasses, useStudents, useCourses, useStatistics, useCreatePayment } from '@/hooks/useDatabase';
 import { toast } from "@/lib/notifications";
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 export function Finance() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const isFinance = user?.role === 'finance';
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCourse, setSelectedCourse] = useState('Todos');
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
@@ -226,40 +231,88 @@ export function Finance() {
   ];
 
   const handleExportReport = () => {
-    if (!filteredPayments.length) {
-      toast.error('Não há dados para exportar');
+    if (!payments || !students || !classes) {
+      toast.error('Não há dados suficientes para gerar o relatório');
       return;
     }
 
-    const header = ['Curso', 'Classe', 'Turma', 'Total Alunos', 'Pagos', 'Pendentes', '% Pagos'];
-    const rows = filteredPayments.map((item) => [
-      item.course,
-      item.class,
-      item.section,
-      item.totalStudents.toString(),
-      item.paidStudents.toString(),
-      item.pendingStudents.toString(),
-      item.percentage.toString().replace('.', ','),
-    ]);
+    const doc = new jsPDF('landscape', 'pt', 'a4');
+    const pageWidth = doc.internal.pageSize.getWidth();
 
-    const csvContent = [header, ...rows]
-      .map((cols) => cols.map((c) => `"${c}"`).join(';'))
-      .join('\n');
+    const title = 'Relatório Financeiro — Mensalidades e Multas';
+    const subtitle = new Date().toLocaleString('pt-AO');
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    const now = new Date();
-    const fileName = `relatorio-financas-${now.getFullYear()}-${now.getMonth() + 1}.csv`;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(18);
+    doc.text(title, pageWidth / 2, 40, { align: 'center' });
 
-    link.href = url;
-    link.setAttribute('download', fileName);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.text(subtitle, pageWidth / 2, 55, { align: 'center' });
 
-    toast.success('Relatório exportado com sucesso');
+    // Secção 1 — Resumo geral
+    const summaryStartY = 80;
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Resumo Financeiro do Mês Atual', 40, summaryStartY);
+
+    doc.setFont('helvetica', 'normal');
+    const summaryRows = [
+      ['Receita Mensal (Mensalidades)', formatCurrency(financialStats.totalRevenue)],
+      ['Multas do Mês', formatCurrency(financialStats.totalFines)],
+      ['Pagamentos Pendentes (estimativa)', formatCurrency(financialStats.pendingPayments)],
+      ['Estudantes Pagos', `${financialStats.paidStudents} de ${financialStats.totalStudents}`],
+      ['Percentagem de Pagos', `${financialStats.paidPercentage.toFixed(1)}%`],
+    ];
+
+    autoTable(doc, {
+      startY: summaryStartY + 10,
+      head: [['Indicador', 'Valor']],
+      body: summaryRows,
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: [40, 167, 69] },
+    });
+
+    // Secção 2 — Pagamentos por Turma
+    const classesTableY = (doc as any).lastAutoTable.finalY + 15 || 130;
+    autoTable(doc, {
+      startY: classesTableY,
+      head: [['Curso', 'Classe', 'Turma', 'Total Alunos', 'Pagos', 'Pendentes', '% Pagos']],
+      body: paymentsByClass.map((item) => [
+        item.course,
+        item.class,
+        item.section,
+        item.totalStudents.toString(),
+        item.paidStudents.toString(),
+        item.pendingStudents.toString(),
+        `${item.percentage.toFixed(1)}%`,
+      ]),
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [23, 162, 184] },
+    });
+
+    // Secção 3 — Últimas transações
+    const transactionsStartY = (doc as any).lastAutoTable.finalY + 15;
+    autoTable(doc, {
+      startY: transactionsStartY,
+      head: [['Data', 'Matrícula', 'Estudante', 'Turma', 'Valor', 'Método']],
+      body: recentPayments.map((p) => [
+        p.date,
+        p.enrollment,
+        p.studentName,
+        p.classLabel,
+        formatCurrency(p.amount),
+        p.method,
+      ]),
+      styles: { fontSize: 7 },
+      headStyles: { fillColor: [108, 117, 125] },
+    });
+
+    doc.save(`relatorio-financas-${new Date().getFullYear()}-${
+      new Date().getMonth() + 1
+    }.pdf`);
+
+    toast.success('Relatório PDF gerado com sucesso');
   };
 
   const handleCreatePayment = () => {
@@ -489,15 +542,16 @@ export function Finance() {
         <div className="flex gap-3">
           <Button variant="outline" onClick={handleExportReport}>
             <Download className="w-4 h-4 mr-2" />
-            Exportar Relatório (CSV)
+            Exportar Relatório (PDF)
           </Button>
-          <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="btn-primary">
-                <Wallet className="w-4 h-4 mr-2" />
-                Registar Pagamento
-              </Button>
-            </DialogTrigger>
+          {isFinance && (
+            <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="btn-primary">
+                  <Wallet className="w-4 h-4 mr-2" />
+                  Registar Pagamento
+                </Button>
+              </DialogTrigger>
             <DialogContent className="sm:max-w-lg">
               <DialogHeader>
                 <DialogTitle>Registar Novo Pagamento</DialogTitle>
@@ -614,6 +668,7 @@ export function Finance() {
               </div>
             </DialogContent>
           </Dialog>
+          )}
         </div>
       </div>
 
@@ -622,7 +677,6 @@ export function Finance() {
           <TabsTrigger value="overview">Visão Geral</TabsTrigger>
           <TabsTrigger value="classes">Turmas e Pagamentos</TabsTrigger>
           <TabsTrigger value="reports">Relatórios</TabsTrigger>
-          <TabsTrigger value="settings">Configurações</TabsTrigger>
         </TabsList>
 
         {/* Visão Geral */}
@@ -1209,20 +1263,6 @@ export function Finance() {
           </Card>
         </TabsContent>
 
-        {/* Configurações */}
-        <TabsContent value="settings" className="space-y-4">
-          <Card className="card-elevated">
-            <CardHeader>
-              <CardTitle>Configurações do Módulo Financeiro</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground text-sm">
-                As configurações detalhadas de propinas, multas e métodos de pagamento serão configuradas aqui em
-                próximas iterações.
-              </p>
-            </CardContent>
-          </Card>
-        </TabsContent>
       </Tabs>
     </div>
   );

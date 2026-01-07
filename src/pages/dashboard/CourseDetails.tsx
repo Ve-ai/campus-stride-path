@@ -241,6 +241,7 @@ export function CourseDetails() {
                 <TableBody>
                   {gradeClasses.map((cls) => {
                     const director = teachers?.find(t => t.id === cls.class_director_id);
+                    const directorName = director?.profiles?.full_name || director?.full_name || 'Não atribuído';
                     return (
                       <TableRow
                         key={cls.id}
@@ -267,7 +268,7 @@ export function CourseDetails() {
                         </TableCell>
                         <TableCell className="text-center">{cls.max_students}</TableCell>
                         <TableCell>
-                          {director?.profiles?.full_name || 'Não atribuído'}
+                          {directorName}
                         </TableCell>
                         <TableCell className="text-center">{cls.academic_year}</TableCell>
                         <TableCell className="text-right">

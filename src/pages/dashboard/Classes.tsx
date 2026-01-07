@@ -107,12 +107,16 @@ export function Classes() {
         subjects?.filter(
           (s) => s.course_id === cls.course_id && s.grade_level === cls.grade_level,
         ) || [];
+      const directorFullName =
+        (cls as any).class_director?.profiles?.full_name ||
+        (cls as any).class_director?.full_name ||
+        'Não atribuído';
       return {
         ...cls,
         totalStudents: classStudents.length,
         subjectCount: classSubjects.length,
         courseName: cls.course?.name || '-',
-        directorName: cls.class_director?.profiles?.full_name || 'Não atribuído',
+        directorName: directorFullName,
       };
     });
   }, [classes, students, subjects]);

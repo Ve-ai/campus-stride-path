@@ -34,6 +34,7 @@ export async function fetchClasses(filters?: ClassFilters) {
       course:courses (id, name),
       class_director:teachers!classes_class_director_fkey (
         id,
+        full_name,
         profiles (full_name)
       )
     `)

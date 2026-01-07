@@ -143,6 +143,16 @@ export function Settings() {
     } finally {
       setIsSeedingData(false);
     }
+  };
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('pt-AO', {
+      style: 'currency',
+      currency: 'AOA',
+      minimumFractionDigits: 0,
+    }).format(value);
+  };
+
   return (
     <div className="max-w-5xl mx-auto space-y-6 animate-fade-in">
       {/* Header */}
@@ -192,53 +202,6 @@ export function Settings() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-            </CardContent>
-          </Card>
-
-          {isSuperAdmin && (
-            <Card className="card-elevated border-destructive/40 bg-destructive/5">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-destructive">
-                  <RefreshCw className="w-5 h-5" />
-                  Reinicializar base de dados de exemplo
-                </CardTitle>
-                <CardDescription>
-                  Apaga todos os dados atuais de exemplo (alunos, cursos, turmas, professores, pagamentos) e recria o cenário padrão
-                  com 8 cursos, 48 turmas, 50 professores e 700 alunos. Use apenas em ambiente de testes.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="flex items-center justify-between gap-4 flex-wrap">
-                <p className="text-sm text-muted-foreground max-w-xl">
-                  Esta ação é destrutiva e não pode ser desfeita. Os dados reais inseridos manualmente também serão removidos.
-                </p>
-                <Button
-                  variant="destructive"
-                  onClick={handleSeedDemoData}
-                  disabled={isSeedingData}
-                  className="shrink-0"
-                >
-                  {isSeedingData ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      A reinicializar...
-                    </>
-                  ) : (
-                    'Reinicializar base de dados de exemplo'
-                  )}
-                </Button>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* ... restante conteúdo da tab de segurança (notificações, etc.) ... */}
-        </TabsContent>
-
-        {/* As outras Tabs (appearance, courses, admins, notifications) permanecem inalteradas abaixo */}
-        {/* ... */}
-      </Tabs>
-    </div>
-  );
-
               <div className="space-y-2">
                 <Label>Senha Actual</Label>
                 <div className="relative">
@@ -341,6 +304,41 @@ export function Settings() {
               </div>
             </CardContent>
           </Card>
+
+          {isSuperAdmin && (
+            <Card className="card-elevated border-destructive/40 bg-destructive/5">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-destructive">
+                  <RefreshCw className="w-5 h-5" />
+                  Reinicializar base de dados de exemplo
+                </CardTitle>
+                <CardDescription>
+                  Apaga todos os dados atuais de exemplo (alunos, cursos, turmas, professores, pagamentos) e recria o cenário padrão
+                  com 8 cursos, 48 turmas, 50 professores e 700 alunos. Use apenas em ambiente de testes.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="flex items-center justify-between gap-4 flex-wrap">
+                <p className="text-sm text-muted-foreground max-w-xl">
+                  Esta ação é destrutiva e não pode ser desfeita. Os dados reais inseridos manualmente também serão removidos.
+                </p>
+                <Button
+                  variant="destructive"
+                  onClick={handleSeedDemoData}
+                  disabled={isSeedingData}
+                  className="shrink-0"
+                >
+                  {isSeedingData ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      A reinicializar...
+                    </>
+                  ) : (
+                    'Reinicializar base de dados de exemplo'
+                  )}
+                </Button>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         {/* Appearance Tab */}
@@ -380,23 +378,22 @@ export function Settings() {
           </Card>
         </TabsContent>
 
-
         {/* Courses Tab (Super Admin Only) */}
         {isSuperAdmin && (
           <TabsContent value="courses" className="space-y-6">
             <Card className="card-elevated">
-                <CardHeader className="flex flex-row items-center justify-between">
-                  <div>
-                    <CardTitle>Gestão de Cursos</CardTitle>
-                    <CardDescription>Visualize e atualize os cursos da instituição</CardDescription>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Gestão de Cursos</CardTitle>
+                  <CardDescription>Visualize e atualize os cursos da instituição</CardDescription>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {loadingCourses ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="w-6 h-6 animate-spin text-primary" />
                   </div>
-                </CardHeader>
-                <CardContent>
-                  {loadingCourses ? (
-                    <div className="flex items-center justify-center py-8">
-                      <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                    </div>
-                  ) : (
+                ) : (
                   <Table>
                     <TableHeader>
                       <TableRow className="table-header">
@@ -458,10 +455,13 @@ export function Settings() {
             </Card>
 
             {/* Edit course dialog */}
-            <Dialog open={isEditCourseOpen} onOpenChange={(open) => {
-              setIsEditCourseOpen(open);
-              if (!open) setEditingCourse(null);
-            }}>
+            <Dialog
+              open={isEditCourseOpen}
+              onOpenChange={(open) => {
+                setIsEditCourseOpen(open);
+                if (!open) setEditingCourse(null);
+              }}
+            >
               <DialogContent className="sm:max-w-lg">
                 <DialogHeader>
                   <DialogTitle>Editar Curso</DialogTitle>
@@ -480,7 +480,6 @@ export function Settings() {
             </Dialog>
           </TabsContent>
         )}
-
 
         {/* Admins Tab (Super Admin Only) */}
         {isSuperAdmin && (
@@ -543,7 +542,10 @@ export function Settings() {
                             'Gerar relatórios',
                             'Aprovar alterações',
                           ].map((permission) => (
-                            <div key={permission} className="flex items-center justify-between p-3 rounded-lg border border-border">
+                            <div
+                              key={permission}
+                              className="flex items-center justify-between p-3 rounded-lg border border-border"
+                            >
                               <span className="text-sm">{permission}</span>
                               <Switch />
                             </div>
@@ -555,10 +557,13 @@ export function Settings() {
                         <Button variant="outline" onClick={() => setIsAddAdminOpen(false)}>
                           Cancelar
                         </Button>
-                        <Button className="btn-primary" onClick={() => {
-                          toast.success('Administrador criado!');
-                          setIsAddAdminOpen(false);
-                        }}>
+                        <Button
+                          className="btn-primary"
+                          onClick={() => {
+                            toast.success('Administrador criado!');
+                            setIsAddAdminOpen(false);
+                          }}
+                        >
                           Criar Administrador
                         </Button>
                       </div>
@@ -585,7 +590,9 @@ export function Settings() {
                         <Badge className="badge-success">Super Admin</Badge>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline" className="badge-success">Activo</Badge>
+                        <Badge variant="outline" className="badge-success">
+                          Activo
+                        </Badge>
                       </TableCell>
                       <TableCell className="text-right">
                         <span className="text-muted-foreground text-sm">Não editável</span>
@@ -607,12 +614,27 @@ export function Settings() {
             </CardHeader>
             <CardContent className="space-y-4">
               {[
-                { label: 'Alertas de pagamentos pendentes', description: 'Receba alertas quando houver pagamentos atrasados' },
-                { label: 'Novos registos', description: 'Notificações de novos estudantes ou professores' },
-                { label: 'Alterações de notas', description: 'Solicitações de alteração de notas pelos professores' },
-                { label: 'Resumo diário', description: 'Receba um resumo das actividades do dia' },
+                {
+                  label: 'Alertas de pagamentos pendentes',
+                  description: 'Receba alertas quando houver pagamentos atrasados',
+                },
+                {
+                  label: 'Novos registos',
+                  description: 'Notificações de novos estudantes ou professores',
+                },
+                {
+                  label: 'Alterações de notas',
+                  description: 'Solicitações de alteração de notas pelos professores',
+                },
+                {
+                  label: 'Resumo diário',
+                  description: 'Receba um resumo das actividades do dia',
+                },
               ].map((item, index) => (
-                <div key={index} className="flex items-center justify-between p-4 rounded-lg border border-border">
+                <div
+                  key={index}
+                  className="flex items-center justify-between p-4 rounded-lg border border-border"
+                >
                   <div>
                     <p className="font-medium text-foreground">{item.label}</p>
                     <p className="text-sm text-muted-foreground">{item.description}</p>

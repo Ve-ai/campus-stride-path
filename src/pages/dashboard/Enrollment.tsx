@@ -276,6 +276,12 @@ export function EnrollmentPage() {
   });
 
   const handleEnroll = () => {
+    // Verificar período de matrículas (super_admin pode ignorar)
+    if (!isEnrollmentPeriodOpen && user?.role !== 'super_admin') {
+      toast.error('O período de matrículas está fechado. Contacte o administrador.');
+      return;
+    }
+    
     if (!formData.full_name || !formData.birth_date || !formData.course_id) {
       toast.error('Preencha todos os campos obrigatórios');
       return;
@@ -386,14 +392,21 @@ export function EnrollmentPage() {
         </div>
 
         {canEnroll && (
-          <Button 
-            onClick={() => setIsEnrollmentOpen(true)} 
-            className="btn-primary"
-            disabled={!isEnrollmentPeriodOpen && user?.role !== 'super_admin'}
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Nova Matrícula
-          </Button>
+          <div className="flex items-center gap-2">
+            {!isEnrollmentPeriodOpen && user?.role !== 'super_admin' && (
+              <Badge variant="outline" className="text-warning border-warning">
+                Matrículas Bloqueadas
+              </Badge>
+            )}
+            <Button 
+              onClick={() => setIsEnrollmentOpen(true)} 
+              className="btn-primary"
+              disabled={!isEnrollmentPeriodOpen && user?.role !== 'super_admin'}
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Nova Matrícula
+            </Button>
+          </div>
         )}
       </div>
 

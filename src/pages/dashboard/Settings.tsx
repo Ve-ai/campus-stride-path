@@ -60,6 +60,20 @@ import {
   getCurrentAcademicYear,
 } from '@/services/academicYearTransition';
 import { Progress } from '@/components/ui/progress';
+import { format, parseISO } from 'date-fns';
+import { pt } from 'date-fns/locale';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import { cn } from '@/lib/utils';
+
+interface EnrollmentPeriod {
+  id: string;
+  academic_year: number;
+  start_date: string;
+  end_date: string;
+  is_active: boolean;
+  created_at: string;
+}
 
 export function Settings() {
   const { user, updatePassword } = useAuth();
@@ -88,9 +102,112 @@ export function Settings() {
   const [transitionPreview, setTransitionPreview] = useState<any[]>([]);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
   const [transitionResult, setTransitionResult] = useState<any>(null);
+  
+  // Enrollment period state
+  const [enrollmentPeriods, setEnrollmentPeriods] = useState<EnrollmentPeriod[]>([]);
+  const [isLoadingEnrollmentPeriods, setIsLoadingEnrollmentPeriods] = useState(false);
+  const [isSavingEnrollmentPeriod, setIsSavingEnrollmentPeriod] = useState(false);
+  const [enrollmentStartDate, setEnrollmentStartDate] = useState<Date | undefined>();
+  const [enrollmentEndDate, setEnrollmentEndDate] = useState<Date | undefined>();
+  const [enrollmentYear, setEnrollmentYear] = useState<number>(getCurrentAcademicYear());
 
   const currentAcademicYear = getCurrentAcademicYear();
   const isSuperAdmin = user?.role === 'super_admin';
+
+  // Load enrollment periods
+  const loadEnrollmentPeriods = async () => {
+    setIsLoadingEnrollmentPeriods(true);
+    try {
+      const { data, error } = await supabase
+        .from('enrollment_periods')
+        .select('*')
+        .order('academic_year', { ascending: false });
+
+      if (error) throw error;
+      setEnrollmentPeriods(data || []);
+      
+      // Set current period values if exists
+      const currentPeriod = data?.find(p => p.academic_year === currentAcademicYear);
+      if (currentPeriod) {
+        setEnrollmentStartDate(parseISO(currentPeriod.start_date));
+        setEnrollmentEndDate(parseISO(currentPeriod.end_date));
+        setEnrollmentYear(currentPeriod.academic_year);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar períodos de matrícula:', error);
+    } finally {
+      setIsLoadingEnrollmentPeriods(false);
+    }
+  };
+
+  const handleSaveEnrollmentPeriod = async () => {
+    if (!enrollmentStartDate || !enrollmentEndDate) {
+      toast.error('Por favor, selecione as datas de início e fim');
+      return;
+    }
+
+    if (enrollmentEndDate <= enrollmentStartDate) {
+      toast.error('A data de fim deve ser posterior à data de início');
+      return;
+    }
+
+    setIsSavingEnrollmentPeriod(true);
+    try {
+      const existingPeriod = enrollmentPeriods.find(p => p.academic_year === enrollmentYear);
+      
+      if (existingPeriod) {
+        // Update existing period
+        const { error } = await supabase
+          .from('enrollment_periods')
+          .update({
+            start_date: format(enrollmentStartDate, 'yyyy-MM-dd'),
+            end_date: format(enrollmentEndDate, 'yyyy-MM-dd'),
+            is_active: true,
+          })
+          .eq('id', existingPeriod.id);
+
+        if (error) throw error;
+        toast.success('Período de matrícula atualizado com sucesso');
+      } else {
+        // Create new period
+        const { error } = await supabase
+          .from('enrollment_periods')
+          .insert({
+            academic_year: enrollmentYear,
+            start_date: format(enrollmentStartDate, 'yyyy-MM-dd'),
+            end_date: format(enrollmentEndDate, 'yyyy-MM-dd'),
+            is_active: true,
+            created_by: user?.id,
+          });
+
+        if (error) throw error;
+        toast.success('Período de matrícula criado com sucesso');
+      }
+
+      await loadEnrollmentPeriods();
+    } catch (error) {
+      console.error('Erro ao salvar período de matrícula:', error);
+      toast.error('Erro ao salvar período de matrícula');
+    } finally {
+      setIsSavingEnrollmentPeriod(false);
+    }
+  };
+
+  const toggleEnrollmentPeriodActive = async (period: EnrollmentPeriod) => {
+    try {
+      const { error } = await supabase
+        .from('enrollment_periods')
+        .update({ is_active: !period.is_active })
+        .eq('id', period.id);
+
+      if (error) throw error;
+      toast.success(period.is_active ? 'Período de matrícula desativado' : 'Período de matrícula ativado');
+      await loadEnrollmentPeriods();
+    } catch (error) {
+      console.error('Erro ao alternar estado do período:', error);
+      toast.error('Erro ao alternar estado do período');
+    }
+  };
 
   // Carrega preview quando abre a aba de transição
   const loadTransitionPreview = async () => {
@@ -272,7 +389,10 @@ export function Settings() {
               <TabsTrigger 
                 value="academic-year" 
                 className="data-[state=active]:bg-background"
-                onClick={() => loadTransitionPreview()}
+                onClick={() => {
+                  loadTransitionPreview();
+                  loadEnrollmentPeriods();
+                }}
               >
                 <ArrowRightLeft className="w-4 h-4 mr-2" />
                 Ano Letivo
@@ -738,10 +858,196 @@ export function Settings() {
         {/* Academic Year Transition Tab (Super Admin Only) */}
         {isSuperAdmin && (
           <TabsContent value="academic-year" className="space-y-6">
+            {/* Enrollment Period Configuration Card */}
             <Card className="card-elevated">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Calendar className="w-5 h-5" />
+                  Período de Matrículas
+                </CardTitle>
+                <CardDescription>
+                  Defina quando começa e termina o período de matrículas para cada ano letivo.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Enrollment Period Form */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label>Ano Letivo</Label>
+                    <Select
+                      value={enrollmentYear.toString()}
+                      onValueChange={(val) => setEnrollmentYear(parseInt(val))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[currentAcademicYear - 1, currentAcademicYear, currentAcademicYear + 1].map((year) => (
+                          <SelectItem key={year} value={year.toString()}>
+                            {year}/{year + 1}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Data de Início</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !enrollmentStartDate && "text-muted-foreground"
+                          )}
+                        >
+                          <Calendar className="mr-2 h-4 w-4" />
+                          {enrollmentStartDate ? (
+                            format(enrollmentStartDate, "PPP", { locale: pt })
+                          ) : (
+                            "Selecione a data"
+                          )}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <CalendarComponent
+                          mode="single"
+                          selected={enrollmentStartDate}
+                          onSelect={setEnrollmentStartDate}
+                          initialFocus
+                          className="pointer-events-auto"
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Data de Fim</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !enrollmentEndDate && "text-muted-foreground"
+                          )}
+                        >
+                          <Calendar className="mr-2 h-4 w-4" />
+                          {enrollmentEndDate ? (
+                            format(enrollmentEndDate, "PPP", { locale: pt })
+                          ) : (
+                            "Selecione a data"
+                          )}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <CalendarComponent
+                          mode="single"
+                          selected={enrollmentEndDate}
+                          onSelect={setEnrollmentEndDate}
+                          initialFocus
+                          className="pointer-events-auto"
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                </div>
+
+                <div className="flex justify-end">
+                  <Button
+                    onClick={handleSaveEnrollmentPeriod}
+                    disabled={isSavingEnrollmentPeriod || !enrollmentStartDate || !enrollmentEndDate}
+                    className="btn-primary"
+                  >
+                    {isSavingEnrollmentPeriod ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        A guardar...
+                      </>
+                    ) : (
+                      <>
+                        <Check className="w-4 h-4 mr-2" />
+                        Guardar Período
+                      </>
+                    )}
+                  </Button>
+                </div>
+
+                {/* Enrollment Periods History */}
+                <div className="space-y-4 pt-4 border-t border-border">
+                  <h4 className="font-semibold text-foreground">Histórico de Períodos de Matrícula</h4>
+                  {isLoadingEnrollmentPeriods ? (
+                    <div className="flex items-center justify-center py-4">
+                      <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                    </div>
+                  ) : enrollmentPeriods.length > 0 ? (
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="table-header">
+                          <TableHead>Ano Letivo</TableHead>
+                          <TableHead>Início</TableHead>
+                          <TableHead>Fim</TableHead>
+                          <TableHead>Estado</TableHead>
+                          <TableHead className="text-right">Ações</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {enrollmentPeriods.map((period) => (
+                          <TableRow key={period.id} className="table-row-hover">
+                            <TableCell className="font-medium">
+                              {period.academic_year}/{period.academic_year + 1}
+                            </TableCell>
+                            <TableCell>
+                              {format(parseISO(period.start_date), "dd/MM/yyyy")}
+                            </TableCell>
+                            <TableCell>
+                              {format(parseISO(period.end_date), "dd/MM/yyyy")}
+                            </TableCell>
+                            <TableCell>
+                              <Badge className={period.is_active ? "badge-success" : "bg-muted text-muted-foreground"}>
+                                {period.is_active ? "Ativo" : "Inativo"}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => toggleEnrollmentPeriodActive(period)}
+                              >
+                                {period.is_active ? "Desativar" : "Ativar"}
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setEnrollmentYear(period.academic_year);
+                                  setEnrollmentStartDate(parseISO(period.start_date));
+                                  setEnrollmentEndDate(parseISO(period.end_date));
+                                }}
+                              >
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  ) : (
+                    <div className="text-center py-4 text-muted-foreground">
+                      <Calendar className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">Nenhum período de matrícula configurado.</p>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Academic Year Transition Card */}
+            <Card className="card-elevated">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <ArrowRightLeft className="w-5 h-5" />
                   Transição de Ano Letivo
                 </CardTitle>
                 <CardDescription>
